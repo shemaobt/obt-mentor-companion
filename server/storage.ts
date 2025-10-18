@@ -76,10 +76,10 @@ export interface IStorage {
   createChat(chat: InsertChat): Promise<Chat>;
   updateChatTitle(chatId: string, title: string, userId: string): Promise<void>;
   updateChat(chatId: string, updates: Partial<Pick<InsertChat, 'assistantId' | 'title'>>, userId: string): Promise<Chat>;
-  updateChatConversationId(chatId: string, conversationId: string, userId: string): Promise<void>;
-  getChatConversationId(chatId: string, userId: string): Promise<string | null>;
-  getUserConversationId(userId: string): Promise<string | null>;
-  updateUserConversationId(userId: string, conversationId: string): Promise<void>;
+  updateChatThreadId(chatId: string, threadId: string, userId: string): Promise<void>;
+  getChatThreadId(chatId: string, userId: string): Promise<string | null>;
+  getUserThreadId(userId: string): Promise<string | null>;
+  updateUserThreadId(userId: string, threadId: string): Promise<void>;
   deleteChat(chatId: string, userId: string): Promise<void>;
   
   // Message operations
@@ -373,33 +373,33 @@ export class DatabaseStorage implements IStorage {
     return updatedChat;
   }
 
-  async updateChatConversationId(chatId: string, conversationId: string, userId: string): Promise<void> {
+  async updateChatThreadId(chatId: string, threadId: string, userId: string): Promise<void> {
     await db
       .update(chats)
-      .set({ conversationId, updatedAt: new Date() })
+      .set({ threadId, updatedAt: new Date() })
       .where(and(eq(chats.id, chatId), eq(chats.userId, userId)));
   }
 
-  async getChatConversationId(chatId: string, userId: string): Promise<string | null> {
+  async getChatThreadId(chatId: string, userId: string): Promise<string | null> {
     const [chat] = await db
-      .select({ conversationId: chats.conversationId })
+      .select({ threadId: chats.threadId })
       .from(chats)
       .where(and(eq(chats.id, chatId), eq(chats.userId, userId)));
-    return chat?.conversationId || null;
+    return chat?.threadId || null;
   }
 
-  async getUserConversationId(userId: string): Promise<string | null> {
+  async getUserThreadId(userId: string): Promise<string | null> {
     const [user] = await db
-      .select({ userConversationId: users.userConversationId })
+      .select({ userThreadId: users.userThreadId })
       .from(users)
       .where(eq(users.id, userId));
-    return user?.userConversationId || null;
+    return user?.userThreadId || null;
   }
 
-  async updateUserConversationId(userId: string, conversationId: string): Promise<void> {
+  async updateUserThreadId(userId: string, threadId: string): Promise<void> {
     await db
       .update(users)
-      .set({ userConversationId: conversationId, updatedAt: new Date() })
+      .set({ userThreadId: threadId, updatedAt: new Date() })
       .where(eq(users.id, userId));
   }
 
