@@ -146,8 +146,7 @@ export default function ChatInterface({
   // Derive current assistant: use chat's assistant if available and valid, otherwise default
   const chatAssistantId = chat?.assistantId as AssistantId | undefined;
   const isValidAssistantId = chatAssistantId && chatAssistantId in ASSISTANT_CONFIG;
-  // Ensure we always have a valid assistant ID, fallback to 'obtMentor' if nothing else works
-  const currentAssistant: AssistantId = (chatId && isValidAssistantId ? chatAssistantId : defaultAssistant) ?? 'obtMentor';
+  const currentAssistant: AssistantId = (chatId && isValidAssistantId ? chatAssistantId : defaultAssistant) ?? defaultAssistant;
 
   const switchAssistantMutation = useMutation({
     mutationFn: async (assistantId: AssistantId) => {
@@ -323,9 +322,7 @@ export default function ChatInterface({
         userMessageId = messageData.id;
         
         // Upload the file
-        if (userMessageId) {
-          await uploadFileAttachment(userMessageId, file);
-        }
+        await uploadFileAttachment(userMessageId, file);
         setUploadProgress(0);
         
         // Update queries to show the message
@@ -913,7 +910,7 @@ export default function ChatInterface({
                   ? "AI is responding..." 
                   : isListening 
                     ? "Listening..." 
-                    : "Let's talk about your journey..."
+                    : (isMobile ? "Ask about stories..." : "Type your message...")
               }
               data-testid="textarea-message"
             />

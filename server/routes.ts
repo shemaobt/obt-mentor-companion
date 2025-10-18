@@ -999,18 +999,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
                 
                 // Convert completion date string to Date object
-                let completionDate: Date | null = null;
-                if (args.completionDate && args.completionDate !== 'Unknown') {
-                  const parsedDate = new Date(args.completionDate);
-                  // Validate the date is actually valid
-                  if (!isNaN(parsedDate.getTime())) {
-                    completionDate = parsedDate;
-                  }
-                }
-                
-                // If no valid date, use null (optional field)
-                if (!completionDate) {
-                  completionDate = null;
+                let completionDate: Date;
+                if (args.completionDate) {
+                  completionDate = new Date(args.completionDate);
+                } else {
+                  completionDate = new Date();
                 }
                 
                 // Add qualification
@@ -1158,7 +1151,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
               assistantMessageId = assistantMessage.id;
               
-              console.log('[SSE] Sending assistant_message_start');
               // Send assistant message created event
               res.write(`data: ${JSON.stringify({ 
                 type: 'assistant_message_start',
@@ -1167,7 +1159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Send content chunk
-            console.log('[SSE] Sending content chunk:', chunk.data);
             res.write(`data: ${JSON.stringify({ 
               type: 'content', 
               data: chunk.data 
