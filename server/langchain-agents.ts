@@ -361,3 +361,116 @@ export async function processMessageWithLangChain(
   
   return lastAIMessage?.content || "I apologize, but I wasn't able to generate a response. Please try again.";
 }
+
+/**
+ * Report Agent: Generates personalized quarterly report narratives
+ */
+export async function generateReportNarrative(params: {
+  facilitatorName: string;
+  region: string | null;
+  supervisor: string | null;
+  totalLanguages: number;
+  totalChapters: number;
+  competencies: FacilitatorCompetency[];
+  qualifications: FacilitatorQualification[];
+  activities: MentorshipActivity[];
+  recentMessages: Message[];
+  periodStart: Date;
+  periodEnd: Date;
+}): Promise<string> {
+  const { reportModel } = initializeModels();
+
+  // Build comprehensive context for the report
+  const competencyBreakdown = params.competencies.map(c => {
+    const compDef = getCompetencyDefinition(c.competencyId);
+    return `- ${compDef?.name || c.competencyId}: ${c.status}`;
+  }).join('\n');
+
+  const qualificationsList = params.qualifications.map(q => 
+    `- ${q.courseTitle} (${q.institution}${q.completionDate ? `, ${new Date(q.completionDate).getFullYear()}` : ''})`
+  ).join('\n');
+
+  const activitiesList = params.activities.map(a => {
+    if (a.activityType === 'translation' || !a.activityType) {
+      return `- Translation: ${a.language || 'Language not specified'} (${a.context || 'Context not provided'})`;
+    } else {
+      return `- ${a.activityType}: ${a.context || 'Details not provided'}`;
+    }
+  }).join('\n');
+
+  const userMessageCount = params.recentMessages.filter(m => m.role === 'user').length;
+  const sessionCount = Math.floor(userMessageCount / 2);
+
+  // Analyze recent conversation topics (extract key insights)
+  const conversationSample = params.recentMessages
+    .filter(m => m.role === 'user')
+    .slice(-10)
+    .map(m => m.content)
+    .join('\n');
+
+  const prompt = `You are generating a personalized quarterly progress narrative for an Oral Bible Translation (OBT) facilitator's mentorship report.
+
+**Facilitator Profile:**
+- Name: ${params.facilitatorName}
+- Region: ${params.region || 'Not specified'}
+- Supervisor: ${params.supervisor || 'Not specified'}
+- Languages Mentored: ${params.totalLanguages}
+- Chapters Completed: ${params.totalChapters}
+- Reporting Period: ${params.periodStart.toLocaleDateString('en-US')} to ${params.periodEnd.toLocaleDateString('en-US')}
+
+**Competency Status:**
+${competencyBreakdown}
+
+**Formal Qualifications (${params.qualifications.length}):**
+${qualificationsList || 'None recorded'}
+
+**Mentorship Activities (${params.activities.length}):**
+${activitiesList || 'None recorded'}
+
+**Engagement:**
+- Participated in ${sessionCount} mentorship sessions during this period
+- Sample conversation topics from recent sessions:
+${conversationSample || 'No recent conversations'}
+
+**Instructions:**
+Write a comprehensive, professional narrative (4-6 paragraphs) that:
+1. Opens with an overview of the facilitator's commitment and progress during this period
+2. Analyzes their competency development, highlighting strengths and areas of growth
+3. Discusses their formal qualifications and how they support their mentorship work
+4. Reviews their practical activities and hands-on experience
+5. Comments on their engagement level and reflective practice
+6. Closes with an encouraging assessment of their overall development trajectory
+
+**Tone:** Professional, encouraging, specific, evidence-based
+**Length:** 4-6 substantive paragraphs (approximately 400-600 words)
+**Style:** Third person, formal report language suitable for supervisory review
+
+Generate only the narrative text. Do not include headings, titles, or meta-commentary.`;
+
+  try {
+    const response = await reportModel.invoke(prompt);
+    return response.content as string;
+  } catch (error) {
+    console.error('Error generating report narrative:', error);
+    // Fallback to basic narrative
+    return `This report summarizes the mentorship journey of the facilitator during the period from ${params.periodStart.toLocaleDateString('en-US')} to ${params.periodEnd.toLocaleDateString('en-US')}. The facilitator has demonstrated commitment to developing the core competencies necessary for effective OBT mentorship.`;
+  }
+}
+
+// Helper function to get competency definition
+function getCompetencyDefinition(competencyId: string) {
+  const competencies = {
+    interpersonal: { id: 'interpersonal', name: 'Interpersonal Skills' },
+    intercultural: { id: 'intercultural', name: 'Intercultural Communication' },
+    multimodal: { id: 'multimodal', name: 'Multimodal Skills' },
+    translation: { id: 'translation', name: 'Translation Theory & Process' },
+    languages: { id: 'languages', name: 'Languages & Communication' },
+    biblical_languages: { id: 'biblical_languages', name: 'Biblical Languages' },
+    biblical_studies: { id: 'biblical_studies', name: 'Biblical Studies & Theology' },
+    planning: { id: 'planning', name: 'Planning & Quality Assurance' },
+    consulting: { id: 'consulting', name: 'Consulting & Mentoring' },
+    technology: { id: 'technology', name: 'Applied Technology' },
+    reflective: { id: 'reflective', name: 'Reflective Practice' },
+  };
+  return competencies[competencyId as keyof typeof competencies];
+}
