@@ -344,6 +344,9 @@ export async function* generateAssistantResponseStream(
             const args = JSON.parse(call.arguments);
             const result = await toolCallExecutor.executeToolCall(call.name, args);
             
+            // Note: Responses API handles tool execution differently than Assistants API
+            // The tool is executed but we don't need to submit outputs back in streaming mode
+            // The AI will see the results in the next conversation turn via previous_response_id
             yield { 
               type: 'tool_call', 
               data: { 
@@ -356,6 +359,7 @@ export async function* generateAssistantResponseStream(
             console.log('[Stream Generator] Function executed successfully:', call.name);
           } catch (error) {
             console.error('[Stream Generator] Error executing function:', call.name, error);
+            // Continue stream even if tool execution fails
           }
           
           // Clean up
@@ -379,8 +383,21 @@ export async function* generateAssistantResponseStream(
       } as AssistantResponse 
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("OpenAI Responses API streaming error:", error);
+    
+    // If error is about missing tool output, clear conversation state and suggest retry
+    if (error?.message?.includes('No tool output found') || error?.message?.includes('function call')) {
+      console.log('[Stream Generator] Clearing conversation state due to function call error');
+      try {
+        await storage.updateUserConversationId(userId, '');
+        await storage.updateChatConversationId(request.chatId, '', userId);
+      } catch (clearError) {
+        console.error('[Stream Generator] Failed to clear conversation state:', clearError);
+      }
+      throw new Error("Tool execution error detected. Conversation state cleared. Please try sending your message again.");
+    }
+    
     throw new Error("Failed to generate streaming response from assistant. Please try again.");
   }
 }
