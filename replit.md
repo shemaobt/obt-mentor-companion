@@ -53,16 +53,38 @@ Preferred communication style: Simple, everyday language.
 11. **Prática Reflexiva / Reflective Practice** - Exercise self-awareness, align actions with values, welcome feedback
 
 ## AI Integration
-- **Provider**: OpenAI API (GPT-4o via Assistant API, Whisper API for audio)
+
+### Dual System Architecture (Feature Flag: USE_LANGCHAIN)
+
+The application supports two AI backend systems for controlled rollout and A/B testing:
+
+#### Legacy System (USE_LANGCHAIN=false)
+- **Provider**: OpenAI Assistant API with GPT-4o
 - **Assistant**: Dedicated OBT Mentor Assistant
-- **Thread Management**: Per-user threads for shared conversation history across all chats.
-- **Global Memory**: Qdrant Cloud vector database for storing conversation embeddings.
-- **Semantic Search**: Retrieves relevant past conversations for contextual AI responses.
-- **Context Injection**: Three-layer system for AI prompts:
-    1.  **Portfolio Data**: Facilitator profile, competencies, qualifications, activities.
-    2.  **Recent Message History**: Last 20 messages across all user chats.
-    3.  **Semantic Vector Search**: Relevant past conversations (user-specific and optional global).
-- **Multimodal**: GPT-4o Vision for image analysis, OpenAI Whisper for audio transcription.
+- **Thread Management**: Per-user threads for shared conversation history
+- **Tools**: OpenAI function calling (add_qualification, add_activity, update_competency, create_general_experience)
+- **Vision**: Native GPT-4o Vision for image analysis
+- **Audio**: Whisper API for transcription
+
+#### New System (USE_LANGCHAIN=true) - Production Ready
+- **Framework**: LangChain/LangGraph with React Agent pattern
+- **Provider**: OpenAI GPT-4o for all agents
+- **Agent**: LangGraph `createReactAgent` (modern 2025 approach, not deprecated)
+- **Tools**: DynamicStructuredTool with Zod validation
+- **Thread Management**: Message history managed by LangGraph
+- **Context System**: Enhanced three-layer injection:
+    1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities
+    2. **Recent Message History**: Last 20 messages with role-based formatting
+    3. **Semantic Vector Search**: Qdrant-powered facilitator-specific + global search
+- **Vision**: Planned (currently logs attachment awareness)
+- **Audio**: Whisper API for transcription (shared with legacy)
+- **Validation**: Requires facilitator profile (stricter than legacy)
+
+### Shared Infrastructure
+- **Global Memory**: Qdrant Cloud vector database for conversation embeddings
+- **Semantic Search**: Retrieves relevant past conversations for contextual AI responses
+- **Multimodal**: Audio transcription via Whisper API (both systems)
+- **Embeddings**: text-embedding-3-small for vector storage (both systems)
 
 ## Vector Memory System
 - **Provider**: Qdrant Cloud
@@ -110,6 +132,8 @@ Preferred communication style: Simple, everyday language.
 - **Session Storage**: connect-pg-simple
 - **Password Hashing**: bcryptjs
 - **Vector Database Client**: @qdrant/js-client-rest
+- **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/langgraph)
+- **Agent Orchestration**: LangGraph with React Agent pattern
 
 ## Development Tools
 - **Build Tools**: Vite (frontend), esbuild (backend)
