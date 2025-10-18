@@ -16,7 +16,7 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import { transcribeAudio as whisperTranscribe } from "./whisper";
-import { processMessageWithLangChain } from "./langchain-agents";
+import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
 
 // Feature flag: Use LangChain multi-agent system instead of OpenAI Assistant API
 // Set USE_LANGCHAIN=true in environment variables to enable
@@ -2562,6 +2562,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recent chat messages for narrative summary
       const recentMessages = await storage.getRecentUserMessages(req.userId, 50);
       
+      // Generate AI narrative if LangChain is enabled
+      let aiGeneratedNarrative: string | undefined;
+      if (USE_LANGCHAIN) {
+        console.log('[Report Generation] Using LangChain Report Agent for narrative');
+        try {
+          const user = await storage.getUser(req.userId);
+          aiGeneratedNarrative = await generateReportNarrative({
+            facilitatorName: user ? `${user.firstName} ${user.lastName}` : 'Facilitator',
+            region: facilitator.region,
+            supervisor: facilitator.mentorSupervisor,
+            totalLanguages: facilitator.totalLanguagesMentored,
+            totalChapters: facilitator.totalChaptersMentored,
+            competencies,
+            qualifications,
+            activities: periodActivities,
+            recentMessages,
+            periodStart: startDate,
+            periodEnd: endDate,
+          });
+        } catch (error) {
+          console.error('[Report Generation] Error generating AI narrative, falling back to template:', error);
+        }
+      }
+      
       // Generate .docx file
       const { filePath, document } = await generateQuarterlyReport({
         facilitator,
@@ -2571,6 +2595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recentMessages,
         periodStart: startDate,
         periodEnd: endDate,
+        aiGeneratedNarrative,
       });
       
       // Convert document to buffer and save
