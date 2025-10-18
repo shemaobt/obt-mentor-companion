@@ -1,7 +1,9 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
+import * as fs from "fs/promises";
 import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
 import { searchRelevantMessages, searchGlobalMemory } from "./vector-memory";
@@ -307,7 +309,7 @@ async function getRelevantContext(
 }
 
 /**
- * Process a message using the LangChain agent
+ * Process a message using the LangChain agent with Supervisor orchestration
  */
 export async function processMessageWithLangChain(
   storage: IStorage,
@@ -322,6 +324,17 @@ export async function processMessageWithLangChain(
   if (!facilitatorId) {
     throw new Error('Facilitator ID is required for using the OBT Mentor Agent');
   }
+  
+  // Supervisor: Route to appropriate agent
+  const agentRoute = await routeMessageToAgent(userMessage, storage, userId, facilitatorId);
+  console.log(`[Supervisor] Routing message to ${agentRoute} agent`);
+  
+  // For report generation requests, guide user to the dedicated report generation UI
+  if (agentRoute === 'REPORT') {
+    return "To generate a quarterly report, please use the 'Reports' section in your portfolio page and select the reporting period. This will create a comprehensive .docx report with an AI-generated narrative summary of your progress.";
+  }
+  
+  // Route to Mentor Agent (default for conversations, assessments, portfolio updates)
   const agent = await createMentorAgent(storage, userId, facilitatorId);
 
   // Format chat history for LangGraph
@@ -343,16 +356,55 @@ export async function processMessageWithLangChain(
     ? `${context}\n\n${userMessage}`
     : userMessage;
 
-  // TODO: Handle image attachments with vision processing
-  // For now, add a note if images were uploaded
-  let finalMessage = messageWithContext;
+  // Prepare message content (text + images for vision processing)
+  let messageContent: any;
+  
   if (imageFilePaths && imageFilePaths.length > 0) {
-    finalMessage += `\n\n[Note: ${imageFilePaths.length} image(s) were uploaded. Vision processing for LangChain will be implemented in the next phase.]`;
+    console.log(`[LangChain Vision] Processing ${imageFilePaths.length} image(s) with GPT-4o Vision`);
+    
+    // Convert images to base64 for LangChain vision processing
+    const imageContents = await Promise.all(
+      imageFilePaths.map(async (filePath) => {
+        try {
+          const imageBuffer = await fs.readFile(filePath);
+          const base64Image = imageBuffer.toString('base64');
+          const extension = filePath.split('.').pop()?.toLowerCase();
+          const mimeType = extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/png';
+          
+          return {
+            type: "image_url" as const,
+            image_url: {
+              url: `data:${mimeType};base64,${base64Image}`,
+            },
+          };
+        } catch (error) {
+          console.error(`[LangChain Vision] Error reading image ${filePath}:`, error);
+          return null;
+        }
+      })
+    );
+    
+    const validImages = imageContents.filter(img => img !== null);
+    
+    if (validImages.length > 0) {
+      // Create multimodal message with text and images
+      messageContent = [
+        { type: "text" as const, text: messageWithContext },
+        ...validImages,
+      ];
+    } else {
+      messageContent = messageWithContext;
+    }
+  } else {
+    messageContent = messageWithContext;
   }
 
-  // Invoke LangGraph React agent
+  // Create the human message
+  const humanMessage = new HumanMessage({ content: messageContent });
+
+  // Invoke LangGraph React agent with properly formatted message
   const result = await agent.invoke({
-    messages: [...formattedHistory, { role: "human", content: finalMessage }],
+    messages: [...formattedHistory, humanMessage],
   });
 
   // Extract the final AI message from the result
@@ -473,4 +525,69 @@ function getCompetencyDefinition(competencyId: string) {
     reflective: { id: 'reflective', name: 'Reflective Practice' },
   };
   return competencies[competencyId as keyof typeof competencies];
+}
+
+/**
+ * Supervisor Agent: Orchestrates multi-agent workflow using LangGraph
+ * 
+ * Decides which agent(s) to invoke based on the user's request:
+ * - Mentor Agent: For conversations, assessments, guidance
+ * - Portfolio Agent: Implicit via Mentor Agent tools
+ * - Report Agent: For generating quarterly reports
+ * - Memory Agent: Implicit via Qdrant context retrieval
+ */
+export async function createSupervisorAgent() {
+  const { mentorModel } = initializeModels();
+  
+  const supervisorPrompt = `You are the Supervisor Agent for the OBT Mentor Companion system.
+
+Your role is to analyze user requests and decide which agent should handle them:
+
+1. **Mentor Agent** (default): Use for:
+   - General conversations and questions
+   - Competency assessments and updates
+   - Adding qualifications or activities
+   - Guidance and mentorship discussions
+   - Image or document analysis
+   
+2. **Report Agent**: Use ONLY when explicitly requested:
+   - "Generate a quarterly report"
+   - "Create my report for Q1"
+   - "I need a progress report"
+   
+For 99% of requests, route to the Mentor Agent. The Mentor Agent has tools to update portfolios.
+
+Respond with ONLY ONE WORD:
+- "MENTOR" for the Mentor Agent
+- "REPORT" for the Report Agent
+
+Do not provide explanations or additional text.`;
+
+  return { model: mentorModel, prompt: supervisorPrompt };
+}
+
+/**
+ * Route message to appropriate agent based on supervisor decision
+ * (Currently simplified - Supervisor logic integrated into routing)
+ */
+export async function routeMessageToAgent(
+  userMessage: string,
+  storage: IStorage,
+  userId: string,
+  facilitatorId: string
+): Promise<'MENTOR' | 'REPORT'> {
+  // Simple keyword-based routing (can be enhanced with LLM-based decision)
+  const lowercaseMessage = userMessage.toLowerCase();
+  
+  if (
+    lowercaseMessage.includes('generate report') ||
+    lowercaseMessage.includes('quarterly report') ||
+    lowercaseMessage.includes('create report') ||
+    (lowercaseMessage.includes('report') && lowercaseMessage.includes('generate'))
+  ) {
+    return 'REPORT';
+  }
+  
+  // Default to Mentor Agent for everything else
+  return 'MENTOR';
 }
