@@ -16,6 +16,11 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import { transcribeAudio as whisperTranscribe } from "./whisper";
+import { processMessageWithLangChain } from "./langchain-agents";
+
+// Feature flag: Use LangChain multi-agent system instead of OpenAI Assistant API
+// Set USE_LANGCHAIN=true in environment variables to enable
+const USE_LANGCHAIN = process.env.USE_LANGCHAIN === 'true';
 
 // Server-side audio cache for faster TTS responses
 interface CachedAudio {
@@ -793,15 +798,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
         : content;
 
-      // Generate AI response using the selected assistant
-      const threadId = await getChatThreadId(chatId, userId);
-      const aiResponse = await generateAssistantResponse({
-        chatId,
-        userMessage: messageWithContext,
-        assistantId: chat.assistantId as any,
-        threadId: threadId || undefined,
-        imageFilePaths: imageFilePaths.length > 0 ? imageFilePaths : undefined,
-      }, userId);
+      let aiResponse: any;
+
+      // Generate AI response using either LangChain or OpenAI Assistant API
+      if (USE_LANGCHAIN) {
+        console.log('[LangChain] Processing message with multi-agent system');
+        
+        // Verify facilitator exists for LangChain (required for portfolio tools)
+        if (!facilitatorId) {
+          return res.status(400).json({ 
+            message: "Facilitator profile required. Please complete your profile first." 
+          });
+        }
+        
+        // Get chat history for LangChain
+        const chatHistory = await storage.getChatMessages(chatId, userId);
+        
+        // Process with LangChain agent (including image attachments)
+        const langchainResponse = await processMessageWithLangChain(
+          storage,
+          userId,
+          facilitatorId,
+          content,
+          chatHistory,
+          relevantContext,
+          imageFilePaths.length > 0 ? imageFilePaths : undefined
+        );
+        
+        aiResponse = {
+          content: langchainResponse,
+          threadId: null, // LangChain doesn't use threads
+        };
+      } else {
+        console.log('[OpenAI Assistant] Processing message with Assistant API');
+        
+        // Use original OpenAI Assistant API
+        const threadId = await getChatThreadId(chatId, userId);
+        aiResponse = await generateAssistantResponse({
+          chatId,
+          userMessage: messageWithContext,
+          assistantId: chat.assistantId as any,
+          threadId: threadId || undefined,
+          imageFilePaths: imageFilePaths.length > 0 ? imageFilePaths : undefined,
+        }, userId);
+      }
 
       // Create assistant message
       const assistantMessage = await storage.createMessage({
