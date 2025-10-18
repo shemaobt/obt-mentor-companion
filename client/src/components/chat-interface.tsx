@@ -146,7 +146,8 @@ export default function ChatInterface({
   // Derive current assistant: use chat's assistant if available and valid, otherwise default
   const chatAssistantId = chat?.assistantId as AssistantId | undefined;
   const isValidAssistantId = chatAssistantId && chatAssistantId in ASSISTANT_CONFIG;
-  const currentAssistant: AssistantId = (chatId && isValidAssistantId ? chatAssistantId : defaultAssistant) ?? defaultAssistant;
+  // Ensure we always have a valid assistant ID, fallback to 'obtMentor' if nothing else works
+  const currentAssistant: AssistantId = (chatId && isValidAssistantId ? chatAssistantId : defaultAssistant) ?? 'obtMentor';
 
   const switchAssistantMutation = useMutation({
     mutationFn: async (assistantId: AssistantId) => {
