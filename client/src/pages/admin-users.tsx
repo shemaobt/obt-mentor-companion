@@ -119,6 +119,12 @@ export default function AdminUsers() {
     enabled: isAuthenticated && user?.isAdmin === true,
   });
 
+  // Query for approval system setting
+  const { data: approvalSetting } = useQuery<{ requireApproval: boolean }>({
+    queryKey: ["/api/admin/settings/require-approval"],
+    enabled: isAuthenticated && user?.isAdmin === true,
+  });
+
   // Handle query errors with useEffect
   useEffect(() => {
     if (usersError) {
@@ -349,6 +355,44 @@ export default function AdminUsers() {
     },
   });
 
+  // Update approval system setting mutation
+  const updateApprovalSettingMutation = useMutation({
+    mutationFn: async (requireApproval: boolean) => {
+      const response = await apiRequest("POST", "/api/admin/settings/require-approval", 
+        { requireApproval },
+        { "X-Requested-With": "XMLHttpRequest" }
+      );
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/require-approval"] });
+      toast({
+        title: "Success",
+        description: data.requireApproval 
+          ? "User approval system enabled. New users will require admin approval."
+          : "User approval system disabled. New users will be auto-approved.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update approval system setting",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Generate report mutation
   const generateReportMutation = useMutation({
     mutationFn: async ({ userId, periodStart, periodEnd }: { userId: string; periodStart: string; periodEnd: string }) => {
@@ -513,6 +557,29 @@ export default function AdminUsers() {
               </div>
             </div>
           </div>
+
+          {/* System Settings */}
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="approval-toggle" className="text-base font-medium">
+                    Require Admin Approval for New Users
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    When enabled, new user accounts will be set to pending status and require admin approval before they can access the system.
+                  </p>
+                </div>
+                <Switch
+                  id="approval-toggle"
+                  checked={approvalSetting?.requireApproval ?? false}
+                  onCheckedChange={(checked) => updateApprovalSettingMutation.mutate(checked)}
+                  disabled={updateApprovalSettingMutation.isPending}
+                  data-testid="switch-require-approval"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Filters and Search */}
           <Card className="mb-6">
