@@ -131,6 +131,7 @@ export function useOpenAISpeechSynthesis(
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentLanguageRef = useRef<string>(lang);
+  const cancelledRef = useRef(false);
 
   // OpenAI TTS is always supported (just needs internet)
   const isSupported = typeof window !== 'undefined';
@@ -174,7 +175,18 @@ export function useOpenAISpeechSynthesis(
         chunks.push(paragraph.trim());
       } else {
         // Split long paragraphs by sentences
-        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [];
+        
+        // If no sentences found (no punctuation), force split by maxChunkLength
+        if (sentences.length === 0) {
+          let remaining = paragraph;
+          while (remaining.length > 0) {
+            chunks.push(remaining.substring(0, maxChunkLength).trim());
+            remaining = remaining.substring(maxChunkLength);
+          }
+          continue;
+        }
+        
         let currentChunk = '';
         
         for (const sentence of sentences) {
@@ -182,7 +194,17 @@ export function useOpenAISpeechSynthesis(
             currentChunk += sentence;
           } else {
             if (currentChunk) chunks.push(currentChunk.trim());
-            currentChunk = sentence;
+            // If a single sentence is too long, force split it
+            if (sentence.length > maxChunkLength) {
+              let remaining = sentence;
+              while (remaining.length > 0) {
+                chunks.push(remaining.substring(0, maxChunkLength).trim());
+                remaining = remaining.substring(maxChunkLength);
+              }
+              currentChunk = '';
+            } else {
+              currentChunk = sentence;
+            }
           }
         }
         
@@ -194,6 +216,7 @@ export function useOpenAISpeechSynthesis(
   };
 
   const cancel = useCallback(() => {
+    cancelledRef.current = true;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -210,6 +233,9 @@ export function useOpenAISpeechSynthesis(
     try {
       // Cancel any current playback
       cancel();
+      
+      // Reset cancellation flag for this new speak call
+      cancelledRef.current = false;
 
       const language = targetLang || currentLanguageRef.current;
       const voiceId = selectedVoiceRef.current?.id || 'alloy';
@@ -219,42 +245,75 @@ export function useOpenAISpeechSynthesis(
       
       if (chunks.length === 0) return;
       
-      // Function to generate and play a single chunk
-      const playChunk = async (chunkText: string, isFirstChunk: boolean): Promise<void> => {
+      // Function to generate audio for a chunk (returns URL promise)
+      const generateChunkAudio = async (chunkText: string, isFirstChunk: boolean): Promise<string | null> => {
+        // Check if cancelled before starting generation
+        if (cancelledRef.current) {
+          return null;
+        }
+        
         // Check cache first
         let audioUrl = getCachedAudio(chunkText, language, voiceId);
         
-        if (!audioUrl) {
-          // Only show loading indicator for the first chunk
-          if (isFirstChunk) {
-            setIsLoading(true);
-          }
-          
-          const response = await apiRequest('POST', '/api/audio/speak', {
-            text: chunkText.trim(),
-            language,
-            voice: voiceId
-          });
+        if (audioUrl) {
+          return audioUrl;
+        }
+        
+        // Only show loading indicator for the first chunk
+        if (isFirstChunk) {
+          setIsLoading(true);
+        }
+        
+        const response = await apiRequest('POST', '/api/audio/speak', {
+          text: chunkText.trim(),
+          language,
+          voice: voiceId
+        });
 
-          if (!response.ok) {
-            throw new Error('Failed to generate speech');
-          }
-
-          const audioBlob = await response.blob();
-          audioUrl = URL.createObjectURL(audioBlob);
-          
-          // Cache the audio
-          setCachedAudio(chunkText, language, voiceId, audioUrl);
-          
+        // Check if cancelled after request
+        if (cancelledRef.current) {
           if (isFirstChunk) {
             setIsLoading(false);
           }
+          return null;
         }
 
-        // Play the audio chunk
+        if (!response.ok) {
+          throw new Error('Failed to generate speech');
+        }
+
+        const audioBlob = await response.blob();
+        audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Cache the audio
+        setCachedAudio(chunkText, language, voiceId, audioUrl);
+        
+        if (isFirstChunk) {
+          setIsLoading(false);
+        }
+        
+        return audioUrl;
+      };
+      
+      // Function to play a single audio URL
+      const playAudioUrl = (audioUrl: string): Promise<void> => {
         return new Promise((resolve, reject) => {
+          // Check if cancelled before playing
+          if (cancelledRef.current) {
+            resolve();
+            return;
+          }
+          
           const audio = new Audio(audioUrl);
           audioRef.current = audio;
+          
+          // Poll for cancellation during playback
+          const cancelCheckInterval = setInterval(() => {
+            if (cancelledRef.current) {
+              clearInterval(cancelCheckInterval);
+              resolve();
+            }
+          }, 100); // Check every 100ms
 
           audio.onloadstart = () => setIsSpeaking(true);
           audio.onplay = () => {
@@ -262,26 +321,53 @@ export function useOpenAISpeechSynthesis(
             setIsPaused(false);
           };
           audio.onended = () => {
+            clearInterval(cancelCheckInterval);
             resolve();
           };
           audio.onerror = (e) => {
+            clearInterval(cancelCheckInterval);
             console.error('Audio playback error:', e);
             reject(e);
           };
 
-          audio.play().catch(reject);
+          audio.play().catch((e) => {
+            clearInterval(cancelCheckInterval);
+            reject(e);
+          });
         });
       };
 
-      // Play chunks sequentially
+      // Pipeline: Generate next chunk while current one plays
+      const audioUrlPromises: Promise<string | null>[] = [];
+      
+      // Start generating all chunks immediately (parallel generation)
       for (let i = 0; i < chunks.length; i++) {
-        await playChunk(chunks[i], i === 0);
+        audioUrlPromises.push(generateChunkAudio(chunks[i], i === 0));
       }
       
-      // All chunks done
-      setIsSpeaking(false);
-      setIsPaused(false);
-      audioRef.current = null;
+      // Play chunks sequentially as they become ready
+      for (const urlPromise of audioUrlPromises) {
+        // Check if cancelled before waiting for next chunk
+        if (cancelledRef.current) {
+          break;
+        }
+        
+        const audioUrl = await urlPromise;
+        
+        // Skip if cancelled or generation returned null
+        if (cancelledRef.current || !audioUrl) {
+          break;
+        }
+        
+        await playAudioUrl(audioUrl);
+      }
+      
+      // All chunks done (or cancelled)
+      if (!cancelledRef.current) {
+        setIsSpeaking(false);
+        setIsPaused(false);
+        audioRef.current = null;
+      }
 
     } catch (error) {
       console.error('Error in text-to-speech:', error);
