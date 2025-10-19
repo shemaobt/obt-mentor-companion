@@ -250,6 +250,9 @@ export const facilitatorQualifications = pgTable("facilitator_qualifications", {
   institution: varchar("institution").notNull(),
   completionDate: timestamp("completion_date"),
   credential: varchar("credential"), // Certificate, diploma, etc.
+  courseLevel: varchar("course_level", { 
+    enum: ["introduction", "certificate", "bachelor", "master", "doctoral"] 
+  }), // Academic level of the course
   description: text("description"), // Brief description of content
   createdAt: timestamp("created_at").defaultNow(),
 });

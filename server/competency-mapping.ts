@@ -180,14 +180,35 @@ export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
 };
 
 /**
+ * Get multiplier based on course level
+ * - introduction: 0.5x (basic awareness)
+ * - certificate: 1.0x (baseline competency)
+ * - bachelor: 1.5x (strong foundation)
+ * - master: 2.0x (advanced expertise)
+ * - doctoral: 2.5x (expert level)
+ */
+export function getCourseLevelMultiplier(courseLevel?: string | null): number {
+  switch (courseLevel) {
+    case 'introduction': return 0.5;
+    case 'certificate': return 1.0;
+    case 'bachelor': return 1.5;
+    case 'master': return 2.0;
+    case 'doctoral': return 2.5;
+    default: return 1.0; // Default to certificate level if not specified
+  }
+}
+
+/**
  * Calculate competency impacts for a given qualification
  */
 export function calculateQualificationImpacts(
   courseTitle: string,
-  description?: string | null
+  description?: string | null,
+  courseLevel?: string | null
 ): Map<string, number> {
   const impacts = new Map<string, number>();
   const searchText = `${courseTitle} ${description || ''}`.toLowerCase();
+  const levelMultiplier = getCourseLevelMultiplier(courseLevel);
   
   // Check each pattern
   for (const pattern of QUALIFICATION_PATTERNS) {
@@ -197,10 +218,10 @@ export function calculateQualificationImpacts(
     );
     
     if (matches) {
-      // Add this pattern's impacts
+      // Add this pattern's impacts with course level multiplier
       for (const impact of pattern.impacts) {
         const currentWeight = impacts.get(impact.competencyId) || 0;
-        impacts.set(impact.competencyId, currentWeight + impact.weight);
+        impacts.set(impact.competencyId, currentWeight + (impact.weight * levelMultiplier));
       }
     }
   }
@@ -288,34 +309,41 @@ export function calculateActivityImpacts(
 
 /**
  * Calculate all competency scores for a facilitator based on their qualifications and activities
+ * Returns both total scores and separate education/experience scores for two-pillar analysis
  */
 export function calculateCompetencyScores(
-  qualifications: Array<{ courseTitle: string; description?: string | null }>,
+  qualifications: Array<{ courseTitle: string; description?: string | null; courseLevel?: string | null }>,
   activities?: Array<{ 
     activityType?: string | null; 
     yearsOfExperience?: number | null;
     description?: string | null;
     chaptersCount?: number | null;
   }>
-): Map<string, number> {
-  const competencyScores = new Map<string, number>();
+): {
+  total: Map<string, number>;
+  education: Map<string, number>;
+  experience: Map<string, number>;
+} {
+  const educationScores = new Map<string, number>();
+  const experienceScores = new Map<string, number>();
   
-  // Process each qualification
+  // Process each qualification (education pillar)
   for (const qualification of qualifications) {
     const impacts = calculateQualificationImpacts(
       qualification.courseTitle,
-      qualification.description
+      qualification.description,
+      qualification.courseLevel
     );
     
-    // Accumulate impacts into total scores
+    // Accumulate impacts into education scores
     const impactEntries = Array.from(impacts.entries());
     for (const [competencyId, weight] of impactEntries) {
-      const currentScore = competencyScores.get(competencyId) || 0;
-      competencyScores.set(competencyId, currentScore + weight);
+      const currentScore = educationScores.get(competencyId) || 0;
+      educationScores.set(competencyId, currentScore + weight);
     }
   }
   
-  // Process each activity
+  // Process each activity (experience pillar)
   if (activities) {
     for (const activity of activities) {
       const impacts = calculateActivityImpacts(
@@ -325,14 +353,28 @@ export function calculateCompetencyScores(
         activity.chaptersCount || null
       );
       
-      // Accumulate impacts into total scores
+      // Accumulate impacts into experience scores
       const impactEntries = Array.from(impacts.entries());
       for (const [competencyId, weight] of impactEntries) {
-        const currentScore = competencyScores.get(competencyId) || 0;
-        competencyScores.set(competencyId, currentScore + weight);
+        const currentScore = experienceScores.get(competencyId) || 0;
+        experienceScores.set(competencyId, currentScore + weight);
       }
     }
   }
   
-  return competencyScores;
+  // Calculate total scores (education + experience)
+  const totalScores = new Map<string, number>();
+  const allCompetencyIds = new Set([...educationScores.keys(), ...experienceScores.keys()]);
+  
+  for (const competencyId of allCompetencyIds) {
+    const educationScore = educationScores.get(competencyId) || 0;
+    const experienceScore = experienceScores.get(competencyId) || 0;
+    totalScores.set(competencyId, educationScore + experienceScore);
+  }
+  
+  return {
+    total: totalScores,
+    education: educationScores,
+    experience: experienceScores,
+  };
 }
