@@ -357,12 +357,10 @@ export default function Portfolio() {
     }
   }, [facilitatorProfile]);
 
-  // Calculate competency progress (only count started competencies)
-  const startedCompetencies = competencies.filter(c => c.status !== 'not_started');
+  // Calculate competency progress (always out of 11 total competencies)
+  const TOTAL_COMPETENCIES = 11;
   const proficientCompetencies = competencies.filter(c => c.status === 'proficient' || c.status === 'advanced');
-  const competencyProgress = startedCompetencies.length > 0
-    ? (proficientCompetencies.length / startedCompetencies.length) * 100
-    : 0;
+  const competencyProgress = (proficientCompetencies.length / TOTAL_COMPETENCIES) * 100;
 
   // Get status for a competency
   const getCompetencyStatus = (competencyId: CompetencyId): CompetencyStatus => {
@@ -462,9 +460,7 @@ export default function Portfolio() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Overall Competency Progress</span>
                 <span className="text-sm text-muted-foreground">
-                  {startedCompetencies.length > 0 
-                    ? `${Math.round(competencyProgress)}% (${proficientCompetencies.length}/${startedCompetencies.length})`
-                    : 'No competencies started yet'}
+                  {Math.round(competencyProgress)}% ({proficientCompetencies.length}/{TOTAL_COMPETENCIES})
                 </span>
               </div>
               <Progress value={competencyProgress} className="h-2" />
