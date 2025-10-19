@@ -93,9 +93,9 @@ export function ThemeSwitcher() {
               <div className="flex items-start gap-3">
                 {theme.icon ? (
                   <img
-                    src={theme.icon}
+                    src={`${theme.icon}?v=${Date.now()}`}
                     alt={theme.name}
-                    className="w-12 h-12 rounded-md shrink-0 object-cover"
+                    className="w-12 h-12 rounded-md shrink-0 object-contain"
                   />
                 ) : (
                   <div
