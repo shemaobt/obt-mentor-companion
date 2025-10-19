@@ -68,9 +68,6 @@ export function ThemeSwitcher() {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Choose Color Theme</DialogTitle>
-        </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           {Object.entries(themes).map(([key, theme]) => {
             if (import.meta.env.DEV) {
