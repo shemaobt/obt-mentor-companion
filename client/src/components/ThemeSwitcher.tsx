@@ -43,6 +43,9 @@ export function ThemeSwitcher() {
     // Save to localStorage for persistence
     localStorage.setItem('obt-theme', themeKey);
     setSelectedTheme(themeKey);
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('theme-changed'));
   };
 
   // Apply saved theme on mount

@@ -9,10 +9,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageComponent from "./message";
 import FeedbackForm from "./feedback-form";
 import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music } from "lucide-react";
-
-// Use logo from public directory
-const logoImage = "/logo.png";
 import { useOpenAISpeechRecognition } from "@/hooks/useOpenAISpeechRecognition";
+import { useThemeLogo } from "@/hooks/use-theme-logo";
 import { useOpenAISpeechSynthesis } from "@/hooks/useOpenAISpeechSynthesis";
 import {
   DropdownMenu,
@@ -77,6 +75,7 @@ export default function ChatInterface({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const logoImage = useThemeLogo();
   
   // Speech recognition hook with language support
   const {

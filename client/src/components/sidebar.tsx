@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useThemeLogo } from "@/hooks/use-theme-logo";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
@@ -35,8 +36,6 @@ import {
   Link2,
   Play
 } from "lucide-react";
-// Use logo from public directory
-const logoImage = "/logo.png";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
 
@@ -61,6 +60,7 @@ export default function Sidebar({
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const logoImage = useThemeLogo();
 
   // Check if user is admin (only admin can see dashboard, settings, etc.)
   // Properly type the user object for admin check
