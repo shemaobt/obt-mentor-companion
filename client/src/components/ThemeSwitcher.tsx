@@ -57,12 +57,11 @@ export function ThemeSwitcher() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
-          className="gap-2"
+          className="w-full justify-start text-sm px-4 py-2 h-auto"
           data-testid="button-theme-switcher"
         >
-          <Palette className="h-4 w-4" />
-          <span className="hidden md:inline">Theme</span>
+          <Palette className="mr-2 h-4 w-4" />
+          Theme
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
