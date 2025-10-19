@@ -2388,6 +2388,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/facilitator/qualifications/:qualificationId', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { qualificationId } = req.params;
+      const { courseTitle, institution, completionDate, credential, description } = req.body;
+      
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+      
+      const updates: any = {};
+      if (courseTitle !== undefined) updates.courseTitle = courseTitle;
+      if (institution !== undefined) updates.institution = institution;
+      if (completionDate !== undefined) updates.completionDate = completionDate ? new Date(completionDate) : null;
+      if (credential !== undefined) updates.credential = credential;
+      if (description !== undefined) updates.description = description;
+      
+      const qualification = await storage.updateQualification(qualificationId, updates);
+      
+      // Recalculate competencies based on updated qualification
+      await storage.recalculateCompetencies(facilitator.id);
+      
+      res.json(qualification);
+    } catch (error) {
+      console.error("Error updating qualification:", error);
+      res.status(500).json({ message: "Failed to update qualification" });
+    }
+  });
+
   app.delete('/api/facilitator/qualifications/:qualificationId', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
       const { qualificationId } = req.params;
