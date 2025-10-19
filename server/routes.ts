@@ -2114,6 +2114,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System settings endpoints
+  app.get('/api/admin/settings/require-approval', requireAdmin, async (req: any, res) => {
+    try {
+      const requireApproval = await storage.getSystemSetting('requireApproval');
+      res.json({ requireApproval: requireApproval === 'true' });
+    } catch (error) {
+      console.error("Error fetching approval setting:", error);
+      res.status(500).json({ message: "Failed to fetch approval setting" });
+    }
+  });
+
+  app.post('/api/admin/settings/require-approval', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { requireApproval } = req.body;
+      
+      if (typeof requireApproval !== 'boolean') {
+        return res.status(400).json({ message: "requireApproval must be a boolean" });
+      }
+      
+      await storage.setSystemSetting('requireApproval', requireApproval.toString(), req.userId);
+      res.json({ requireApproval });
+    } catch (error) {
+      console.error("Error updating approval setting:", error);
+      res.status(500).json({ message: "Failed to update approval setting" });
+    }
+  });
+
   // Admin endpoint to generate report for any user
   app.post('/api/admin/users/:userId/generate-report', requireAdmin, requireCSRFHeader, async (req: any, res) => {
     try {
