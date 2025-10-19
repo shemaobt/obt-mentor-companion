@@ -311,10 +311,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract facilitator profile data
       const { region, mentorSupervisor, ...userDataOnly } = userData;
       
+      // Check if approval is required
+      const requireApproval = await storage.getSystemSetting('requireApproval');
+      const approvalStatus = requireApproval === 'true' ? 'pending' : 'approved';
+      
       // Create user
       const user = await storage.createUser({
         ...userDataOnly,
-        password: hashedPassword
+        password: hashedPassword,
+        approvalStatus
       });
       
       // Automatically create facilitator profile for new users
@@ -329,7 +334,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail signup if facilitator profile creation fails
       }
       
-      // Auto-approve and log in all new users
+      // If user needs approval, redirect to login with pending message
+      if (user.approvalStatus === 'pending') {
+        return res.json({
+          message: "Account created successfully. Awaiting admin approval.",
+          approvalStatus: "pending"
+        });
+      }
+      
+      // Auto-login approved users
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
