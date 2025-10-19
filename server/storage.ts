@@ -906,9 +906,14 @@ export class DatabaseStorage implements IStorage {
     
     // Process ALL competencies (not just those with scores)
     for (const competencyId of allCompetencyIds) {
-      const score = scores.get(competencyId) || 0;
-      const suggestedStatus = scoreToStatus(score);
+      const totalScore = scores.total.get(competencyId) || 0;
+      const educationScore = scores.education.get(competencyId) || 0;
+      const experienceScore = scores.experience.get(competencyId) || 0;
+      
+      const suggestedStatus = scoreToStatus(totalScore);
       const existing = competencyMap.get(competencyId);
+      
+      const notes = `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${totalScore.toFixed(1)}`;
       
       if (existing) {
         // Update existing competency - always in auto mode
@@ -916,9 +921,10 @@ export class DatabaseStorage implements IStorage {
           .update(facilitatorCompetencies)
           .set({
             status: suggestedStatus as any,
-            autoScore: score,
+            autoScore: Math.round(totalScore),
             statusSource: 'auto',
             suggestedStatus: suggestedStatus as any,
+            notes,
             lastUpdated: new Date(),
           })
           .where(eq(facilitatorCompetencies.id, existing.id));
@@ -930,9 +936,10 @@ export class DatabaseStorage implements IStorage {
             facilitatorId,
             competencyId,
             status: suggestedStatus as any,
-            autoScore: score,
+            autoScore: Math.round(totalScore),
             statusSource: 'auto',
             suggestedStatus: suggestedStatus as any,
+            notes,
           });
       }
     }
