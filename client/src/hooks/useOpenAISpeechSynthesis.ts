@@ -162,6 +162,37 @@ export function useOpenAISpeechSynthesis(
     currentLanguageRef.current = lang;
   }, [lang]);
 
+  // Split text into smaller chunks for faster generation and playback
+  const splitTextIntoChunks = (text: string, maxChunkLength = 500): string[] => {
+    const chunks: string[] = [];
+    
+    // Split by paragraphs first (double newlines)
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+    
+    for (const paragraph of paragraphs) {
+      if (paragraph.length <= maxChunkLength) {
+        chunks.push(paragraph.trim());
+      } else {
+        // Split long paragraphs by sentences
+        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+        let currentChunk = '';
+        
+        for (const sentence of sentences) {
+          if ((currentChunk + sentence).length <= maxChunkLength) {
+            currentChunk += sentence;
+          } else {
+            if (currentChunk) chunks.push(currentChunk.trim());
+            currentChunk = sentence;
+          }
+        }
+        
+        if (currentChunk) chunks.push(currentChunk.trim());
+      }
+    }
+    
+    return chunks.filter(c => c.length > 0);
+  };
+
   const cancel = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -181,57 +212,76 @@ export function useOpenAISpeechSynthesis(
       cancel();
 
       const language = targetLang || currentLanguageRef.current;
-      // Use ref to get current voice, not the potentially stale closure value
       const voiceId = selectedVoiceRef.current?.id || 'alloy';
       
-      // Check cache first
-      let audioUrl = getCachedAudio(text, language, voiceId);
+      // Split text into chunks for faster generation
+      const chunks = splitTextIntoChunks(text);
       
-      if (!audioUrl) {
-        // Generate new audio via OpenAI TTS
-        setIsLoading(true); // Show loading state for audio generation
+      if (chunks.length === 0) return;
+      
+      // Function to generate and play a single chunk
+      const playChunk = async (chunkText: string, isFirstChunk: boolean): Promise<void> => {
+        // Check cache first
+        let audioUrl = getCachedAudio(chunkText, language, voiceId);
         
-        const response = await apiRequest('POST', '/api/audio/speak', {
-          text: text.trim(),
-          language,
-          voice: voiceId
-        });
+        if (!audioUrl) {
+          // Only show loading indicator for the first chunk
+          if (isFirstChunk) {
+            setIsLoading(true);
+          }
+          
+          const response = await apiRequest('POST', '/api/audio/speak', {
+            text: chunkText.trim(),
+            language,
+            voice: voiceId
+          });
 
-        if (!response.ok) {
-          throw new Error('Failed to generate speech');
+          if (!response.ok) {
+            throw new Error('Failed to generate speech');
+          }
+
+          const audioBlob = await response.blob();
+          audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Cache the audio
+          setCachedAudio(chunkText, language, voiceId, audioUrl);
+          
+          if (isFirstChunk) {
+            setIsLoading(false);
+          }
         }
 
-        const audioBlob = await response.blob();
-        audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Cache the audio
-        setCachedAudio(text, language, voiceId, audioUrl);
-        setIsLoading(false); // Audio generated, stop loading
+        // Play the audio chunk
+        return new Promise((resolve, reject) => {
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+
+          audio.onloadstart = () => setIsSpeaking(true);
+          audio.onplay = () => {
+            setIsSpeaking(true);
+            setIsPaused(false);
+          };
+          audio.onended = () => {
+            resolve();
+          };
+          audio.onerror = (e) => {
+            console.error('Audio playback error:', e);
+            reject(e);
+          };
+
+          audio.play().catch(reject);
+        });
+      };
+
+      // Play chunks sequentially
+      for (let i = 0; i < chunks.length; i++) {
+        await playChunk(chunks[i], i === 0);
       }
-
-      // Play the audio
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onloadstart = () => setIsSpeaking(true);
-      audio.onplay = () => {
-        setIsSpeaking(true);
-        setIsPaused(false);
-      };
-      audio.onpause = () => setIsPaused(true);
-      audio.onended = () => {
-        setIsSpeaking(false);
-        setIsPaused(false);
-        audioRef.current = null;
-      };
-      audio.onerror = (e) => {
-        console.error('Audio playback error:', e);
-        setIsSpeaking(false);
-        setIsPaused(false);
-        audioRef.current = null;
-      };
-
-      await audio.play();
+      
+      // All chunks done
+      setIsSpeaking(false);
+      setIsPaused(false);
+      audioRef.current = null;
 
     } catch (error) {
       console.error('Error in text-to-speech:', error);
