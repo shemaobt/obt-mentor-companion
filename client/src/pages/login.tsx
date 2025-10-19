@@ -104,7 +104,10 @@ function Login() {
     <div className="min-h-screen overflow-y-auto px-4 flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+          <div 
+            className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center mb-4 overflow-hidden"
+            style={{ backgroundColor: `hsl(${activeTheme.brand.hsl})` }}
+          >
             <img 
               src={logoImage} 
               alt="OBT Mentor Companion Logo" 
