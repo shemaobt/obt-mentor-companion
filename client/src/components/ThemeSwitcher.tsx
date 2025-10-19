@@ -70,9 +70,6 @@ export function ThemeSwitcher() {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Choose Color Theme</DialogTitle>
-          <DialogDescription>
-            Select a color scheme for your OBT Mentor Companion
-          </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           {Object.entries(themes).map(([key, theme]) => {
