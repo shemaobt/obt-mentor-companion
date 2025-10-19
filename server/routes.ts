@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateAssistantResponse, generateAssistantResponseStream, generateChatCompletion, generateChatTitle, clearChatThread, getChatThreadId, transcribeAudio, generateSpeech } from "./openai";
+import { generateAssistantResponse, generateAssistantResponseStream, generateChatCompletion, generateChatTitle, clearChatThread, getChatThreadId, transcribeAudio, generateSpeech, generateSpeechStream } from "./openai";
 import OpenAI from "openai";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext } from "./vector-memory";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
@@ -1513,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Text-to-speech endpoint using OpenAI TTS
+  // Text-to-speech endpoint using OpenAI TTS with streaming for faster playback
   app.post('/api/audio/speak', requireAuth, async (req: any, res) => {
     try {
       const { text, language = 'en-US', voice } = req.body;
@@ -1537,31 +1537,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check server cache first
       let cached = audioCache.get(text, language, voice);
-      let audioBuffer: Buffer;
 
       if (cached) {
         // Cache hit - instant response!
-        audioBuffer = cached.buffer;
-      } else {
-        // Cache miss - generate and cache
-        audioBuffer = await generateSpeech(text, language, voice);
-        cached = audioCache.set(text, language, audioBuffer, voice);
-        
-        // Track API usage for new generations
-        await storage.incrementUserApiUsage(req.userId);
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': cached.buffer.length.toString(),
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'ETag': etag,
+        });
+        return res.send(cached.buffer);
       }
-      
+
+      // Cache miss - stream the audio for faster playback
+      // Track API usage for new generations
+      await storage.incrementUserApiUsage(req.userId);
+
+      // Get the stream from OpenAI (this might fail, so handle before sending headers)
+      let webStream: ReadableStream;
+      try {
+        webStream = await generateSpeechStream(text, language, voice);
+      } catch (streamError) {
+        console.error("Error getting speech stream:", streamError);
+        return res.status(502).json({ message: "Failed to get audio from service" });
+      }
+
+      // Set headers for streaming only after we have a valid stream
       res.set({
         'Content-Type': 'audio/mpeg',
-        'Content-Length': audioBuffer.length.toString(),
-        'Cache-Control': 'public, max-age=31536000, immutable', // 1 year - content-addressable
+        'Cache-Control': 'public, max-age=31536000, immutable',
         'ETag': etag,
+        'Transfer-Encoding': 'chunked', // Enable streaming
       });
       
-      res.send(audioBuffer);
+      // Convert Web ReadableStream to Node.js Readable and collect chunks for caching
+      const chunks: Buffer[] = [];
+      const reader = webStream.getReader();
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          // Send chunk to client immediately
+          res.write(Buffer.from(value));
+          
+          // Collect for caching
+          chunks.push(Buffer.from(value));
+        }
+        
+        // Cache the complete audio
+        const completeBuffer = Buffer.concat(chunks);
+        audioCache.set(text, language, completeBuffer, voice);
+      } catch (streamError) {
+        console.error("Error streaming audio chunks:", streamError);
+        // Headers already sent, can't return error status
+        // Just end the connection - browser will handle partial audio
+      } finally {
+        // Always close the response, even on error
+        res.end();
+      }
     } catch (error) {
       console.error("Error generating speech:", error);
-      res.status(500).json({ message: "Failed to generate speech" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to generate speech" });
+      }
     }
   });
 

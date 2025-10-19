@@ -827,6 +827,62 @@ export async function generateSpeech(text: string, language = 'en-US', voiceId?:
   }
 }
 
+// Streaming version for faster audio playback
+export async function generateSpeechStream(text: string, language = 'en-US', voiceId?: string): Promise<ReadableStream> {
+  try {
+    // Valid OpenAI voice IDs
+    const validVoices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+    
+    // Use provided voice ID or fall back to language-based mapping
+    let voice = 'alloy'; // default
+    
+    if (voiceId && validVoices.includes(voiceId)) {
+      voice = voiceId;
+    } else {
+      // Fall back to language-based mapping
+      const voiceMap: Record<string, string> = {
+        'en-US': 'alloy',
+        'en-GB': 'alloy', 
+        'es-ES': 'nova',
+        'es-MX': 'nova',
+        'fr-FR': 'shimmer',
+        'de-DE': 'echo',
+        'it-IT': 'fable',
+        'pt-BR': 'onyx',
+        'ja-JP': 'alloy',
+        'ko-KR': 'alloy',
+        'zh-CN': 'alloy',
+        'hi-IN': 'alloy',
+        'ar-SA': 'alloy',
+        'ru-RU': 'echo',
+        'nl-NL': 'alloy',
+        'sv-SE': 'alloy',
+        'da-DK': 'alloy'
+      };
+      voice = voiceMap[language] || 'alloy';
+    }
+    
+    const speech = await openai.audio.speech.create({
+      model: "tts-1", // Use standard model for faster generation (HD is slower)
+      voice: voice as any,
+      input: text,
+      response_format: "mp3",
+      speed: 1.35 // 35% faster for quicker responses while maintaining clarity
+    });
+
+    // Guard against null body (can happen on some OpenAI error responses)
+    if (!speech.body) {
+      throw new Error("OpenAI returned empty response body");
+    }
+
+    // Return the stream directly instead of buffering
+    return speech.body;
+  } catch (error) {
+    console.error("Error generating speech stream:", error);
+    throw new Error("Failed to generate speech stream");
+  }
+}
+
 export function generateChatTitle(firstMessage: string): string {
   // Generate a title from the first user message (max 50 chars)
   const title = firstMessage.trim();
