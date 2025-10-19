@@ -1118,20 +1118,25 @@ export default function Portfolio() {
                                     <div className="flex items-center space-x-2 mb-2">
                                       <Calendar className="h-5 w-5 text-primary" />
                                       <h3 className="font-medium" data-testid={`text-language-name-${activity.id}`}>
-                                        {activity.languageName}
+                                        {activity.title || activity.languageName || 'Bible Translation Work'}
                                       </h3>
                                     </div>
                                     <div className="flex items-center space-x-3 text-sm mb-2">
-                                      <Badge>{activity.chaptersCount} chapter(s)</Badge>
+                                      {activity.languageName && !activity.title && (
+                                        <Badge variant="outline">{activity.languageName}</Badge>
+                                      )}
+                                      {activity.chaptersCount && (
+                                        <Badge>{activity.chaptersCount} chapter(s)</Badge>
+                                      )}
                                       {activity.activityDate && (
                                         <span className="text-muted-foreground" data-testid={`text-activity-date-${activity.id}`}>
                                           {new Date(activity.activityDate).toLocaleDateString('en-US')}
                                         </span>
                                       )}
                                     </div>
-                                    {activity.notes && (
+                                    {(activity.notes || activity.description) && (
                                       <p className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid={`text-activity-notes-${activity.id}`}>
-                                        {activity.notes}
+                                        {activity.notes || activity.description}
                                       </p>
                                     )}
                                   </>
