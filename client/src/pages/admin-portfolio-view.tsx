@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Sidebar from "@/components/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -19,7 +22,10 @@ import {
   User,
   Sparkles,
   Download,
-  Calendar
+  Calendar,
+  Edit,
+  Save,
+  X
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -62,6 +68,10 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("competencies");
   const userId = params.userId;
+  
+  // Competency editing state
+  const [editingCompetency, setEditingCompetency] = useState<CompetencyId | null>(null);
+  const [tempNotes, setTempNotes] = useState("");
 
   // Fetch competencies for the user
   const { data: competencies = [], isLoading: loadingCompetencies } = useQuery<FacilitatorCompetency[]>({
@@ -103,6 +113,33 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
     const competency = competencies.find(c => c.competencyId === competencyId);
     return (competency?.status as CompetencyStatus) || 'not_started';
   };
+  
+  // Get notes for a competency
+  const getCompetencyNotes = (competencyId: CompetencyId): string => {
+    const competency = competencies.find(c => c.competencyId === competencyId);
+    return competency?.notes || '';
+  };
+  
+  // Update competency mutation
+  const updateCompetencyMutation = useMutation({
+    mutationFn: async ({ competencyId, status, notes }: { competencyId: CompetencyId; status: CompetencyStatus; notes?: string }) => {
+      await apiRequest("POST", `/api/admin/users/${userId}/competencies`, { competencyId, status, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'competencies'] });
+      toast({
+        title: "Success",
+        description: "Competency updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update competency",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Get competency data object
   const getCompetencyData = (competencyId: CompetencyId) => {
@@ -192,7 +229,8 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
                     <div className="space-y-4">
                       {(Object.keys(CORE_COMPETENCIES) as CompetencyId[]).map((competencyId) => {
                         const status = getCompetencyStatus(competencyId);
-                        const competencyData = getCompetencyData(competencyId);
+                        const notes = getCompetencyNotes(competencyId);
+                        const isEditing = editingCompetency === competencyId;
 
                         return (
                           <Card key={competencyId} data-testid={`card-competency-${competencyId}`}>
@@ -209,15 +247,96 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
                                       {getCompetencyName(competencyId)}
                                     </h3>
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Badge className={statusColors[status]}>
-                                      {statusLabels[status]}
-                                    </Badge>
+                                  <div className="flex items-center space-x-2 flex-wrap">
+                                    <Select
+                                      value={status}
+                                      onValueChange={(value) => updateCompetencyMutation.mutate({ 
+                                        competencyId, 
+                                        status: value as CompetencyStatus,
+                                        notes
+                                      })}
+                                    >
+                                      <SelectTrigger className="w-48" data-testid={`select-status-${competencyId}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {competencyStatusOptions.map(statusOption => (
+                                          <SelectItem key={statusOption} value={statusOption}>
+                                            {statusLabels[statusOption]}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
-                                  {competencyData?.notes && (
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                      {competencyData.notes}
-                                    </p>
+                                  {!isEditing && notes && (
+                                    <div className="mt-2 flex items-start justify-between">
+                                      <p className="text-sm text-muted-foreground flex-1">
+                                        {notes}
+                                      </p>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setEditingCompetency(competencyId);
+                                          setTempNotes(notes);
+                                        }}
+                                        data-testid={`button-edit-notes-${competencyId}`}
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {!isEditing && !notes && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setEditingCompetency(competencyId);
+                                        setTempNotes('');
+                                      }}
+                                      className="mt-2"
+                                      data-testid={`button-add-notes-${competencyId}`}
+                                    >
+                                      <Edit className="h-3 w-3 mr-1" />
+                                      Add Notes
+                                    </Button>
+                                  )}
+                                  {isEditing && (
+                                    <div className="mt-2 space-y-2">
+                                      <Textarea
+                                        value={tempNotes}
+                                        onChange={(e) => setTempNotes(e.target.value)}
+                                        placeholder="Add notes about this competency..."
+                                        className="min-h-[80px]"
+                                        data-testid={`textarea-notes-${competencyId}`}
+                                      />
+                                      <div className="flex space-x-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            updateCompetencyMutation.mutate({ 
+                                              competencyId, 
+                                              status,
+                                              notes: tempNotes
+                                            });
+                                            setEditingCompetency(null);
+                                          }}
+                                          data-testid={`button-save-notes-${competencyId}`}
+                                        >
+                                          <Save className="h-3 w-3 mr-1" />
+                                          Save
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setEditingCompetency(null)}
+                                          data-testid={`button-cancel-notes-${competencyId}`}
+                                        >
+                                          <X className="h-3 w-3 mr-1" />
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
                               </div>
