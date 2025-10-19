@@ -54,31 +54,24 @@ Preferred communication style: Simple, everyday language.
 
 ## AI Integration
 
-### Dual System Architecture (Feature Flag: USE_LANGCHAIN)
+### LangChain Multi-Agent System (Active)
 
-The application supports two AI backend systems for controlled rollout and A/B testing:
+The application uses LangChain/LangGraph for AI-powered mentorship guidance with intelligent competency evaluation:
 
-#### Legacy System (USE_LANGCHAIN=false)
-- **Provider**: OpenAI Assistant API with GPT-4o
-- **Assistant**: Dedicated OBT Mentor Assistant
-- **Thread Management**: Per-user threads for shared conversation history
-- **Tools**: OpenAI function calling (add_qualification, add_activity, update_competency, create_general_experience)
-- **Vision**: Native GPT-4o Vision for image analysis
-- **Audio**: Whisper API for transcription
-
-#### New System (USE_LANGCHAIN=true) - Production Ready
+#### Core System (USE_LANGCHAIN=true)
 - **Framework**: LangChain/LangGraph with React Agent pattern
 - **Provider**: OpenAI GPT-4o for all agents
-- **Agent**: LangGraph `createReactAgent` (modern 2025 approach, not deprecated)
-- **Tools**: DynamicStructuredTool with Zod validation
+- **Agent**: LangGraph `createReactAgent` (modern 2025 approach)
+- **Tools**: DynamicStructuredTool with Zod validation (add_qualification, add_activity, update_competency, create_general_experience)
 - **Thread Management**: Message history managed by LangGraph
 - **Context System**: Enhanced three-layer injection:
-    1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities
+    1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities with two-pillar gap analysis
     2. **Recent Message History**: Last 20 messages with role-based formatting
     3. **Semantic Vector Search**: Qdrant-powered facilitator-specific + global search
 - **Vision**: Planned (currently logs attachment awareness)
-- **Audio**: Whisper API for transcription (shared with legacy)
-- **Validation**: Requires facilitator profile (stricter than legacy)
+- **Audio**: Whisper API for transcription
+- **Validation**: Requires facilitator profile
+- **Intelligent Competency Evaluation**: Automatic scoring based on education (qualifications) and experience (activities) with course-level multipliers and duration weighting
 
 ### Shared Infrastructure
 - **Global Memory**: Qdrant Cloud vector database for conversation embeddings
