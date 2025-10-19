@@ -167,6 +167,34 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
+  const updateQualificationTool = new DynamicStructuredTool({
+    name: "update_qualification",
+    description: "Update an existing qualification in the facilitator's portfolio. Use this when the facilitator wants to edit or correct information about a previously added qualification. You must first get the list of qualifications from the context to find the qualification ID.",
+    schema: z.object({
+      qualificationId: z.string().describe("ID of the qualification to update"),
+      courseTitle: z.string().optional().describe("Updated title of the course or training"),
+      institution: z.string().optional().describe("Updated institution or organization"),
+      completionDate: z.string().optional().describe("Updated completion date (YYYY-MM-DD format)"),
+      credential: z.string().optional().describe("Updated credential type"),
+      description: z.string().optional().describe("Updated description"),
+    }),
+    func: async ({ qualificationId, courseTitle, institution, completionDate, credential, description }) => {
+      try {
+        const updates: any = {};
+        if (courseTitle) updates.courseTitle = courseTitle;
+        if (institution) updates.institution = institution;
+        if (completionDate) updates.completionDate = completionDate;
+        if (credential !== undefined) updates.credential = credential;
+        if (description !== undefined) updates.description = description;
+
+        await storage.updateQualification(qualificationId, updates);
+        return `Successfully updated qualification with ID: ${qualificationId}`;
+      } catch (error) {
+        return `Error updating qualification: ${error.message}`;
+      }
+    },
+  });
+
   const addActivityTool = new DynamicStructuredTool({
     name: "add_activity",
     description: "Add a Bible translation mentorship activity to the facilitator's portfolio",
@@ -240,7 +268,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  return [addQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool];
+  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool];
 }
 
 /**
