@@ -12,6 +12,7 @@ import {
   facilitatorQualifications,
   mentorshipActivities,
   quarterlyReports,
+  systemSettings,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -135,6 +136,10 @@ export interface IStorage {
   getPendingUsersCount(): Promise<number>;
   approveUser(userId: string, approvedById: string): Promise<User>;
   rejectUser(userId: string, approvedById: string): Promise<User>;
+  
+  // System settings operations
+  getSystemSetting(key: string): Promise<string | null>;
+  setSystemSetting(key: string, value: string, updatedBy?: string): Promise<void>;
   
   // Facilitator operations
   getFacilitatorByUserId(userId: string): Promise<Facilitator | undefined>;
@@ -805,6 +810,34 @@ export class DatabaseStorage implements IStorage {
     }
 
     return updatedUser;
+  }
+
+  // System settings operations
+  async getSystemSetting(key: string): Promise<string | null> {
+    const [setting] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key));
+    return setting?.value || null;
+  }
+
+  async setSystemSetting(key: string, value: string, updatedBy?: string): Promise<void> {
+    await db
+      .insert(systemSettings)
+      .values({
+        key,
+        value,
+        updatedBy,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: {
+          value,
+          updatedBy,
+          updatedAt: new Date(),
+        },
+      });
   }
 
   // Facilitator operations
