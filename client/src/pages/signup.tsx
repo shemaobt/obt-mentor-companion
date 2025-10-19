@@ -58,13 +58,22 @@ function Signup() {
       return response.json();
     },
     onSuccess: (result) => {
-      // All new accounts require approval - never auto-login
-      toast({
-        title: "Account created!",
-        description: "Your account has been created and is awaiting admin approval. You'll be able to log in once approved.",
-      });
-      // Always redirect to login page with pending message
-      setLocation("/login?message=pending");
+      // Check if account requires approval
+      if (result.approvalStatus === 'pending') {
+        toast({
+          title: "Account created!",
+          description: "Your account has been created and is awaiting admin approval. You'll be able to log in once approved.",
+        });
+        setLocation("/login?message=pending");
+      } else {
+        // User was auto-approved and logged in
+        toast({
+          title: "Success!",
+          description: "Your account has been created successfully.",
+        });
+        login(result);
+        setLocation("/dashboard");
+      }
     },
     onError: (error: any) => {
       toast({
