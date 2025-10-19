@@ -816,7 +816,7 @@ export async function generateSpeech(text: string, language = 'en-US', voiceId?:
       voice: voice as any,
       input: text,
       response_format: "mp3",
-      speed: 1.0 // Normal speed
+      speed: 1.35 // 35% faster for quicker responses while maintaining clarity
     });
 
     const buffer = Buffer.from(await speech.arrayBuffer());
