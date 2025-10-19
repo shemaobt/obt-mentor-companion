@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { generateAssistantResponse, generateAssistantResponseStream, generateChatCompletion, generateChatTitle, clearChatThread, getChatThreadId, transcribeAudio, generateSpeech } from "./openai";
 import OpenAI from "openai";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext } from "./vector-memory";
-import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema } from "@shared/schema";
+import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
 import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { generateQuarterlyReport } from "./report-generator";
@@ -2196,6 +2196,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user competencies:", error);
       res.status(500).json({ message: "Failed to fetch user competencies" });
+    }
+  });
+
+  app.post('/api/admin/users/:userId/competencies', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Validate request body
+      const updateCompetencySchema = z.object({
+        competencyId: z.enum(Object.keys(CORE_COMPETENCIES) as [string, ...string[]]),
+        status: z.enum(["not_started", "emerging", "growing", "proficient", "advanced"]),
+        notes: z.string().optional(),
+      });
+      
+      const { competencyId, status, notes } = updateCompetencySchema.parse(req.body);
+      
+      const facilitator = await storage.getFacilitatorByUserId(userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found for this user" });
+      }
+      
+      const competency = await storage.upsertCompetency({
+        facilitatorId: facilitator.id,
+        competencyId,
+        status,
+        notes,
+      });
+      
+      res.json(competency);
+    } catch (error) {
+      console.error("Error updating user competency:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid competency data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update user competency" });
     }
   });
 
