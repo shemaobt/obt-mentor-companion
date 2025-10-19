@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/contexts/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
@@ -59,7 +60,8 @@ export default function Sidebar({
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const logoImage = "/logo.png";
+  const { currentLogo } = useTheme();
+  const logoImage = currentLogo;
 
   // Check if user is admin (only admin can see dashboard, settings, etc.)
   // Properly type the user object for admin check
