@@ -289,6 +289,16 @@ export const quarterlyReports = pgTable("quarterly_reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// System settings
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(),
+  value: varchar("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"), // Admin user ID who made the change
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   chats: many(chats),
