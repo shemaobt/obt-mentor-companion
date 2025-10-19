@@ -679,7 +679,7 @@ export default function Portfolio() {
                                       </div>
                                     </div>
                                   )}
-                                  {notes && !isEditing && (
+                                  {notes && !isEditing && !notes.startsWith('Auto-calculated:') && (
                                     <p className="text-sm text-muted-foreground mt-2" data-testid={`text-competency-notes-${competencyId}`}>
                                       {notes}
                                     </p>
