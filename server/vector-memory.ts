@@ -378,31 +378,56 @@ export async function getComprehensiveContext(params: {
           }
 
           if (qualifications && qualifications.length > 0) {
-            context += `**Qualifications:**\n`;
+            context += `**Qualifications (Education Pillar):**\n`;
             qualifications.forEach((qual: any, idx: number) => {
               context += `${idx + 1}. ${qual.courseTitle}`;
               if (qual.institution) context += ` - ${qual.institution}`;
+              if (qual.courseLevel) context += ` [${qual.courseLevel} level]`;
               if (qual.completionDate) {
                 const date = new Date(qual.completionDate);
                 context += ` (${date.getFullYear()})`;
               }
-              if (qual.credentialType) context += ` [${qual.credentialType}]`;
               context += '\n';
             });
             context += '\n';
+          } else {
+            context += `**Qualifications (Education Pillar):** NONE - This is a critical gap!\n\n`;
           }
 
           if (activities && activities.length > 0) {
-            context += `**Recent Mentorship Activities:**\n`;
-            activities.slice(-5).forEach((act: any, idx: number) => {
-              context += `${idx + 1}. ${act.languageName}: ${act.chaptersCount} chapters`;
+            context += `**Activities (Experience Pillar):**\n`;
+            activities.slice(-10).forEach((act: any, idx: number) => {
+              if (act.languageName) {
+                context += `${idx + 1}. ${act.languageName}: ${act.chaptersCount} chapters`;
+              } else if (act.title) {
+                context += `${idx + 1}. ${act.title} (${act.activityType})`;
+                if (act.yearsOfExperience) context += ` - ${act.yearsOfExperience} years`;
+              }
               if (act.notes) context += ` - ${act.notes}`;
               context += '\n';
             });
             context += '\n';
+          } else {
+            context += `**Activities (Experience Pillar):** NONE - This is a critical gap!\n\n`;
           }
+          
+          // Two-Pillar Gap Analysis Summary
+          const hasEducation = qualifications && qualifications.length > 0;
+          const hasExperience = activities && activities.length > 0;
+          
+          context += `**TWO-PILLAR GAP ANALYSIS:**\n`;
+          if (!hasEducation && !hasExperience) {
+            context += `⚠️ CRITICAL: Both pillars are empty! This facilitator needs BOTH formal training (courses, certificates) AND practical experience (translation work, facilitation).\n`;
+          } else if (!hasEducation) {
+            context += `⚠️ EDUCATION GAP: The facilitator has practical experience but NO formal qualifications. Recommend relevant courses or training programs.\n`;
+          } else if (!hasExperience) {
+            context += `⚠️ EXPERIENCE GAP: The facilitator has education but NO documented practical experience. Recommend field work, mentorship opportunities, or translation activities.\n`;
+          } else {
+            context += `✓ Both pillars present: Continue developing balance between education and experience.\n`;
+          }
+          context += '\n';
 
-          console.log('[Comprehensive Context] Added portfolio data');
+          console.log('[Comprehensive Context] Added portfolio data with two-pillar analysis');
         }
       } catch (error) {
         console.error('[Comprehensive Context] Error fetching portfolio:', error);

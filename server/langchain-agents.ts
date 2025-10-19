@@ -7,6 +7,8 @@ import * as fs from "fs/promises";
 import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
 import { searchRelevantMessages, searchGlobalMemory } from "./vector-memory";
+import { calculateCompetencyScores, scoreToStatus } from "./competency-mapping";
+import { CORE_COMPETENCIES } from "@shared/schema";
 
 /**
  * LangChain Multi-Agent System for OBT Mentor Companion
@@ -42,19 +44,33 @@ The system provides this context specifically so you can recall past conversatio
 - Ask only one question per interaction to maintain clarity.
 - When you recall information from past conversations, acknowledge it naturally (e.g., "I remember you mentioned..." or "Building on what you shared earlier...")
 
-2. Assessing Competencies
-- Clearly guide facilitators through each competency required for mentorship.
-- Explain each competency using simple, everyday language.
-- Evaluate facilitators' understanding and practical application of these competencies.
+2. Assessing Competencies - TWO-PILLAR FRAMEWORK
+**CRITICAL**: Becoming an OBT mentor requires BOTH education and practical experience. Always evaluate facilitators on both pillars:
+
+PILLAR 1 - EDUCATION (Formal Training):
+- Courses, certificates, diplomas, degrees in relevant areas
+- Always ask about course level (introduction, certificate, bachelor, master, doctoral)
+- This shows theoretical knowledge and formal preparation
+
+PILLAR 2 - EXPERIENCE (Practical Work):
+- Translation work, facilitation, teaching, field experience
+- Always ask about duration (how many years) and depth
+- This shows practical application and real-world competency
+
+**When assessing gaps:**
+- If education is strong but experience is weak → Recommend field work, mentorship opportunities
+- If experience is strong but education is weak → Recommend formal courses or training
+- Both pillars must be developed for effective mentorship
 
 3. Analyzing Submitted Materials
 - Accept and carefully review documents, audio recordings, or images provided by facilitators.
 - Offer constructive, supportive feedback highlighting strengths and areas for improvement.
 
-4. Providing Feedback
-- Clearly communicate areas of strength.
-- Identify areas requiring further growth.
-- Suggest actionable, practical steps for development.
+4. Providing Feedback - ALWAYS Include Two-Pillar Analysis
+- Clearly communicate areas of strength in BOTH education and experience
+- Identify which pillar needs development (education, experience, or both)
+- Suggest actionable, practical steps that address the specific pillar gap
+- When asked about progress or gaps, ALWAYS check BOTH qualifications AND activities sections
 
 5. Maintaining Facilitator Portfolios
 - Keep organized records of each facilitator's progress.
@@ -137,20 +153,48 @@ export function initializeModels() {
 }
 
 /**
+ * Recalculate all competency scores for a facilitator based on qualifications and activities
+ */
+async function recalculateCompetencies(storage: IStorage, facilitatorId: string): Promise<void> {
+  // Get all qualifications and activities
+  const qualifications = await storage.getQualificationsByFacilitatorId(facilitatorId);
+  const activities = await storage.getActivitiesByFacilitatorId(facilitatorId);
+  
+  // Calculate scores
+  const scores = calculateCompetencyScores(qualifications, activities);
+  
+  // Update each competency
+  for (const [competencyId, score] of scores.total.entries()) {
+    const status = scoreToStatus(score);
+    const educationScore = scores.education.get(competencyId) || 0;
+    const experienceScore = scores.experience.get(competencyId) || 0;
+    
+    await storage.upsertCompetency(facilitatorId, competencyId, {
+      status,
+      autoScore: Math.round(score),
+      statusSource: 'auto',
+      suggestedStatus: status,
+      notes: `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${score.toFixed(1)}`,
+    });
+  }
+}
+
+/**
  * Create tools for the Portfolio Agent
  */
 export function createPortfolioTools(storage: IStorage, userId: string, facilitatorId: string) {
   const addQualificationTool = new DynamicStructuredTool({
     name: "add_qualification",
-    description: "Add a qualification (course, certificate, or training) to the facilitator's portfolio. Use this when the facilitator mentions completing a course or receiving a qualification.",
+    description: "Add a qualification (course, certificate, or training) to the facilitator's portfolio. IMPORTANT: Always ask the facilitator about the course level (introduction, certificate, bachelor, master, or doctoral) as this significantly impacts competency scoring. Use this when the facilitator mentions completing a course or receiving a qualification.",
     schema: z.object({
       courseTitle: z.string().describe("Title of the course or training"),
       institution: z.string().describe("Institution or organization that provided the training"),
       completionDate: z.string().describe("Date of completion (YYYY-MM-DD format)"),
       credential: z.string().optional().describe("Type of credential received (e.g., Certificate, Diploma)"),
+      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("Academic level of the course - ALWAYS ask the facilitator this question"),
       description: z.string().optional().describe("Brief description of the course content"),
     }),
-    func: async ({ courseTitle, institution, completionDate, credential, description }) => {
+    func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
       try {
         await storage.createQualification({
           facilitatorId,
@@ -158,9 +202,15 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           institution,
           completionDate,
           credential,
+          courseLevel,
           description,
         });
-        return `Successfully added qualification: ${courseTitle} from ${institution}`;
+        
+        // Automatically recalculate competencies after adding qualification
+        await recalculateCompetencies(storage, facilitatorId);
+        
+        const levelInfo = courseLevel ? ` (${courseLevel} level)` : '';
+        return `Successfully added qualification: ${courseTitle} from ${institution}${levelInfo}. Competency scores have been automatically updated.`;
       } catch (error) {
         return `Error adding qualification: ${error.message}`;
       }
@@ -214,7 +264,11 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           notes,
           activityType: 'translation',
         });
-        return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters)`;
+        
+        // Automatically recalculate competencies after adding activity
+        await recalculateCompetencies(storage, facilitatorId);
+        
+        return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters). Competency scores have been automatically updated.`;
       } catch (error) {
         return `Error adding activity: ${error.message}`;
       }
@@ -223,13 +277,13 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const createGeneralExperienceTool = new DynamicStructuredTool({
     name: "create_general_experience",
-    description: "Add a general professional experience to the facilitator's portfolio (facilitation, teaching, indigenous work, school work)",
+    description: "Add a general professional experience to the facilitator's portfolio (facilitation, teaching, indigenous work, school work). IMPORTANT: Always ask about the duration/depth of experience (how many years) as this impacts competency scoring.",
     schema: z.object({
       title: z.string().describe("Title or name of the experience"),
       activityType: z.enum(['facilitation', 'teaching', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience"),
       description: z.string().optional().describe("Description of the experience"),
       organization: z.string().optional().describe("Organization where this took place"),
-      yearsOfExperience: z.number().optional().describe("Number of years of experience"),
+      yearsOfExperience: z.number().optional().describe("Number of years of experience - ALWAYS ask this question as it significantly impacts scoring"),
       activityDate: z.string().optional().describe("Date of the activity (YYYY-MM-DD format)"),
     }),
     func: async ({ title, activityType, description, organization, yearsOfExperience, activityDate }) => {
@@ -243,7 +297,12 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           yearsOfExperience,
           activityDate,
         });
-        return `Successfully added ${activityType} experience: ${title}`;
+        
+        // Automatically recalculate competencies after adding activity
+        await recalculateCompetencies(storage, facilitatorId);
+        
+        const durationInfo = yearsOfExperience ? ` (${yearsOfExperience} years)` : '';
+        return `Successfully added ${activityType} experience: ${title}${durationInfo}. Competency scores have been automatically updated.`;
       } catch (error) {
         return `Error adding experience: ${error.message}`;
       }
