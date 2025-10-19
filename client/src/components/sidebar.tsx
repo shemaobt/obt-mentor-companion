@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { 
   Plus, 
   MoreHorizontal, 
@@ -595,6 +596,11 @@ export default function Sidebar({
                 </Button>
               }
             />
+            
+            {/* Theme Switcher (visible to all users) */}
+            <div className="px-2">
+              <ThemeSwitcher />
+            </div>
             
             <Separator className="my-1" />
             
