@@ -32,7 +32,8 @@ import {
   Save,
   Sparkles,
   Zap,
-  Menu
+  Menu,
+  Pencil
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -88,6 +89,8 @@ export default function Portfolio() {
   const [newQualCredential, setNewQualCredential] = useState("");
   const [newQualDescription, setNewQualDescription] = useState("");
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
+  const [editingQualification, setEditingQualification] = useState<FacilitatorQualification | null>(null);
+  const [editQualificationDialogOpen, setEditQualificationDialogOpen] = useState(false);
 
   // Activities state
   const [newActivityLanguage, setNewActivityLanguage] = useState("");
@@ -174,6 +177,30 @@ export default function Portfolio() {
       toast({
         title: "Error",
         description: "Failed to add qualification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update qualification mutation
+  const updateQualificationMutation = useMutation({
+    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; description?: string }) => {
+      const { id, ...updates } = data;
+      await apiRequest("PATCH", `/api/facilitator/qualifications/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/qualifications'] });
+      setEditQualificationDialogOpen(false);
+      setEditingQualification(null);
+      toast({
+        title: "Success",
+        description: "Qualification updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update qualification",
         variant: "destructive",
       });
     },
@@ -858,15 +885,28 @@ export default function Portfolio() {
                                   </p>
                                 )}
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => deleteQualificationMutation.mutate(qualification.id)}
-                                className="text-destructive hover:text-destructive"
-                                data-testid={`button-delete-qualification-${qualification.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex space-x-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingQualification(qualification);
+                                    setEditQualificationDialogOpen(true);
+                                  }}
+                                  data-testid={`button-edit-qualification-${qualification.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteQualificationMutation.mutate(qualification.id)}
+                                  className="text-destructive hover:text-destructive"
+                                  data-testid={`button-delete-qualification-${qualification.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -875,6 +915,91 @@ export default function Portfolio() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Edit Qualification Dialog */}
+              <Dialog open={editQualificationDialogOpen} onOpenChange={setEditQualificationDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Qualification</DialogTitle>
+                    <DialogDescription>
+                      Update the details of this qualification
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-qual-title">Course Title</Label>
+                      <Input
+                        id="edit-qual-title"
+                        value={editingQualification?.courseTitle || ""}
+                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, courseTitle: e.target.value } : null)}
+                        placeholder="e.g., OBT Facilitator Training"
+                        data-testid="input-edit-course-title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-qual-institution">Institution</Label>
+                      <Input
+                        id="edit-qual-institution"
+                        value={editingQualification?.institution || ""}
+                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, institution: e.target.value } : null)}
+                        placeholder="e.g., YWAM"
+                        data-testid="input-edit-institution"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-qual-date">Completion Date</Label>
+                      <Input
+                        id="edit-qual-date"
+                        type="date"
+                        value={editingQualification?.completionDate ? new Date(editingQualification.completionDate).toISOString().split('T')[0] : ""}
+                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, completionDate: new Date(e.target.value) } : null)}
+                        data-testid="input-edit-completion-date"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-qual-credential">Credential (optional)</Label>
+                      <Input
+                        id="edit-qual-credential"
+                        value={editingQualification?.credential || ""}
+                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, credential: e.target.value } : null)}
+                        placeholder="e.g., Certificate"
+                        data-testid="input-edit-credential"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-qual-description">Description (optional)</Label>
+                      <Textarea
+                        id="edit-qual-description"
+                        value={editingQualification?.description || ""}
+                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, description: e.target.value } : null)}
+                        placeholder="Brief description of content..."
+                        rows={3}
+                        data-testid="input-edit-description"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={() => {
+                        if (editingQualification) {
+                          updateQualificationMutation.mutate({
+                            id: editingQualification.id,
+                            courseTitle: editingQualification.courseTitle,
+                            institution: editingQualification.institution,
+                            completionDate: new Date(editingQualification.completionDate).toISOString().split('T')[0],
+                            credential: editingQualification.credential || undefined,
+                            description: editingQualification.description || undefined
+                          });
+                        }
+                      }}
+                      disabled={!editingQualification?.courseTitle?.trim() || !editingQualification?.institution?.trim() || !editingQualification?.completionDate || updateQualificationMutation.isPending}
+                      data-testid="button-confirm-edit-qualification"
+                    >
+                      {updateQualificationMutation.isPending ? "Updating..." : "Update Qualification"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             {/* Activities Tab */}
