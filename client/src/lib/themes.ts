@@ -54,7 +54,7 @@ export const themes: Record<string, ColorTheme> = {
   verdeClaro: {
     name: "Light Green",
     description: "Light olive green",
-    icon: "/logo-verde.png",
+    icon: "/logo-verde-claro.png",
     brand: {
       hex: "#777D45",
       rgb: "119, 125, 69",
@@ -65,7 +65,7 @@ export const themes: Record<string, ColorTheme> = {
   verde: {
     name: "Green",
     description: "Dark forest green",
-    icon: "/logo-verde.png",
+    icon: "/logo-verde-escuro.png",
     brand: {
       hex: "#3F3E20",
       rgb: "63, 62, 32",

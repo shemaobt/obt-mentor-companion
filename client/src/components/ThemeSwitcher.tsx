@@ -87,7 +87,7 @@ export function ThemeSwitcher() {
                 setOpen(false);
               }}
               className={`
-                relative p-4 rounded-lg border-2 transition-all text-left
+                relative p-6 rounded-lg border-2 transition-all
                 hover:scale-105 hover:shadow-lg
                 ${selectedTheme === key
                   ? 'border-primary shadow-md'
@@ -96,28 +96,25 @@ export function ThemeSwitcher() {
               `}
               data-testid={`button-theme-${key}`}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col items-center text-center gap-3">
                 {theme.icon ? (
                   <img
                     src={theme.icon}
                     alt={theme.name}
-                    className="w-12 h-12 rounded-md shrink-0 object-contain bg-white dark:bg-gray-100"
+                    className="w-16 h-16 rounded-md object-contain bg-white dark:bg-gray-100"
                     key={theme.icon}
                   />
                 ) : (
                   <div
-                    className="w-12 h-12 rounded-md shrink-0"
+                    className="w-16 h-16 rounded-md"
                     style={{ backgroundColor: theme.brand.hex }}
                   />
                 )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm mb-1">{theme.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
+                <div>
+                  <h3 className="font-semibold text-base mb-1">{theme.name}</h3>
+                  <p className="text-xs text-muted-foreground">
                     {theme.description}
                   </p>
-                  <div className="text-xs font-mono text-muted-foreground">
-                    {theme.brand.hex}
-                  </div>
                 </div>
               </div>
               {selectedTheme === key && (
