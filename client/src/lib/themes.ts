@@ -19,7 +19,7 @@ export interface ColorTheme {
 
 export const themes: Record<string, ColorTheme> = {
   areia: {
-    name: "Areia",
+    name: "Sand",
     description: "Sandy beige tone",
     icon: "/logo-areia.png",
     brand: {
@@ -30,7 +30,7 @@ export const themes: Record<string, ColorTheme> = {
   },
 
   azul: {
-    name: "Azul",
+    name: "Blue",
     description: "Soft blue-teal",
     icon: "/logo-azul.png",
     brand: {
@@ -41,8 +41,8 @@ export const themes: Record<string, ColorTheme> = {
   },
 
   telha: {
-    name: "Telha",
-    description: "Terracotta orange",
+    name: "Terracotta",
+    description: "Warm terracotta orange",
     icon: "/logo-telha.png",
     brand: {
       hex: "#BE4A01",
@@ -52,7 +52,7 @@ export const themes: Record<string, ColorTheme> = {
   },
 
   verdeClaro: {
-    name: "Verde Claro",
+    name: "Light Green",
     description: "Light olive green",
     icon: "/logo-verde.png",
     brand: {
@@ -63,7 +63,7 @@ export const themes: Record<string, ColorTheme> = {
   },
 
   verde: {
-    name: "Verde",
+    name: "Green",
     description: "Dark forest green",
     icon: "/logo-verde.png",
     brand: {
@@ -74,8 +74,8 @@ export const themes: Record<string, ColorTheme> = {
   },
 
   preto: {
-    name: "Preto",
-    description: "Deep charcoal",
+    name: "Black",
+    description: "Deep charcoal black",
     icon: "/logo-preto.png",
     brand: {
       hex: "#0A0703",
