@@ -5,6 +5,8 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Use logo from public directory
 const logoImage = "/logo.png";
@@ -154,8 +156,25 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
             />
           </div>
           <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
-            <div className="text-foreground leading-relaxed whitespace-pre-wrap" data-testid={`text-message-content-${message.id}`}>
-              {message.content}
+            <div className="text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none" data-testid={`text-message-content-${message.id}`}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
+                  em: ({node, ...props}) => <em className="italic" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                  li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                  code: ({node, inline, ...props}) => 
+                    inline 
+                      ? <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono" {...props} />
+                      : <pre className="bg-muted p-2 rounded overflow-x-auto"><code className="text-sm font-mono whitespace-pre" {...props} /></pre>,
+                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-2" {...props} />,
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
             {/* Display attachments */}
             {attachments.length > 0 && (
