@@ -42,7 +42,7 @@ export const themes: Record<string, ColorTheme> = {
   telha: {
     name: "Telha",
     description: "Terracotta orange",
-    icon: "/attached_assets/ÍCONE - telha_1760907114035.png",
+    icon: "/attached_assets/ÍCONE - telha_1760907299729.png",
     brand: {
       hex: "#BE4A01",
       rgb: "190, 74, 1",
