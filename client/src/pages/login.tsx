@@ -13,9 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, CheckCircle, Clock, XCircle } from "lucide-react";
-
-// Use logo from public directory
-const logoImage = "/logo.png";
+import { getActiveTheme } from "@/lib/themes";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -29,6 +27,10 @@ function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
+
+  // Get the active theme's logo
+  const activeTheme = getActiveTheme();
+  const logoImage = activeTheme.icon || "/logo.png";
 
   // Get URL search parameters to check for messages
   const urlParams = new URLSearchParams(window.location.search);
