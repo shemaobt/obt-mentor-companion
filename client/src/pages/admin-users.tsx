@@ -8,7 +8,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,7 +19,6 @@ import {
   Users, 
   MoreHorizontal, 
   Trash2, 
-  Filter,
   Mail,
   User,
   Calendar,
@@ -28,8 +26,6 @@ import {
   ShieldOff,
   KeyRound,
   Search,
-  SortAsc,
-  SortDesc,
   Activity,
   MessageSquare,
   Key,
@@ -75,12 +71,8 @@ export default function AdminUsers() {
   const isMobile = useIsMobile();
   // Sidebar is always visible, no toggle state needed
   
-  // Filter and sort states
+  // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [adminFilter, setAdminFilter] = useState<string>("all");
-  const [approvalFilter, setApprovalFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   
   // Dialog states
   const [passwordResetDialog, setPasswordResetDialog] = useState<{ open: boolean; user?: UserWithStats; password?: string }>({ open: false });
@@ -458,66 +450,12 @@ export default function AdminUsers() {
     }
   };
 
-  // Filter and sort users
+  // Filter users by search query only
   const filteredAndSortedUsers = (users as UserWithStats[])
     .filter((user: UserWithStats) => {
-      // Search filter
       const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        user.email.toLowerCase().includes(searchLower) ||
-        formatName(user).toLowerCase().includes(searchLower);
-      
-      // Admin filter
-      const matchesAdminFilter = 
-        adminFilter === "all" ||
-        (adminFilter === "admin" && user.isAdmin) ||
-        (adminFilter === "user" && !user.isAdmin);
-      
-      // Approval status filter
-      const matchesApprovalFilter = 
-        approvalFilter === "all" ||
-        (approvalFilter === "pending" && user.approvalStatus === "pending") ||
-        (approvalFilter === "approved" && (user.approvalStatus === "approved" || user.approvalStatus === null)) ||
-        (approvalFilter === "rejected" && user.approvalStatus === "rejected");
-      
-      return matchesSearch && matchesAdminFilter && matchesApprovalFilter;
-    })
-    .sort((a: UserWithStats, b: UserWithStats) => {
-      let aValue: any, bValue: any;
-      
-      switch (sortBy) {
-        case "name":
-          aValue = formatName(a).toLowerCase();
-          bValue = formatName(b).toLowerCase();
-          break;
-        case "email":
-          aValue = a.email.toLowerCase();
-          bValue = b.email.toLowerCase();
-          break;
-        case "createdAt":
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
-          break;
-        case "lastLoginAt":
-          aValue = a.lastLoginAt ? new Date(a.lastLoginAt) : new Date(0);
-          bValue = b.lastLoginAt ? new Date(b.lastLoginAt) : new Date(0);
-          break;
-        case "totalChats":
-          aValue = a.stats.totalChats;
-          bValue = b.stats.totalChats;
-          break;
-        case "totalMessages":
-          aValue = a.stats.totalMessages;
-          bValue = b.stats.totalMessages;
-          break;
-        default:
-          aValue = a.createdAt;
-          bValue = b.createdAt;
-      }
-      
-      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-      return 0;
+      return user.email.toLowerCase().includes(searchLower) ||
+             formatName(user).toLowerCase().includes(searchLower);
     });
 
   if (isLoading) {
@@ -581,113 +519,18 @@ export default function AdminUsers() {
             </CardContent>
           </Card>
 
-          {/* Filters and Search */}
+          {/* Search */}
           <Card className="mb-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center space-x-2">
-                <Filter className="h-5 w-5" />
-                <span>Filters & Search</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-2 lg:grid-cols-4 gap-4'}`}>
-                {/* Search */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Search</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search by name or email..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className={`pl-10 ${isMobile ? 'min-h-12' : ''}`}
-                      data-testid="input-search-users"
-                    />
-                  </div>
-                </div>
-                
-                {/* Admin Filter */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">User Type</label>
-                  <Select value={adminFilter} onValueChange={setAdminFilter}>
-                    <SelectTrigger className={isMobile ? 'min-h-12' : ''} data-testid="select-admin-filter">
-                      <SelectValue placeholder="All users" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All users</SelectItem>
-                      <SelectItem value="admin">Admins only</SelectItem>
-                      <SelectItem value="user">Regular users</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Approval Status Filter */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Approval Status</label>
-                  <Select value={approvalFilter} onValueChange={setApprovalFilter}>
-                    <SelectTrigger className={isMobile ? 'min-h-12' : ''} data-testid="select-approval-filter">
-                      <SelectValue placeholder="All statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All statuses</SelectItem>
-                      <SelectItem value="pending">Pending approval</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Sort By */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Sort By</label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className={isMobile ? 'min-h-12' : ''} data-testid="select-sort-by">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="createdAt">Registration Date</SelectItem>
-                      <SelectItem value="name">Name</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="lastLoginAt">Last Login</SelectItem>
-                      <SelectItem value="totalChats">Total Chats</SelectItem>
-                      <SelectItem value="totalMessages">Total Messages</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Sort Order */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Order</label>
-                  <Button
-                    variant="outline"
-                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                    className={`w-full justify-start ${isMobile ? 'min-h-12' : ''}`}
-                    data-testid="button-sort-order"
-                  >
-                    {sortOrder === "asc" ? <SortAsc className="mr-2 h-4 w-4" /> : <SortDesc className="mr-2 h-4 w-4" />}
-                    {sortOrder === "asc" ? "Ascending" : "Descending"}
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setAdminFilter("all");
-                    setApprovalFilter("all");
-                    setSortBy("createdAt");
-                    setSortOrder("desc");
-                  }}
-                  className={isMobile ? 'min-h-12' : ''}
-                  data-testid="button-clear-filters"
-                >
-                  Clear Filters
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  Showing {filteredAndSortedUsers.length} of {(users as UserWithStats[]).length} users
-                </div>
+            <CardContent className="pt-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`pl-10 ${isMobile ? 'min-h-12' : ''}`}
+                  data-testid="input-search-users"
+                />
               </div>
             </CardContent>
           </Card>
