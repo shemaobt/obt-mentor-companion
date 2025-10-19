@@ -16,30 +16,34 @@ Your OBT Mentor Companion now has an easy-to-use color theming system! You can s
    - Open `client/src/lib/themes.ts`
    - Change the `ACTIVE_THEME` constant to your preferred theme:
    ```typescript
-   export const ACTIVE_THEME: keyof typeof themes = "olive"; // Change this!
+   export const ACTIVE_THEME: keyof typeof themes = "verdeClaro"; // Change this!
    ```
 
 ### Available Themes
 
-1. **Olive Green** (`olive`) - Current YWAM OBT brand color
-   - Hex: #86884C
-   - HSL: 62, 28%, 42%
+1. **Areia** (`areia`) - Sandy beige tone
+   - Hex: #C5C29F
+   - HSL: 55, 25%, 70%
 
-2. **Ocean Blue** (`blue`) - Professional blue tone
-   - Hex: #3B82F6
-   - HSL: 217, 91%, 60%
+2. **Azul** (`azul`) - Soft blue-teal
+   - Hex: #89AAA3
+   - HSL: 167, 16%, 60%
 
-3. **Teal** (`teal`) - Modern teal accent
-   - Hex: #14B8A6
-   - HSL: 173, 80%, 40%
+3. **Telha** (`telha`) - Terracotta orange
+   - Hex: #BE4A01
+   - HSL: 23, 99%, 37%
 
-4. **Royal Purple** (`purple`) - Elegant purple theme
-   - Hex: #8B5CF6
-   - HSL: 258, 90%, 66%
+4. **Verde Claro** (`verdeClaro`) - Light olive green (Default)
+   - Hex: #777D45
+   - HSL: 66, 29%, 38%
 
-5. **Emerald** (`emerald`) - Fresh green tone
-   - Hex: #10B981
-   - HSL: 160, 84%, 39%
+5. **Verde** (`verde`) - Dark forest green
+   - Hex: #3F3E20
+   - HSL: 58, 33%, 19%
+
+6. **Preto** (`preto`) - Deep charcoal
+   - Hex: #0A0703
+   - HSL: 34, 54%, 3%
 
 ## Adding Your Own Custom Theme
 

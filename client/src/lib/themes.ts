@@ -16,61 +16,69 @@ export interface ColorTheme {
 }
 
 export const themes: Record<string, ColorTheme> = {
-  // Current olive-green theme
-  olive: {
-    name: "Olive Green",
-    description: "Current YWAM OBT brand color",
+  areia: {
+    name: "Areia",
+    description: "Sandy beige tone",
     brand: {
-      hex: "#86884C",
-      rgb: "134, 136, 76",
-      hsl: "62, 28%, 42%",
+      hex: "#C5C29F",
+      rgb: "197, 194, 159",
+      hsl: "55, 25%, 70%",
     },
   },
 
-  // Example alternative themes (add your own here)
-  blue: {
-    name: "Ocean Blue",
-    description: "Professional blue tone",
+  azul: {
+    name: "Azul",
+    description: "Soft blue-teal",
     brand: {
-      hex: "#3B82F6",
-      rgb: "59, 130, 246",
-      hsl: "217, 91%, 60%",
+      hex: "#89AAA3",
+      rgb: "137, 170, 163",
+      hsl: "167, 16%, 60%",
     },
   },
 
-  teal: {
-    name: "Teal",
-    description: "Modern teal accent",
+  telha: {
+    name: "Telha",
+    description: "Terracotta orange",
     brand: {
-      hex: "#14B8A6",
-      rgb: "20, 184, 166",
-      hsl: "173, 80%, 40%",
+      hex: "#BE4A01",
+      rgb: "190, 74, 1",
+      hsl: "23, 99%, 37%",
     },
   },
 
-  purple: {
-    name: "Royal Purple",
-    description: "Elegant purple theme",
+  verdeClaro: {
+    name: "Verde Claro",
+    description: "Light olive green",
     brand: {
-      hex: "#8B5CF6",
-      rgb: "139, 92, 246",
-      hsl: "258, 90%, 66%",
+      hex: "#777D45",
+      rgb: "119, 125, 69",
+      hsl: "66, 29%, 38%",
     },
   },
 
-  emerald: {
-    name: "Emerald",
-    description: "Fresh green tone",
+  verde: {
+    name: "Verde",
+    description: "Dark forest green",
     brand: {
-      hex: "#10B981",
-      rgb: "16, 185, 129",
-      hsl: "160, 84%, 39%",
+      hex: "#3F3E20",
+      rgb: "63, 62, 32",
+      hsl: "58, 33%, 19%",
+    },
+  },
+
+  preto: {
+    name: "Preto",
+    description: "Deep charcoal",
+    brand: {
+      hex: "#0A0703",
+      rgb: "10, 7, 3",
+      hsl: "34, 54%, 3%",
     },
   },
 };
 
 // Set the active theme here - change this to switch themes globally
-export const ACTIVE_THEME: keyof typeof themes = "olive";
+export const ACTIVE_THEME: keyof typeof themes = "verdeClaro";
 
 export function getActiveTheme(): ColorTheme {
   return themes[ACTIVE_THEME];
