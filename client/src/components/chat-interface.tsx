@@ -4,12 +4,12 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/contexts/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageComponent from "./message";
 import FeedbackForm from "./feedback-form";
 import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music } from "lucide-react";
-const logoImage = "/logo.png";
 import { useOpenAISpeechRecognition } from "@/hooks/useOpenAISpeechRecognition";
 import { useOpenAISpeechSynthesis } from "@/hooks/useOpenAISpeechSynthesis";
 import {
@@ -75,6 +75,8 @@ export default function ChatInterface({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { currentLogo } = useTheme();
+  const logoImage = currentLogo;
   
   // Speech recognition hook with language support
   const {
