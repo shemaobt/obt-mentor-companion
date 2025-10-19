@@ -598,9 +598,7 @@ export default function Sidebar({
             />
             
             {/* Theme Switcher (visible to all users) */}
-            <div className="px-2">
-              <ThemeSwitcher />
-            </div>
+            <ThemeSwitcher />
             
             <Separator className="my-1" />
             
