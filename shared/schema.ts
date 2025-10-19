@@ -8,6 +8,7 @@ import {
   text,
   integer,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -236,7 +237,10 @@ export const facilitatorCompetencies = pgTable("facilitator_competencies", {
   }), // System-suggested status (shown when manual)
   lastUpdated: timestamp("last_updated").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint: each facilitator can only have one record per competency
+  facilitatorCompetencyUnique: unique().on(table.facilitatorId, table.competencyId),
+}));
 
 // Formal qualifications tracking
 export const facilitatorQualifications = pgTable("facilitator_qualifications", {
