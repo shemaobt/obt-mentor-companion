@@ -11,7 +11,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState('verdeClaro');
-  const [currentLogo, setCurrentLogo] = useState(themes.verdeClaro.icon);
+  const [currentLogo, setCurrentLogo] = useState('/logo-verde.png');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
@@ -33,7 +33,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (theme?.icon) {
       setCurrentLogo(theme.icon);
     } else {
-      setCurrentLogo(themes.verdeClaro.icon);
+      setCurrentLogo('/logo-verde.png');
     }
   };
 
