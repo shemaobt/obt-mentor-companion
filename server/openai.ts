@@ -816,7 +816,7 @@ export async function generateSpeech(text: string, language = 'en-US', voiceId?:
       voice: voice as any,
       input: text,
       response_format: "mp3",
-      speed: 1.35 // 35% faster for quicker responses while maintaining clarity
+      speed: 1.0 // Normal speed for natural-sounding speech
     });
 
     const buffer = Buffer.from(await speech.arrayBuffer());
@@ -867,7 +867,7 @@ export async function generateSpeechStream(text: string, language = 'en-US', voi
       voice: voice as any,
       input: text,
       response_format: "mp3",
-      speed: 1.35 // 35% faster for quicker responses while maintaining clarity
+      speed: 1.0 // Normal speed for natural-sounding speech
     });
 
     // Guard against null body (can happen on some OpenAI error responses)
