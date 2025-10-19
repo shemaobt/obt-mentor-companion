@@ -73,7 +73,11 @@ export function ThemeSwitcher() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          {Object.entries(themes).map(([key, theme]) => (
+          {Object.entries(themes).map(([key, theme]) => {
+            if (import.meta.env.DEV) {
+              console.log(`[ThemeSwitcher] ${key}: icon=${theme.icon}, hex=${theme.brand.hex}`);
+            }
+            return (
             <button
               key={key}
               onClick={() => {
@@ -93,9 +97,10 @@ export function ThemeSwitcher() {
               <div className="flex items-start gap-3">
                 {theme.icon ? (
                   <img
-                    src={`${theme.icon}?v=${Date.now()}`}
+                    src={theme.icon}
                     alt={theme.name}
-                    className="w-12 h-12 rounded-md shrink-0 object-contain"
+                    className="w-12 h-12 rounded-md shrink-0 object-contain bg-white dark:bg-gray-100"
+                    key={theme.icon}
                   />
                 ) : (
                   <div
@@ -133,7 +138,8 @@ export function ThemeSwitcher() {
                 </div>
               )}
             </button>
-          ))}
+          );
+          })}
         </div>
       </DialogContent>
     </Dialog>

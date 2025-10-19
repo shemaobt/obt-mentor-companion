@@ -3,6 +3,7 @@
  * 
  * Define your color schemes here. Each theme includes light and dark mode variants.
  * The brand color is automatically converted to HSL format for CSS variables.
+ * Last updated: 2025-10-19
  */
 
 export interface ColorTheme {
