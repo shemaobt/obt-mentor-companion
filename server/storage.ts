@@ -150,6 +150,7 @@ export interface IStorage {
   // Qualification operations
   getFacilitatorQualifications(facilitatorId: string): Promise<FacilitatorQualification[]>;
   createQualification(qualification: InsertFacilitatorQualification): Promise<FacilitatorQualification>;
+  updateQualification(qualificationId: string, updates: Partial<Omit<InsertFacilitatorQualification, 'facilitatorId'>>): Promise<FacilitatorQualification>;
   deleteQualification(qualificationId: string): Promise<void>;
   
   // Mentorship activity operations
@@ -952,6 +953,15 @@ export class DatabaseStorage implements IStorage {
       .values(qualification)
       .returning();
     return created;
+  }
+
+  async updateQualification(qualificationId: string, updates: Partial<Omit<InsertFacilitatorQualification, 'facilitatorId'>>): Promise<FacilitatorQualification> {
+    const [updated] = await db
+      .update(facilitatorQualifications)
+      .set(updates)
+      .where(eq(facilitatorQualifications.id, qualificationId))
+      .returning();
+    return updated;
   }
 
   async deleteQualification(qualificationId: string): Promise<void> {
