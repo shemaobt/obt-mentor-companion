@@ -12,9 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff } from "lucide-react";
-
-// Use logo from public directory
-const logoImage = "/logo.png";
+import { getActiveTheme } from "@/lib/themes";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -38,6 +36,9 @@ function Signup() {
   const { toast } = useToast();
   const { login } = useAuth();
 
+  // Get the active theme's logo
+  const activeTheme = getActiveTheme();
+  const logoImage = activeTheme.icon || "/logo.png";
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
