@@ -47,7 +47,7 @@ export function ThemeSwitcher() {
 
   // Apply saved theme on mount
   useState(() => {
-    const savedTheme = localStorage.getItem('obt-theme') || 'olive';
+    const savedTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
     applyTheme(savedTheme);
     setSelectedTheme(savedTheme);
   });
@@ -91,10 +91,18 @@ export function ThemeSwitcher() {
               data-testid={`button-theme-${key}`}
             >
               <div className="flex items-start gap-3">
-                <div
-                  className="w-12 h-12 rounded-md shrink-0"
-                  style={{ backgroundColor: theme.brand.hex }}
-                />
+                {theme.icon ? (
+                  <img
+                    src={theme.icon}
+                    alt={theme.name}
+                    className="w-12 h-12 rounded-md shrink-0 object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-md shrink-0"
+                    style={{ backgroundColor: theme.brand.hex }}
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm mb-1">{theme.name}</h3>
                   <p className="text-xs text-muted-foreground mb-2">
