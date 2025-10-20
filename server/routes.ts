@@ -2502,6 +2502,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System Prompt Management Routes
+  app.get('/api/admin/system-prompt', requireAdmin, async (req: any, res) => {
+    try {
+      const promptPath = path.join(process.cwd(), 'server', 'system-prompt.txt');
+      
+      // Check if custom prompt exists
+      if (fsSync.existsSync(promptPath)) {
+        const customPrompt = await fs.readFile(promptPath, 'utf-8');
+        res.json({ prompt: customPrompt, isCustom: true });
+      } else {
+        // Return default prompt from langchain-agents.ts
+        const { OBT_MENTOR_INSTRUCTIONS } = await import('./langchain-agents');
+        res.json({ prompt: OBT_MENTOR_INSTRUCTIONS, isCustom: false });
+      }
+    } catch (error) {
+      console.error("Error getting system prompt:", error);
+      res.status(500).json({ message: "Failed to get system prompt" });
+    }
+  });
+
+  app.post('/api/admin/system-prompt', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { prompt } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const promptPath = path.join(process.cwd(), 'server', 'system-prompt.txt');
+      await fs.writeFile(promptPath, prompt, 'utf-8');
+      
+      res.json({ success: true, message: "System prompt updated successfully" });
+    } catch (error) {
+      console.error("Error saving system prompt:", error);
+      res.status(500).json({ message: "Failed to save system prompt" });
+    }
+  });
+
   // OBT Mentor - Facilitator Profile Routes
   app.get('/api/facilitator/profile', requireAuth, async (req: any, res) => {
     try {
