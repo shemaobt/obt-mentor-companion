@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateAssistantResponse, generateAssistantResponseStream, generateChatCompletion, generateChatTitle, clearChatThread, getChatThreadId, transcribeAudio, generateSpeech, generateSpeechStream } from "./openai";
+import { generateChatTitle, transcribeAudio, generateSpeech, generateSpeechStream } from "./openai";
 import OpenAI from "openai";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext, deleteChatEmbeddings } from "./vector-memory";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
@@ -19,10 +19,6 @@ import { transcribeAudio as whisperTranscribe } from "./whisper";
 import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
 import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
 import { randomUUID } from "crypto";
-
-// Feature flag: Use LangChain multi-agent system instead of OpenAI Assistant API
-// Set USE_LANGCHAIN=true in environment variables to enable
-const USE_LANGCHAIN = process.env.USE_LANGCHAIN === 'true';
 
 // Server-side audio cache for faster TTS responses
 interface CachedAudio {
@@ -904,50 +900,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
         : content;
 
-      let aiResponse: any;
-
-      // Generate AI response using either LangChain or OpenAI Assistant API
-      if (USE_LANGCHAIN) {
-        console.log('[LangChain] Processing message with multi-agent system');
-        
-        // Verify facilitator exists for LangChain (required for portfolio tools)
-        if (!facilitatorId) {
-          return res.status(400).json({ 
-            message: "Facilitator profile required. Please complete your profile first." 
-          });
-        }
-        
-        // Get chat history for LangChain
-        const chatHistory = await storage.getChatMessages(chatId, userId);
-        
-        // Process with LangChain agent (including image attachments)
-        const langchainResponse = await processMessageWithLangChain(
-          storage,
-          userId,
-          facilitatorId,
-          content,
-          chatHistory,
-          relevantContext,
-          imageFilePaths.length > 0 ? imageFilePaths : undefined
-        );
-        
-        aiResponse = {
-          content: langchainResponse,
-          threadId: null, // LangChain doesn't use threads
-        };
-      } else {
-        console.log('[OpenAI Assistant] Processing message with Assistant API');
-        
-        // Use original OpenAI Assistant API
-        const threadId = await getChatThreadId(chatId, userId);
-        aiResponse = await generateAssistantResponse({
-          chatId,
-          userMessage: messageWithContext,
-          assistantId: chat.assistantId as any,
-          threadId: threadId || undefined,
-          imageFilePaths: imageFilePaths.length > 0 ? imageFilePaths : undefined,
-        }, userId);
+      // Verify facilitator exists for LangChain (required for portfolio tools)
+      if (!facilitatorId) {
+        return res.status(400).json({ 
+          message: "Facilitator profile required. Please complete your profile first." 
+        });
       }
+      
+      console.log('[LangChain] Processing message with multi-agent system');
+      
+      // Get chat history for LangChain
+      const chatHistory = await storage.getChatMessages(chatId, userId);
+      
+      // Process with LangChain agent (including image attachments)
+      const langchainResponse = await processMessageWithLangChain(
+        storage,
+        userId,
+        facilitatorId,
+        content,
+        chatHistory,
+        relevantContext,
+        imageFilePaths.length > 0 ? imageFilePaths : undefined
+      );
+      
+      const aiResponse = {
+        content: langchainResponse,
+        threadId: null, // LangChain doesn't use threads
+      };
 
       // Create assistant message
       const assistantMessage = await storage.createMessage({
@@ -1118,318 +1097,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })}\n\n`);
 
       try {
+        // Verify facilitator exists for LangChain (required for portfolio tools)
+        if (!facilitatorId) {
+          res.write(`data: ${JSON.stringify({ 
+            type: 'error', 
+            data: { message: "Facilitator profile required. Please complete your profile first." }
+          })}\n\n`);
+          res.end();
+          return;
+        }
+        
+        console.log('[LangChain Streaming] Processing message with RAG-optimized LangChain agent');
+        
         let assistantMessageId: string | null = null;
         let fullContent = "";
-
-        // Check if using LangChain or OpenAI Assistant API
-        if (USE_LANGCHAIN) {
-          console.log('[LangChain Streaming] Processing message with RAG-optimized LangChain agent');
-          
-          // Verify facilitator exists for LangChain (required for portfolio tools)
-          if (!facilitatorId) {
-            res.write(`data: ${JSON.stringify({ 
-              type: 'error', 
-              data: { message: "Facilitator profile required. Please complete your profile first." }
-            })}\n\n`);
-            res.end();
-            return;
-          }
-          
-          // Get chat history for LangChain
-          const chatHistory = await storage.getChatMessages(chatId, userId);
-          
-          // Process with LangChain agent (this uses RAG and is optimized!)
-          const langchainResponse = await processMessageWithLangChain(
-            storage,
-            userId,
-            facilitatorId,
-            content,
-            chatHistory,
-            relevantContext,
-            imageFilePaths.length > 0 ? imageFilePaths : undefined
-          );
-          
-          // Create assistant message
-          const assistantMessage = await storage.createMessage({
-            chatId,
-            role: "assistant",
-            content: "", // Will be updated incrementally
-          });
-          assistantMessageId = assistantMessage.id;
-          
-          // Send assistant message created event
-          res.write(`data: ${JSON.stringify({ 
-            type: 'assistant_message_start',
-            data: assistantMessage
-          })}\n\n`);
-          
-          // Simulate streaming by chunking the response
-          const words = langchainResponse.split(' ');
-          const chunkSize = 3; // Stream 3 words at a time for smooth experience
-          
-          for (let i = 0; i < words.length; i += chunkSize) {
-            const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
-            fullContent += chunk;
-            
-            res.write(`data: ${JSON.stringify({ 
-              type: 'content', 
-              data: chunk 
-            })}\n\n`);
-            
-            // Small delay for smooth streaming effect
-            await new Promise(resolve => setTimeout(resolve, 20));
-          }
-          
-          // Update the assistant message with final content
-          await storage.updateMessage(assistantMessageId, { content: fullContent });
-          
-          // Store assistant message embedding in Qdrant (non-blocking)
-          storeMessageEmbedding({
-            messageId: assistantMessageId,
-            chatId,
-            userId,
-            facilitatorId,
-            content: fullContent,
-            role: 'assistant',
-            timestamp: new Date(),
-          }).catch(err => console.error('Error storing assistant message embedding:', err));
-          
-          // Track message creation and API usage for streaming
-          await Promise.all([
-            storage.incrementUserMessageCount(userId),
-            storage.incrementUserApiUsage(userId)
-          ]);
-          
-          // Send completion event
-          res.write(`data: ${JSON.stringify({ 
-            type: 'done', 
-            data: { content: fullContent, threadId: null }
-          })}\n\n`);
-          
-        } else {
-          // Original OpenAI Assistant API path
-          console.log('[OpenAI Assistant Streaming] Using Assistants API');
-          
-          const threadId = await getChatThreadId(chatId, userId);
-
-          // Prepare user message with context if available
-          const messageWithContext = relevantContext 
-            ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
-            : content;
-
-          // Tool call executor for portfolio functions
-          const toolCallExecutor = {
-          executeToolCall: async (toolName: string, args: any): Promise<string> => {
-            console.log(`[Tool Call] ${toolName}`, args);
-            
-            try {
-              if (toolName === 'add_qualification') {
-                // Validate facilitator exists
-                const facilitator = await storage.getFacilitatorByUserId(userId);
-                if (!facilitator) {
-                  return JSON.stringify({ 
-                    success: false, 
-                    message: "Facilitator profile not found. Please create your profile first." 
-                  });
-                }
-                
-                // Convert completion date string to Date object
-                let completionDate: Date;
-                if (args.completionDate) {
-                  completionDate = new Date(args.completionDate);
-                } else {
-                  completionDate = new Date();
-                }
-                
-                // Add qualification
-                const qualification = await storage.createQualification({
-                  facilitatorId: facilitator.id,
-                  courseTitle: args.courseName,
-                  institution: args.institution,
-                  completionDate: completionDate,
-                  credential: args.credentialType || null,
-                  description: args.description || null,
-                });
-                
-                return JSON.stringify({ 
-                  success: true, 
-                  message: `✓ Qualification "${args.courseName}" added to your portfolio!`,
-                  qualification 
-                });
-                
-              } else if (toolName === 'add_activity') {
-                // Validate facilitator exists
-                const facilitator = await storage.getFacilitatorByUserId(userId);
-                if (!facilitator) {
-                  return JSON.stringify({ 
-                    success: false, 
-                    message: "Facilitator profile not found. Please create your profile first." 
-                  });
-                }
-                
-                // Prepare activity data based on type
-                const activityData: any = {
-                  facilitatorId: facilitator.id,
-                  activityType: args.activityType || 'translation',
-                };
-
-                // Add type-specific fields
-                if (args.activityType === 'translation') {
-                  activityData.languageName = args.languageName;
-                  activityData.chaptersCount = args.chaptersCount;
-                } else {
-                  // General experience fields
-                  activityData.title = args.title || null;
-                  activityData.description = args.description || null;
-                  activityData.yearsOfExperience = args.yearsOfExperience || null;
-                  activityData.organization = args.organization || null;
-                }
-                
-                // Common fields
-                activityData.notes = args.notes || null;
-                
-                // Add activity
-                const activity = await storage.createActivity(activityData);
-                
-                // Update facilitator totals (calculates automatically from all translation activities)
-                await storage.updateFacilitatorTotals(facilitator.id);
-                
-                // Recalculate competencies based on new activity
-                await storage.recalculateCompetencies(facilitator.id);
-                
-                // Generate success message based on type
-                let successMessage = '';
-                if (args.activityType === 'translation') {
-                  successMessage = `✓ Translation activity added: ${args.languageName} (${args.chaptersCount} chapters)!`;
-                } else {
-                  const typeLabels: Record<string, string> = {
-                    facilitation: 'Facilitation experience',
-                    teaching: 'Teaching experience',
-                    indigenous_work: 'Work with indigenous peoples',
-                    school_work: 'School work',
-                    general_experience: 'General experience'
-                  };
-                  const typeLabel = typeLabels[args.activityType] || 'Experience';
-                  successMessage = `✓ ${typeLabel} added to your portfolio!`;
-                }
-                
-                return JSON.stringify({ 
-                  success: true, 
-                  message: successMessage,
-                  activity 
-                });
-                
-              } else if (toolName === 'update_competency') {
-                // Validate facilitator exists
-                const facilitator = await storage.getFacilitatorByUserId(userId);
-                if (!facilitator) {
-                  return JSON.stringify({ 
-                    success: false, 
-                    message: "Facilitator profile not found. Please create your profile first." 
-                  });
-                }
-                
-                // Update competency
-                const competency = await storage.upsertCompetency({
-                  facilitatorId: facilitator.id,
-                  competencyId: args.competencyId,
-                  status: args.status,
-                  notes: args.notes || null,
-                });
-                
-                return JSON.stringify({ 
-                  success: true, 
-                  message: `✓ Competency updated to "${args.status}"!`,
-                  competency 
-                });
-                
-              } else {
-                return JSON.stringify({ 
-                  success: false, 
-                  message: `Unknown tool: ${toolName}` 
-                });
-              }
-            } catch (error: any) {
-              console.error(`[Tool Call Error] ${toolName}:`, error);
-              return JSON.stringify({ 
-                success: false, 
-                message: error.message || "Failed to execute tool" 
-              });
-            }
-          }
-        };
-
-        for await (const chunk of generateAssistantResponseStream({
+        
+        // Get chat history for LangChain
+        const chatHistory = await storage.getChatMessages(chatId, userId);
+        
+        // Process with LangChain agent (this uses RAG and is optimized!)
+        const langchainResponse = await processMessageWithLangChain(
+          storage,
+          userId,
+          facilitatorId,
+          content,
+          chatHistory,
+          relevantContext,
+          imageFilePaths.length > 0 ? imageFilePaths : undefined
+        );
+        
+        // Create assistant message
+        const assistantMessage = await storage.createMessage({
           chatId,
-          userMessage: messageWithContext,
-          assistantId: chat.assistantId as any,
-          threadId: threadId || undefined,
-          imageFilePaths: imageFilePaths.length > 0 ? imageFilePaths : undefined,
-        }, userId, toolCallExecutor)) {
+          role: "assistant",
+          content: "", // Will be updated incrementally
+        });
+        assistantMessageId = assistantMessage.id;
+        
+        // Send assistant message created event
+        res.write(`data: ${JSON.stringify({ 
+          type: 'assistant_message_start',
+          data: assistantMessage
+        })}\n\n`);
+        
+        // Simulate streaming by chunking the response
+        const words = langchainResponse.split(' ');
+        const chunkSize = 3; // Stream 3 words at a time for smooth experience
+        
+        for (let i = 0; i < words.length; i += chunkSize) {
+          const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
+          fullContent += chunk;
           
-          if (chunk.type === 'tool_call') {
-            // Send tool call notification to client
-            res.write(`data: ${JSON.stringify({ 
-              type: 'tool_call', 
-              data: chunk.data 
-            })}\n\n`);
-            
-          } else if (chunk.type === 'content') {
-            fullContent += chunk.data;
-            
-            // Create assistant message on first chunk
-            if (!assistantMessageId) {
-              const assistantMessage = await storage.createMessage({
-                chatId,
-                role: "assistant",
-                content: "", // Will be updated incrementally
-              });
-              assistantMessageId = assistantMessage.id;
-              
-              // Send assistant message created event
-              res.write(`data: ${JSON.stringify({ 
-                type: 'assistant_message_start',
-                data: assistantMessage
-              })}\n\n`);
-            }
-
-            // Send content chunk
-            res.write(`data: ${JSON.stringify({ 
-              type: 'content', 
-              data: chunk.data 
-            })}\n\n`);
-
-          } else if (chunk.type === 'done') {
-            // Update the assistant message with final content
-            if (assistantMessageId) {
-              await storage.updateMessage(assistantMessageId, { content: fullContent });
-              
-              // Store assistant message embedding in Qdrant (non-blocking)
-              storeMessageEmbedding({
-                messageId: assistantMessageId,
-                chatId,
-                userId,
-                facilitatorId,
-                content: fullContent,
-                role: 'assistant',
-                timestamp: new Date(),
-              }).catch(err => console.error('Error storing assistant message embedding:', err));
-            }
-
-            // Track message creation and API usage for streaming
-            await Promise.all([
-              storage.incrementUserMessageCount(userId),
-              storage.incrementUserApiUsage(userId)
-            ]);
-
-            // Send completion event
-            res.write(`data: ${JSON.stringify({ 
-              type: 'done', 
-              data: chunk.data 
-            })}\n\n`);
-          }
+          res.write(`data: ${JSON.stringify({ 
+            type: 'content', 
+            data: chunk 
+          })}\n\n`);
+          
+          // Small delay for smooth streaming effect
+          await new Promise(resolve => setTimeout(resolve, 20));
         }
-        } // End of else block (OpenAI Assistant API path)
+        
+        // Update the assistant message with final content
+        await storage.updateMessage(assistantMessageId, { content: fullContent });
+        
+        // Store assistant message embedding in Qdrant (non-blocking)
+        storeMessageEmbedding({
+          messageId: assistantMessageId,
+          chatId,
+          userId,
+          facilitatorId,
+          content: fullContent,
+          role: 'assistant',
+          timestamp: new Date(),
+        }).catch(err => console.error('Error storing assistant message embedding:', err));
+        
+        // Track message creation and API usage for streaming
+        await Promise.all([
+          storage.incrementUserMessageCount(userId),
+          storage.incrementUserApiUsage(userId)
+        ]);
+        
+        // Send completion event
+        res.write(`data: ${JSON.stringify({ 
+          type: 'done', 
+          data: { content: fullContent, threadId: null }
+        })}\n\n`);
       } catch (streamError) {
         console.error("Error in streaming response:", streamError);
         res.write(`data: ${JSON.stringify({ 
@@ -1455,9 +1207,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Delete all embeddings for this chat from Qdrant (so they don't appear in context)
       await deleteChatEmbeddings(chatId);
-      
-      // Clean up thread to prevent memory leaks
-      await clearChatThread(chatId, userId);
       
       res.json({ message: "Chat deleted successfully" });
     } catch (error) {
@@ -3273,28 +3022,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recent chat messages for narrative summary
       const recentMessages = await storage.getRecentUserMessages(req.userId, 50);
       
-      // Generate AI narrative if LangChain is enabled
+      // Generate AI narrative using LangChain Report Agent
       let aiGeneratedNarrative: string | undefined;
-      if (USE_LANGCHAIN) {
-        console.log('[Report Generation] Using LangChain Report Agent for narrative');
-        try {
-          const user = await storage.getUser(req.userId);
-          aiGeneratedNarrative = await generateReportNarrative({
-            facilitatorName: user ? `${user.firstName} ${user.lastName}` : 'Facilitator',
-            region: facilitator.region,
-            supervisor: facilitator.mentorSupervisor,
-            totalLanguages: facilitator.totalLanguagesMentored,
-            totalChapters: facilitator.totalChaptersMentored,
-            competencies,
-            qualifications,
-            activities: periodActivities,
-            recentMessages,
-            periodStart: startDate,
-            periodEnd: endDate,
-          });
-        } catch (error) {
-          console.error('[Report Generation] Error generating AI narrative, falling back to template:', error);
-        }
+      console.log('[Report Generation] Using LangChain Report Agent for narrative');
+      try {
+        const user = await storage.getUser(req.userId);
+        aiGeneratedNarrative = await generateReportNarrative({
+          facilitatorName: user ? `${user.firstName} ${user.lastName}` : 'Facilitator',
+          region: facilitator.region,
+          supervisor: facilitator.mentorSupervisor,
+          totalLanguages: facilitator.totalLanguagesMentored,
+          totalChapters: facilitator.totalChaptersMentored,
+          competencies,
+          qualifications,
+          activities: periodActivities,
+          recentMessages,
+          periodStart: startDate,
+          periodEnd: endDate,
+        });
+      } catch (error) {
+        console.error('[Report Generation] Error generating AI narrative, falling back to template:', error);
       }
       
       // Generate .docx file
