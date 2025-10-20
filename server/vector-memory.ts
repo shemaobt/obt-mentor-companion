@@ -61,9 +61,55 @@ export async function initializeQdrantCollection() {
         field_schema: 'keyword',
       });
 
+      await qdrant.createPayloadIndex(COLLECTION_NAME, {
+        field_name: 'type',
+        field_schema: 'keyword',
+      });
+
+      await qdrant.createPayloadIndex(COLLECTION_NAME, {
+        field_name: 'isActive',
+        field_schema: 'bool',
+      });
+
+      await qdrant.createPayloadIndex(COLLECTION_NAME, {
+        field_name: 'documentId',
+        field_schema: 'keyword',
+      });
+
       console.log(`Qdrant collection ${COLLECTION_NAME} created successfully`);
     } else {
       console.log(`Qdrant collection ${COLLECTION_NAME} already exists`);
+      
+      // Ensure critical indexes exist (safe to call even if they already exist)
+      try {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
+          field_name: 'type',
+          field_schema: 'keyword',
+        });
+        console.log('Created/verified index for type field');
+      } catch (e) {
+        // Index might already exist, which is fine
+      }
+
+      try {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
+          field_name: 'isActive',
+          field_schema: 'bool',
+        });
+        console.log('Created/verified index for isActive field');
+      } catch (e) {
+        // Index might already exist, which is fine
+      }
+
+      try {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
+          field_name: 'documentId',
+          field_schema: 'keyword',
+        });
+        console.log('Created/verified index for documentId field');
+      } catch (e) {
+        // Index might already exist, which is fine
+      }
     }
   } catch (error) {
     console.error('Error initializing Qdrant collection:', error);
