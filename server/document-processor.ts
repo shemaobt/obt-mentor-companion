@@ -1,9 +1,11 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import OpenAI from 'openai';
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
+
+// Dynamic import for pdf-parse since it doesn't have proper ESM exports
+const pdfParse = (await import('pdf-parse')).default;
 
 // Initialize Qdrant client
 const qdrant = new QdrantClient({
