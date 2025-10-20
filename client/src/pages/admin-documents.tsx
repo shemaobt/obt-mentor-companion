@@ -1,23 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Sidebar from "@/components/sidebar";
-import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, Trash2, Save } from "lucide-react";
 
 interface Document {
   id: string;
   documentId: string;
   filename: string;
-  uploadedBy: string;
   uploadedAt: string | Date;
   isActive: boolean;
   fileType: 'pdf' | 'docx' | 'txt';
@@ -25,324 +22,195 @@ interface Document {
 }
 
 export default function AdminDocuments() {
-  const [location] = useLocation();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
 
-  console.log('[AdminDocuments] Component rendering:', { location, isAuthenticated, isLoading, isAdmin: user?.isAdmin });
-
-  // Redirect to login if not authenticated, to dashboard if not admin
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-    
-    if (!isLoading && isAuthenticated && user && !user.isAdmin) {
-      toast({
-        title: "Access Denied",
-        description: "Admin privileges required. Redirecting to dashboard...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, user, toast]);
-
-  const { data: documents = [], isLoading: documentsLoading, error: documentsError } = useQuery<Document[]>({
+  // Carregar documentos
+  const { data: documents = [] } = useQuery<Document[]>({
     queryKey: ["/api/admin/documents"],
-    retry: false,
-    enabled: isAuthenticated && user?.isAdmin === true,
+    enabled: user?.isAdmin === true,
   });
 
-  // Handle query errors
-  useEffect(() => {
-    if (documentsError) {
-      if (isUnauthorizedError(documentsError)) {
-        toast({
-          title: "Session Expired",
-          description: "Please log in again.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1000);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load documents",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [documentsError, toast]);
-
+  // Upload de documento
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('document', file);
-
-      const response = await apiRequest('POST', '/api/admin/documents/upload', formData, {
-        'X-CSRF-Protection': '1',
+      const response = await fetch('/api/admin/documents/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
+      if (!response.ok) throw new Error('Upload falhou');
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Document uploaded and processed successfully",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      toast({ title: "Documento enviado com sucesso!" });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload document",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erro ao enviar documento", variant: "destructive" });
     },
   });
 
+  // Toggle ativo/inativo
   const toggleMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      const response = await apiRequest('PATCH', `/api/admin/documents/${documentId}/toggle`, {}, {
-        'X-CSRF-Protection': '1',
-      });
-      return response.json();
+      return apiRequest(`/api/admin/documents/${documentId}/toggle`, { method: 'PATCH' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
-      toast({
-        title: "Success",
-        description: "Document status updated",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update document status",
-        variant: "destructive",
-      });
+      toast({ title: "Status atualizado" });
     },
   });
 
+  // Deletar documento
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      const response = await apiRequest('DELETE', `/api/admin/documents/${documentId}`, {}, {
-        'X-CSRF-Protection': '1',
-      });
-      return response.json();
+      return apiRequest(`/api/admin/documents/${documentId}`, { method: 'DELETE' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
-      toast({
-        title: "Success",
-        description: "Document deleted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete document",
-        variant: "destructive",
-      });
+      toast({ title: "Documento removido" });
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
+      uploadMutation.mutate(file);
     }
   };
 
-  const handleUpload = () => {
-    if (selectedFile) {
-      uploadMutation.mutate(selectedFile);
-    }
-  };
-
-  const handleToggle = (documentId: string) => {
-    toggleMutation.mutate(documentId);
-  };
-
-  const handleDelete = (documentId: string) => {
-    deleteMutation.mutate(documentId);
-  };
-
-  if (!isAuthenticated || !user?.isAdmin) {
-    console.log('[AdminDocuments] Returning null - auth check failed');
-    return null;
+  if (!user?.isAdmin) {
+    return <div className="p-8">Acesso negado</div>;
   }
 
-  console.log('[AdminDocuments] Rendering full page layout');
-
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container mx-auto p-4 md:p-8 max-w-6xl">
+      
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto p-8">
+          
+          {/* TÍTULO PRINCIPAL */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2" data-testid="heading-document-management">Document Management</h1>
+            <h1 className="text-4xl font-bold mb-2">Configuração do Assistente</h1>
             <p className="text-muted-foreground">
-              Upload and manage documents for the AI assistant's knowledge base
+              Configure o prompt do sistema e adicione documentos de contexto
             </p>
           </div>
 
-          {/* Upload Card */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Upload Document
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="document-upload">
-                    Choose a document (PDF, DOCX, or TXT)
-                  </Label>
-                  <input
-                    ref={fileInputRef}
-                    id="document-upload"
-                    type="file"
-                    accept=".pdf,.docx,.txt"
-                    onChange={handleFileChange}
-                    className="mt-2 block w-full text-sm text-muted-foreground
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-primary file:text-primary-foreground
-                      hover:file:bg-primary/90
-                      file:cursor-pointer cursor-pointer"
-                    data-testid="input-document-upload"
-                  />
-                </div>
-                {selectedFile && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <FileText className="h-4 w-4" />
-                    <span>{selectedFile.name}</span>
-                    <span className="text-muted-foreground">
-                      ({(selectedFile.size / 1024).toFixed(2)} KB)
-                    </span>
-                  </div>
-                )}
-                <Button
-                  onClick={handleUpload}
-                  disabled={!selectedFile || uploadMutation.isPending}
-                  data-testid="button-upload-document"
-                >
-                  {uploadMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {uploadMutation.isPending ? 'Processing...' : 'Upload & Process'}
-                </Button>
-              </div>
-            </CardContent>
+          {/* SEÇÃO 1: PROMPT DO SISTEMA */}
+          <Card className="p-6 mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <FileText className="h-6 w-6" />
+              <h2 className="text-2xl font-semibold">Prompt do Sistema</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Instruções que o assistente seguirá em todas as conversas
+            </p>
+            <Textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="Digite as instruções do sistema aqui..."
+              className="min-h-[200px] mb-4 font-mono text-sm"
+            />
+            <Button onClick={() => toast({ title: "Prompt salvo (em desenvolvimento)" })}>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Prompt
+            </Button>
           </Card>
 
-          {/* Documents List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Uploaded Documents ({documents.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {documentsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* SEÇÃO 2: DOCUMENTOS DE CONTEXTO */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Upload className="h-6 w-6" />
+              <h2 className="text-2xl font-semibold">Documentos de Contexto</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Faça upload de documentos (PDF, DOCX, TXT) que o assistente usará como referência
+            </p>
+            
+            {/* Upload */}
+            <div className="mb-8">
+              <Label htmlFor="file-upload" className="cursor-pointer">
+                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-sm font-medium mb-1">
+                    Clique para fazer upload ou arraste o arquivo aqui
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF, DOCX ou TXT (máx. 10MB)
+                  </p>
                 </div>
-              ) : documents.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No documents uploaded yet
-                </div>
+              </Label>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".pdf,.docx,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+
+            {/* Lista de Documentos */}
+            <div className="space-y-3">
+              <h3 className="font-medium mb-3">
+                Documentos Carregados ({documents.length})
+              </h3>
+              
+              {documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Nenhum documento carregado ainda
+                </p>
               ) : (
-                <div className="space-y-4">
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                      data-testid={`document-item-${doc.id}`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{doc.filename}</span>
-                          <span className="text-xs text-muted-foreground uppercase">
-                            {doc.fileType}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {doc.chunkCount} chunks • Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={doc.isActive}
-                            onCheckedChange={() => handleToggle(doc.documentId)}
-                            disabled={toggleMutation.isPending}
-                            data-testid={`toggle-document-${doc.id}`}
-                          />
-                          <Label className="text-sm">
-                            {doc.isActive ? 'Active' : 'Inactive'}
-                          </Label>
-                        </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              data-testid={`button-delete-document-${doc.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{doc.filename}"? This will remove all chunks from the knowledge base.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(doc.documentId)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{doc.filename}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.chunkCount} chunks • {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={doc.isActive}
+                          onCheckedChange={() => toggleMutation.mutate(doc.documentId)}
+                        />
+                        <Label className="text-sm">
+                          {doc.isActive ? 'Ativo' : 'Inativo'}
+                        </Label>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (confirm(`Remover "${doc.filename}"?`)) {
+                            deleteMutation.mutate(doc.documentId);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
               )}
-            </CardContent>
+            </div>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
