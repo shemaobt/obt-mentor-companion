@@ -3,9 +3,11 @@ import OpenAI from 'openai';
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
+import { createRequire } from 'module';
 
-// Dynamic import for pdf-parse since it doesn't have proper ESM exports
-const pdfParse = (await import('pdf-parse')).default;
+// Use require for pdf-parse since it's a CommonJS module
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
 // Initialize Qdrant client
 const qdrant = new QdrantClient({
