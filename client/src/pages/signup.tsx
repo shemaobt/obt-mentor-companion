@@ -94,12 +94,16 @@ function Signup() {
     <div className="min-h-screen overflow-y-auto px-4 flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center mb-4 overflow-hidden bg-white dark:bg-gray-100">
+          <div 
+            className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center mb-4 overflow-hidden"
+            style={{ backgroundColor: `hsl(${activeTheme.brand.hsl})` }}
+          >
             <img 
               src={logoImage} 
-              alt="OBT Mentor Companion Logo" 
-              className="h-12 w-12 object-contain"
+              alt="Logo" 
+              className="h-14 w-14 object-contain"
               data-testid="img-signup-logo"
+              style={{ filter: 'brightness(0) invert(1)' }}
             />
           </div>
           <CardTitle className="text-2xl">Create account</CardTitle>
