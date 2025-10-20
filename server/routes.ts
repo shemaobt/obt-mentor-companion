@@ -17,6 +17,8 @@ import multer from "multer";
 import path from "path";
 import { transcribeAudio as whisperTranscribe } from "./whisper";
 import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
+import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
+import { randomUUID } from "crypto";
 
 // Feature flag: Use LangChain multi-agent system instead of OpenAI Assistant API
 // Set USE_LANGCHAIN=true in environment variables to enable
@@ -119,6 +121,37 @@ const fileUpload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only image and audio files are allowed'));
+    }
+  }
+});
+
+// Multer configuration for document uploads (PDF, DOCX, TXT)
+const documentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/documents/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const documentUpload = multer({
+  storage: documentStorage,
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25MB limit
+  },
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowedDocTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    
+    if (allowedDocTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOCX, and TXT files are allowed'));
     }
   }
 });
@@ -2363,6 +2396,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user reports:", error);
       res.status(500).json({ message: "Failed to fetch user reports" });
+    }
+  });
+
+  // Document Management Routes
+  app.post('/api/admin/documents/upload', requireAdmin, requireCSRFHeader, documentUpload.single('document'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No document file provided" });
+      }
+
+      const file = req.file;
+      const documentId = randomUUID();
+      
+      // Determine file type from extension
+      const ext = path.extname(file.originalname).toLowerCase();
+      let fileType: 'pdf' | 'docx' | 'txt';
+      if (ext === '.pdf') fileType = 'pdf';
+      else if (ext === '.docx') fileType = 'docx';
+      else if (ext === '.txt') fileType = 'txt';
+      else return res.status(400).json({ message: "Unsupported file type" });
+
+      // Parse document text
+      const text = await parseDocument(file.path, fileType);
+      
+      // Chunk the text
+      const chunks = chunkText(text, 1000, 200);
+      
+      // Store chunks in Qdrant
+      const chunkCount = await storeDocumentChunks({
+        documentId,
+        filename: file.originalname,
+        chunks,
+        isActive: true,
+      });
+
+      // Save document record in database
+      const document = await storage.createDocument({
+        documentId,
+        filename: file.originalname,
+        uploadedBy: req.userId,
+        fileType,
+        chunkCount,
+        isActive: true,
+      });
+
+      // Clean up uploaded file (we've stored everything in Qdrant)
+      await fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+
+      res.json(document);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  app.get('/api/admin/documents', requireAdmin, async (req: any, res) => {
+    try {
+      const documents = await storage.getAllDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.patch('/api/admin/documents/:documentId/toggle', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      const newActiveStatus = !document.isActive;
+
+      // Update document status in Qdrant
+      await updateDocumentChunksStatus(documentId, newActiveStatus);
+
+      // Update document status in database
+      const updated = await storage.updateDocumentActive(documentId, newActiveStatus);
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling document status:", error);
+      res.status(500).json({ message: "Failed to toggle document status" });
+    }
+  });
+
+  app.delete('/api/admin/documents/:documentId', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      
+      // Delete chunks from Qdrant
+      await deleteDocumentChunks(documentId);
+
+      // Delete document from database
+      await storage.deleteDocument(documentId);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
     }
   });
 
