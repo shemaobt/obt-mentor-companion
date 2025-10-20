@@ -577,6 +577,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public supervisor list endpoint for signup
+  app.get('/api/supervisors', publicApiLimiter, async (req: any, res) => {
+    try {
+      const supervisors = await storage.getAllSupervisors();
+      // Return only essential fields for autocomplete
+      const supervisorList = supervisors.map(s => ({
+        id: s.id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        fullName: `${s.firstName} ${s.lastName}`.trim() || s.email,
+      }));
+      res.json(supervisorList);
+    } catch (error) {
+      console.error("Error fetching supervisors:", error);
+      res.status(500).json({ message: "Failed to fetch supervisors" });
+    }
+  });
+
   // Chat Chain routes
   app.get('/api/chat-chains', requireAuth, async (req: any, res) => {
     try {

@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Check, ChevronsUpDown } from "lucide-react";
 import { getActiveTheme } from "@/lib/themes";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -22,6 +25,7 @@ const signupSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   region: z.string().optional(),
   mentorSupervisor: z.string().optional(),
+  supervisorId: z.string().optional(), // UUID of selected supervisor
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -29,9 +33,18 @@ const signupSchema = z.object({
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
+interface Supervisor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  fullName: string;
+}
+
 function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
@@ -39,6 +52,11 @@ function Signup() {
   // Get the active theme's logo
   const activeTheme = getActiveTheme();
   const logoImage = activeTheme.icon || "/logo.png";
+
+  // Fetch available supervisors
+  const { data: supervisors = [], isLoading: loadingSupervisors } = useQuery<Supervisor[]>({
+    queryKey: ['/api/supervisors'],
+  });
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -50,6 +68,7 @@ function Signup() {
       lastName: "",
       region: "",
       mentorSupervisor: "",
+      supervisorId: undefined, // undefined para não enviar no formulário se vazio
     },
   });
 
@@ -87,7 +106,12 @@ function Signup() {
 
   const onSubmit = (data: SignupFormData) => {
     const { confirmPassword, ...signupData } = data;
-    signupMutation.mutate(signupData);
+    // Remove empty supervisorId to avoid validation errors
+    const normalizedData = {
+      ...signupData,
+      supervisorId: signupData.supervisorId || undefined,
+    };
+    signupMutation.mutate(normalizedData);
   };
 
   return (
@@ -152,43 +176,102 @@ function Signup() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="region"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Region (optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., Northeast Brazil"
-                          data-testid="input-region"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="mentorSupervisor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supervisor (optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Supervisor's name"
-                          data-testid="input-supervisor"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="region"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Region (optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., Northeast Brazil"
+                        data-testid="input-region"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="supervisorId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Supervisor (optional)</FormLabel>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-select-supervisor"
+                          >
+                            {field.value
+                              ? supervisors.find((supervisor) => supervisor.id === field.value)?.fullName
+                              : "Select supervisor..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search supervisor..." data-testid="input-search-supervisor" />
+                          <CommandEmpty>
+                            {loadingSupervisors ? "Loading..." : "No supervisor found."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="none"
+                              onSelect={() => {
+                                form.setValue("supervisorId", undefined);
+                                setOpen(false);
+                              }}
+                              data-testid="option-supervisor-none"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  !field.value ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              No supervisor
+                            </CommandItem>
+                            {supervisors.map((supervisor) => (
+                              <CommandItem
+                                key={supervisor.id}
+                                value={supervisor.fullName}
+                                onSelect={() => {
+                                  form.setValue("supervisorId", supervisor.id);
+                                  setOpen(false);
+                                }}
+                                data-testid={`option-supervisor-${supervisor.id}`}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    supervisor.id === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {supervisor.fullName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
