@@ -216,11 +216,24 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
       try {
+        // Parse completion date string to Date object
+        let parsedDate: Date | undefined;
+        if (completionDate) {
+          // Try to parse various date formats
+          parsedDate = new Date(completionDate);
+          
+          // Validate the date is valid
+          if (isNaN(parsedDate.getTime())) {
+            console.error(`[Tool Error] Invalid date format: ${completionDate}`);
+            return `Error: Invalid date format "${completionDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15) or just the year (e.g., 2024).`;
+          }
+        }
+        
         await storage.createQualification({
           facilitatorId,
           courseTitle,
           institution,
-          completionDate,
+          completionDate: parsedDate,
           credential,
           courseLevel,
           description,
@@ -232,6 +245,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const levelInfo = courseLevel ? ` (${courseLevel} level)` : '';
         return `Successfully added qualification: ${courseTitle} from ${institution}${levelInfo}. Competency scores have been automatically updated.`;
       } catch (error) {
+        console.error(`[Tool Error] add_qualification failed:`, error);
         return `Error adding qualification: ${error.message}`;
       }
     },
@@ -253,13 +267,24 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const updates: any = {};
         if (courseTitle) updates.courseTitle = courseTitle;
         if (institution) updates.institution = institution;
-        if (completionDate) updates.completionDate = completionDate;
+        if (completionDate) {
+          // Parse completion date string to Date object
+          const parsedDate = new Date(completionDate);
+          
+          // Validate the date is valid
+          if (isNaN(parsedDate.getTime())) {
+            console.error(`[Tool Error] Invalid date format: ${completionDate}`);
+            return `Error: Invalid date format "${completionDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
+          }
+          updates.completionDate = parsedDate;
+        }
         if (credential !== undefined) updates.credential = credential;
         if (description !== undefined) updates.description = description;
 
         await storage.updateQualification(qualificationId, updates);
         return `Successfully updated qualification with ID: ${qualificationId}`;
       } catch (error) {
+        console.error(`[Tool Error] update_qualification failed:`, error);
         return `Error updating qualification: ${error.message}`;
       }
     },
@@ -290,6 +315,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         
         return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters). Competency scores have been automatically updated.`;
       } catch (error) {
+        console.error(`[Tool Error] add_activity failed:`, error);
         return `Error adding activity: ${error.message}`;
       }
     },
@@ -324,6 +350,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const durationInfo = yearsOfExperience ? ` (${yearsOfExperience} years)` : '';
         return `Successfully added ${activityType} experience: ${title}${durationInfo}. Competency scores have been automatically updated.`;
       } catch (error) {
+        console.error(`[Tool Error] create_general_experience failed:`, error);
         return `Error adding experience: ${error.message}`;
       }
     },
@@ -342,6 +369,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         await storage.updateCompetency(competencyId, { status, notes });
         return `Successfully updated competency to ${status}`;
       } catch (error) {
+        console.error(`[Tool Error] update_competency failed:`, error);
         return `Error updating competency: ${error.message}`;
       }
     },
