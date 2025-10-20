@@ -7,7 +7,8 @@ import { createRequire } from 'module';
 
 // Import pdf-parse using require (CommonJS module)
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+const pdfParseModule = require('pdf-parse');
+const pdfParse = pdfParseModule.PDFParse || pdfParseModule;
 
 // Initialize Qdrant client
 const qdrant = new QdrantClient({
@@ -34,8 +35,11 @@ export async function parseDocument(filePath: string, fileType: string): Promise
     switch (fileType) {
       case 'pdf':
         const pdfBuffer = await fs.readFile(filePath);
-        const pdfData = await pdfParse(pdfBuffer);
-        return pdfData.text;
+        // PDFParse is a class that needs to be instantiated
+        const parser = new pdfParse({});
+        await parser.load(pdfBuffer);
+        const text = await parser.getText();
+        return text;
 
       case 'docx':
         const docxBuffer = await fs.readFile(filePath);
