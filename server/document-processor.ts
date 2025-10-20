@@ -35,11 +35,11 @@ export async function parseDocument(filePath: string, fileType: string): Promise
     switch (fileType) {
       case 'pdf':
         const pdfBuffer = await fs.readFile(filePath);
-        // PDFParse is a class that needs to be instantiated
-        const parser = new pdfParse({});
-        await parser.load(pdfBuffer);
-        const text = await parser.getText();
-        return text;
+        // PDFParse constructor accepts { data: buffer } for local files
+        const parser = new pdfParse({ data: pdfBuffer });
+        const result = await parser.getText();
+        await parser.destroy();
+        return result.text;
 
       case 'docx':
         const docxBuffer = await fs.readFile(filePath);
