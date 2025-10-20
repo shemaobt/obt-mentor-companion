@@ -13,6 +13,7 @@ import {
   mentorshipActivities,
   quarterlyReports,
   systemSettings,
+  documents,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -40,6 +41,8 @@ import {
   type InsertMentorshipActivity,
   type QuarterlyReport,
   type InsertQuarterlyReport,
+  type Document,
+  type InsertDocument,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
@@ -170,6 +173,14 @@ export interface IStorage {
   getLatestReport(facilitatorId: string): Promise<QuarterlyReport | undefined>;
   getQuarterlyReport(reportId: string): Promise<QuarterlyReport | undefined>;
   deleteQuarterlyReport(reportId: string): Promise<void>;
+  
+  // Document operations
+  getAllDocuments(): Promise<Document[]>;
+  getDocument(documentId: string): Promise<Document | undefined>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocumentActive(documentId: string, isActive: boolean): Promise<Document>;
+  deleteDocument(documentId: string): Promise<void>;
+  getActiveDocuments(): Promise<Document[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1103,6 +1114,53 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(quarterlyReports)
       .where(eq(quarterlyReports.id, reportId));
+  }
+
+  // Document operations
+  async getAllDocuments(): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async getDocument(documentId: string): Promise<Document | undefined> {
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.documentId, documentId));
+    return document;
+  }
+
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [created] = await db
+      .insert(documents)
+      .values(document)
+      .returning();
+    return created;
+  }
+
+  async updateDocumentActive(documentId: string, isActive: boolean): Promise<Document> {
+    const [updated] = await db
+      .update(documents)
+      .set({ isActive })
+      .where(eq(documents.documentId, documentId))
+      .returning();
+    return updated;
+  }
+
+  async deleteDocument(documentId: string): Promise<void> {
+    await db
+      .delete(documents)
+      .where(eq(documents.documentId, documentId));
+  }
+
+  async getActiveDocuments(): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.isActive, true))
+      .orderBy(desc(documents.uploadedAt));
   }
 }
 

@@ -289,6 +289,18 @@ export const quarterlyReports = pgTable("quarterly_reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Documents for RAG context
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().unique(), // Unique identifier used in Qdrant
+  filename: varchar("filename").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  isActive: boolean("is_active").notNull().default(true),
+  fileType: varchar("file_type", { enum: ["pdf", "docx", "txt"] }).notNull(),
+  chunkCount: integer("chunk_count").notNull().default(0),
+});
+
 // System settings
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -304,6 +316,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   chats: many(chats),
   apiKeys: many(apiKeys),
   feedback: many(feedback),
+  documents: many(documents),
   facilitator: one(facilitators, {
     fields: [users.id],
     references: [facilitators.userId],
@@ -410,6 +423,13 @@ export const quarterlyReportsRelations = relations(quarterlyReports, ({ one }) =
   }),
 }));
 
+export const documentsRelations = relations(documents, ({ one }) => ({
+  uploader: one(users, {
+    fields: [documents.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -494,6 +514,11 @@ export const insertMessageAttachmentSchema = createInsertSchema(messageAttachmen
   createdAt: true,
 });
 
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -522,3 +547,5 @@ export type QuarterlyReport = typeof quarterlyReports.$inferSelect;
 export type InsertQuarterlyReport = z.infer<typeof insertQuarterlyReportSchema>;
 export type MessageAttachment = typeof messageAttachments.$inferSelect;
 export type InsertMessageAttachment = z.infer<typeof insertMessageAttachmentSchema>;
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
