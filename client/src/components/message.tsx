@@ -7,12 +7,10 @@ import {
 } from "@/components/ui/dialog";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-// Use logo from public directory
-const logoImage = "/logo.png";
 import type { Message, MessageAttachment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface MessageProps {
   message: Message;
@@ -23,6 +21,7 @@ interface MessageProps {
 export default function MessageComponent({ message, speechSynthesis, selectedLanguage }: MessageProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { currentLogo } = useTheme();
   
   // Fetch attachments for this message
   const { data: attachments = [] } = useQuery<MessageAttachment[]>({
@@ -149,7 +148,7 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
         <div className="flex items-start space-x-3">
           <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
             <img 
-              src={logoImage} 
+              src={currentLogo} 
               alt="Assistant" 
               className="h-6 w-6 object-contain"
               data-testid={`img-assistant-avatar-${message.id}`}
