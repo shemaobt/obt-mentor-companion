@@ -545,6 +545,30 @@ export async function getComprehensiveContext(params: {
 }
 
 /**
+ * Delete all embeddings for a specific chat
+ */
+export async function deleteChatEmbeddings(chatId: string): Promise<void> {
+  try {
+    // Delete all points with this chatId
+    await qdrant.delete(COLLECTION_NAME, {
+      filter: {
+        must: [
+          {
+            key: 'chatId',
+            match: { value: chatId },
+          },
+        ],
+      },
+    });
+
+    console.log(`[Qdrant] Deleted all embeddings for chat ${chatId}`);
+  } catch (error) {
+    console.error(`[Qdrant] Error deleting embeddings for chat ${chatId}:`, error);
+    // Don't throw - we don't want embedding deletion failures to break chat deletion
+  }
+}
+
+/**
  * Search for relevant active document chunks
  */
 export async function searchActiveDocuments(params: {

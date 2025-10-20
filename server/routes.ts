@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateAssistantResponse, generateAssistantResponseStream, generateChatCompletion, generateChatTitle, clearChatThread, getChatThreadId, transcribeAudio, generateSpeech, generateSpeechStream } from "./openai";
 import OpenAI from "openai";
-import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext } from "./vector-memory";
+import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext, deleteChatEmbeddings } from "./vector-memory";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
 import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcryptjs";
@@ -1389,9 +1389,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId;
       const { chatId } = req.params;
+      
+      // Delete chat from database (this also deletes messages via CASCADE)
       await storage.deleteChat(chatId, userId);
+      
+      // Delete all embeddings for this chat from Qdrant (so they don't appear in context)
+      await deleteChatEmbeddings(chatId);
+      
       // Clean up thread to prevent memory leaks
       await clearChatThread(chatId, userId);
+      
       res.json({ message: "Chat deleted successfully" });
     } catch (error) {
       console.error("Error deleting chat:", error);
