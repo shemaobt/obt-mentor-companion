@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,19 @@ export default function AdminDocuments() {
   const [systemPrompt, setSystemPrompt] = useState("");
 
   console.log('[AdminDocuments] RENDERING - user:', user?.email, 'isAdmin:', user?.isAdmin);
+
+  // Carregar o prompt do sistema
+  const { data: promptData, isLoading: promptLoading } = useQuery<{ prompt: string; isCustom: boolean }>({
+    queryKey: ["/api/admin/system-prompt"],
+    enabled: user?.isAdmin === true,
+  });
+
+  // Atualizar o state quando o prompt carregar
+  useEffect(() => {
+    if (promptData?.prompt) {
+      setSystemPrompt(promptData.prompt);
+    }
+  }, [promptData]);
 
   // Carregar documentos
   const { data: documents = [] } = useQuery<Document[]>({
@@ -75,6 +88,24 @@ export default function AdminDocuments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
       toast({ title: "Documento removido" });
+    },
+  });
+
+  // Salvar prompt do sistema
+  const savePromptMutation = useMutation({
+    mutationFn: async (prompt: string) => {
+      return apiRequest('/api/admin/system-prompt', {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/system-prompt"] });
+      toast({ title: "Prompt do sistema salvo com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao salvar prompt", variant: "destructive" });
     },
   });
 
@@ -133,12 +164,16 @@ export default function AdminDocuments() {
           <Textarea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder="Digite as instruções do sistema aqui..."
+            placeholder={promptLoading ? "Carregando prompt..." : "Digite as instruções do sistema aqui..."}
             className="min-h-[200px] mb-4 font-mono text-sm"
+            disabled={promptLoading}
           />
-          <Button onClick={() => toast({ title: "Prompt salvo (funcionalidade em desenvolvimento)" })}>
+          <Button 
+            onClick={() => savePromptMutation.mutate(systemPrompt)}
+            disabled={savePromptMutation.isPending || promptLoading}
+          >
             <Save className="mr-2 h-4 w-4" />
-            Salvar Prompt
+            {savePromptMutation.isPending ? 'Salvando...' : 'Salvar Prompt'}
           </Button>
         </Card>
 
