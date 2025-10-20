@@ -60,8 +60,9 @@ export async function parseDocument(filePath: string, fileType: string): Promise
 
 /**
  * Chunk text into smaller pieces for embedding
+ * Note: Using ~225 words per chunk as proxy for 300 tokens (1 token ≈ 0.75 words)
  */
-export function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): string[] {
+export function chunkText(text: string, chunkSize: number = 225, overlap: number = 50): string[] {
   const chunks: string[] = [];
   const words = text.split(/\s+/);
   

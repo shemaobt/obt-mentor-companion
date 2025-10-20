@@ -2420,8 +2420,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse document text
       const text = await parseDocument(file.path, fileType);
       
-      // Chunk the text
-      const chunks = chunkText(text, 1000, 200);
+      // Chunk the text (using defaults: ~225 words ≈ 300 tokens per chunk)
+      const chunks = chunkText(text);
       
       // Store chunks in Qdrant
       const chunkCount = await storeDocumentChunks({
