@@ -33,8 +33,15 @@ export async function parseDocument(filePath: string, fileType: string): Promise
       case 'pdf':
         // Lazy load pdf-parse on first use
         if (!pdfParse) {
-          const module = await import('pdf-parse');
-          pdfParse = module.default || module;
+          const module: any = await import('pdf-parse');
+          console.log('[PDF] Module keys:', Object.keys(module));
+          console.log('[PDF] module.default type:', typeof module.default);
+          console.log('[PDF] module type:', typeof module);
+          // pdf-parse exports the function directly as default
+          pdfParse = typeof module.default === 'function' ? module.default : 
+                     typeof module === 'function' ? module : 
+                     module.default?.default;
+          console.log('[PDF] pdfParse type after assignment:', typeof pdfParse);
         }
         const pdfBuffer = await fs.readFile(filePath);
         const pdfData = await pdfParse(pdfBuffer);
