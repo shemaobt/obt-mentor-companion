@@ -140,6 +140,21 @@ export interface IStorage {
   approveUser(userId: string, approvedById: string): Promise<User>;
   rejectUser(userId: string, approvedById: string): Promise<User>;
   
+  // Supervisor operations
+  getSupervisedUsers(supervisorId: string): Promise<(User & {
+    stats: {
+      totalChats: number;
+      totalMessages: number;
+      totalApiKeys: number;
+      totalApiCalls: number;
+    }
+  })[]>;
+  getAllSupervisors(): Promise<User[]>;
+  toggleUserSupervisorStatus(userId: string): Promise<User>;
+  updateUserSupervisor(userId: string, supervisorId: string | null): Promise<User>;
+  getSupervisedUsersCount(supervisorId: string): Promise<number>;
+  getPendingUsersForSupervisor(supervisorId: string): Promise<User[]>;
+  
   // System settings operations
   getSystemSetting(key: string): Promise<string | null>;
   setSystemSetting(key: string, value: string, updatedBy?: string): Promise<void>;
@@ -821,6 +836,138 @@ export class DatabaseStorage implements IStorage {
     }
 
     return updatedUser;
+  }
+
+  // Supervisor operations
+  async getSupervisedUsers(supervisorId: string): Promise<(User & {
+    stats: {
+      totalChats: number;
+      totalMessages: number;
+      totalApiKeys: number;
+      totalApiCalls: number;
+    }
+  })[]> {
+    const supervisedUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.supervisorId, supervisorId))
+      .orderBy(desc(users.createdAt));
+    
+    // Get stats for each supervised user (same as getAllUsersWithStats)
+    const usersWithStats = await Promise.all(
+      supervisedUsers.map(async (user) => {
+        // Get total chats for user
+        const [chatCount] = await db
+          .select({ count: count() })
+          .from(chats)
+          .where(eq(chats.userId, user.id));
+
+        // Get total messages from user's chats
+        const [messageCount] = await db
+          .select({ count: count() })
+          .from(messages)
+          .innerJoin(chats, eq(messages.chatId, chats.id))
+          .where(eq(chats.userId, user.id));
+
+        // Get total API keys for user
+        const [apiKeyCount] = await db
+          .select({ count: count() })
+          .from(apiKeys)
+          .where(eq(apiKeys.userId, user.id));
+
+        // Get total API calls from user's API keys
+        const [apiCallCount] = await db
+          .select({ count: count() })
+          .from(apiUsage)
+          .innerJoin(apiKeys, eq(apiUsage.apiKeyId, apiKeys.id))
+          .where(eq(apiKeys.userId, user.id));
+
+        return {
+          ...user,
+          stats: {
+            totalChats: chatCount.count || 0,
+            totalMessages: messageCount.count || 0,
+            totalApiKeys: apiKeyCount.count || 0,
+            totalApiCalls: apiCallCount.count || 0,
+          }
+        };
+      })
+    );
+    
+    return usersWithStats;
+  }
+
+  async getAllSupervisors(): Promise<User[]> {
+    const supervisors = await db
+      .select()
+      .from(users)
+      .where(eq(users.isSupervisor, true))
+      .orderBy(users.firstName, users.lastName);
+    
+    return supervisors;
+  }
+
+  async toggleUserSupervisorStatus(userId: string): Promise<User> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        isSupervisor: !user.isSupervisor,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    if (!updatedUser) {
+      throw new Error('Failed to toggle supervisor status');
+    }
+
+    return updatedUser;
+  }
+
+  async updateUserSupervisor(userId: string, supervisorId: string | null): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        supervisorId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    if (!updatedUser) {
+      throw new Error('User not found or failed to update supervisor');
+    }
+
+    return updatedUser;
+  }
+
+  async getSupervisedUsersCount(supervisorId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.supervisorId, supervisorId));
+    
+    return result.count || 0;
+  }
+
+  async getPendingUsersForSupervisor(supervisorId: string): Promise<User[]> {
+    const pendingUsers = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.supervisorId, supervisorId),
+          eq(users.approvalStatus, 'pending')
+        )
+      )
+      .orderBy(desc(users.createdAt));
+    
+    return pendingUsers;
   }
 
   // System settings operations

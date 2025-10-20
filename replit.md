@@ -95,12 +95,45 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - **Activities**: Log language translation mentorship work.
 - **Reports**: Generate, view, and delete quarterly reports. All portfolio sections include English labels.
 
+## User Roles and Permissions
+
+### Three-Tier User System
+1. **Admin** - Full system access
+   - Access all users (supervised and unsupervised)
+   - Manage system prompt and RAG documents
+   - Promote users to supervisor status
+   - Assign supervisors to users
+   - Approve/reject any user
+   - View and modify any facilitator profile
+
+2. **Supervisor** - Limited management access
+   - View only supervised users (assigned via supervisorId)
+   - Approve/reject supervised users pending approval
+   - View supervised users' facilitator profiles (competencies, qualifications, activities)
+   - Update supervised users' competency levels
+   - Download supervised users' quarterly reports
+   - Cannot access system prompt or RAG documents
+   - Cannot see users they don't supervise
+
+3. **Regular User** - Personal access only
+   - Manage own facilitator profile
+   - Chat with AI mentor
+   - Generate own quarterly reports
+   - Can select supervisor during registration
+
+### Supervisor Assignment Flow
+- New users can select a supervisor during signup (optional)
+- If supervisor is assigned, approval requests go to that supervisor
+- Admin can assign/reassign supervisors to existing users
+- Admin can promote/demote users to/from supervisor status
+
 ## Security Features
 - Session-based authentication with HTTP-only cookies.
 - Authorization with ownership validation for sensitive operations.
+- Hierarchical access control (Admin > Supervisor > User).
 - CSRF protection for state-changing endpoints.
-- Admin-controlled user approval workflow.
-- Secure report access (only to owning facilitator).
+- Admin and supervisor-controlled user approval workflow.
+- Secure report access (only to owning facilitator or their supervisor/admin).
 
 # External Dependencies
 

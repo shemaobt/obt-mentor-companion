@@ -275,6 +275,43 @@ async function requireAdmin(req: any, res: any, next: any) {
   }
 }
 
+// Supervisor authorization middleware - allows both admins and supervisors
+async function requireSupervisor(req: any, res: any, next: any) {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  
+  try {
+    const user = await storage.getUserById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    
+    // Check approval status first with legacy user override
+    const approvalStatus = user.approvalStatus ?? 'approved';
+    const effectiveApproval = (approvalStatus === 'pending' && user.lastLoginAt) ? 'approved' : approvalStatus;
+    
+    if (effectiveApproval !== 'approved') {
+      return res.status(403).json({ 
+        message: "Account access denied. Please contact support.",
+        approvalStatus: effectiveApproval
+      });
+    }
+    
+    // Check if user is admin or supervisor
+    if (!user.isAdmin && !user.isSupervisor) {
+      return res.status(403).json({ message: "Supervisor access required" });
+    }
+    
+    req.userId = user.id;
+    req.user = user;
+    return next();
+  } catch (error) {
+    console.error("Supervisor authorization error:", error);
+    return res.status(500).json({ message: "Authorization check failed" });
+  }
+}
+
 // CSRF protection middleware - requires custom header for state-changing operations
 function requireCSRFHeader(req: any, res: any, next: any) {
   const customHeader = req.get('X-Requested-With');
@@ -292,6 +329,7 @@ const signupValidationSchema = z.object({
   lastName: z.string().optional(),
   region: z.string().optional(),
   mentorSupervisor: z.string().optional(),
+  supervisorId: z.string().uuid().optional(), // ID of the supervisor to assign
 });
 
 const loginValidationSchema = z.object({
@@ -341,18 +379,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(userData.password, 12);
       
-      // Extract facilitator profile data
-      const { region, mentorSupervisor, ...userDataOnly } = userData;
+      // Extract facilitator profile data and supervisor info
+      const { region, mentorSupervisor, supervisorId, ...userDataOnly } = userData;
       
       // Check if approval is required
       const requireApproval = await storage.getSystemSetting('requireApproval');
       const approvalStatus = requireApproval === 'true' ? 'pending' : 'approved';
       
-      // Create user
+      // Create user with supervisor assignment
       const user = await storage.createUser({
         ...userDataOnly,
         password: hashedPassword,
-        approvalStatus
+        approvalStatus,
+        supervisorId: supervisorId || null, // Assign supervisor if provided
       });
       
       // Automatically create facilitator profile for new users
@@ -521,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Debug logging for admin status
-      console.log(`[Auth] User ${user.email} - isAdmin: ${user.isAdmin}, userId: ${user.id}`);
+      console.log(`[Auth] User ${user.email} - isAdmin: ${user.isAdmin}, isSupervisor: ${user.isSupervisor}, userId: ${user.id}`);
       
       res.json({
         id: user.id,
@@ -529,6 +568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: user.firstName,
         lastName: user.lastName,
         isAdmin: user.isAdmin,
+        isSupervisor: user.isSupervisor,
+        supervisorId: user.supervisorId,
       });
     } catch (error) {
       console.error("Get user error:", error);
@@ -2090,6 +2131,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/admin/users/:userId/supervisor', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Validation: ensure userId is provided and is a valid UUID format
+      const userIdSchema = z.string().uuid();
+      const validatedUserId = userIdSchema.parse(userId);
+
+      const updatedUser = await storage.toggleUserSupervisorStatus(validatedUserId);
+      
+      // Return sanitized user data
+      const sanitizedUser = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        isSupervisor: updatedUser.isSupervisor,
+        updatedAt: updatedUser.updatedAt
+      };
+
+      res.json(sanitizedUser);
+    } catch (error) {
+      console.error("Error toggling user supervisor status:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user ID format", errors: error.errors });
+      }
+      if (error instanceof Error && error.message === 'User not found') {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(500).json({ message: "Failed to update user supervisor status" });
+    }
+  });
+
+  app.patch('/api/admin/users/:userId/assign-supervisor', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { supervisorId } = req.body;
+      
+      // Validation
+      const userIdSchema = z.string().uuid();
+      const supervisorIdSchema = z.string().uuid().nullable();
+      
+      const validatedUserId = userIdSchema.parse(userId);
+      const validatedSupervisorId = supervisorIdSchema.parse(supervisorId);
+
+      const updatedUser = await storage.updateUserSupervisor(validatedUserId, validatedSupervisorId);
+      
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        supervisorId: updatedUser.supervisorId,
+        updatedAt: updatedUser.updatedAt
+      });
+    } catch (error) {
+      console.error("Error assigning supervisor:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input format", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to assign supervisor" });
+    }
+  });
+
+  app.get('/api/admin/supervisors', requireAdmin, async (req: any, res) => {
+    try {
+      const supervisors = await storage.getAllSupervisors();
+      res.json(supervisors);
+    } catch (error) {
+      console.error("Error fetching supervisors:", error);
+      res.status(500).json({ message: "Failed to fetch supervisors" });
+    }
+  });
+
   app.delete('/api/admin/users/:userId', requireAdmin, requireCSRFHeader, async (req: any, res) => {
     try {
       const { userId } = req.params;
@@ -2634,6 +2747,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error saving system prompt:", error);
       res.status(500).json({ message: "Failed to save system prompt" });
+    }
+  });
+
+  // Supervisor Routes - For managing supervised users
+  app.get('/api/supervisor/supervised-users', requireSupervisor, async (req: any, res) => {
+    try {
+      const supervisedUsers = await storage.getSupervisedUsers(req.userId);
+      res.json(supervisedUsers);
+    } catch (error) {
+      console.error("Error fetching supervised users:", error);
+      res.status(500).json({ message: "Failed to fetch supervised users" });
+    }
+  });
+
+  app.get('/api/supervisor/pending-users', requireSupervisor, async (req: any, res) => {
+    try {
+      const pendingUsers = await storage.getPendingUsersForSupervisor(req.userId);
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+      res.status(500).json({ message: "Failed to fetch pending users" });
+    }
+  });
+
+  app.patch('/api/supervisor/users/:userId/approve', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify user is supervised by this supervisor
+      const userToApprove = await storage.getUserById(userId);
+      if (!userToApprove) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Allow admin to approve anyone, supervisor can only approve their supervised users
+      if (!req.user.isAdmin && userToApprove.supervisorId !== req.userId) {
+        return res.status(403).json({ message: "You can only approve users you supervise" });
+      }
+      
+      const approvedUser = await storage.approveUser(userId, req.userId);
+      res.json(approvedUser);
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(500).json({ message: "Failed to approve user" });
+    }
+  });
+
+  app.patch('/api/supervisor/users/:userId/reject', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify user is supervised by this supervisor
+      const userToReject = await storage.getUserById(userId);
+      if (!userToReject) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Allow admin to reject anyone, supervisor can only reject their supervised users
+      if (!req.user.isAdmin && userToReject.supervisorId !== req.userId) {
+        return res.status(403).json({ message: "You can only reject users you supervise" });
+      }
+      
+      const rejectedUser = await storage.rejectUser(userId, req.userId);
+      res.json(rejectedUser);
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+      res.status(500).json({ message: "Failed to reject user" });
+    }
+  });
+
+  app.get('/api/supervisor/users/:userId/facilitator', requireSupervisor, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify user is supervised by this supervisor
+      const supervisedUser = await storage.getUserById(userId);
+      if (!supervisedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Allow admin to view anyone, supervisor can only view their supervised users
+      if (!req.user.isAdmin && supervisedUser.supervisorId !== req.userId) {
+        return res.status(403).json({ message: "You can only view users you supervise" });
+      }
+      
+      const facilitator = await storage.getFacilitatorByUserId(userId);
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+      
+      // Get competencies, qualifications, and activities
+      const competencies = await storage.getFacilitatorCompetencies(facilitator.id);
+      const qualifications = await storage.getFacilitatorQualifications(facilitator.id);
+      const activities = await storage.getFacilitatorActivities(facilitator.id);
+      
+      res.json({
+        facilitator,
+        competencies,
+        qualifications,
+        activities,
+      });
+    } catch (error) {
+      console.error("Error fetching facilitator profile:", error);
+      res.status(500).json({ message: "Failed to fetch facilitator profile" });
+    }
+  });
+
+  app.patch('/api/supervisor/users/:userId/competencies/:competencyId', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { userId, competencyId } = req.params;
+      const { status, notes } = req.body;
+      
+      // Verify user is supervised by this supervisor
+      const supervisedUser = await storage.getUserById(userId);
+      if (!supervisedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Allow admin to update anyone, supervisor can only update their supervised users
+      if (!req.user.isAdmin && supervisedUser.supervisorId !== req.userId) {
+        return res.status(403).json({ message: "You can only update users you supervise" });
+      }
+      
+      const updatedCompetency = await storage.updateCompetencyStatus(competencyId, status, notes);
+      res.json(updatedCompetency);
+    } catch (error) {
+      console.error("Error updating competency:", error);
+      res.status(500).json({ message: "Failed to update competency" });
+    }
+  });
+
+  app.get('/api/supervisor/users/:userId/reports/:reportId', requireSupervisor, async (req: any, res) => {
+    try {
+      const { userId, reportId } = req.params;
+      
+      // Verify user is supervised by this supervisor
+      const supervisedUser = await storage.getUserById(userId);
+      if (!supervisedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Allow admin to view anyone, supervisor can only view their supervised users
+      if (!req.user.isAdmin && supervisedUser.supervisorId !== req.userId) {
+        return res.status(403).json({ message: "You can only view reports of users you supervise" });
+      }
+      
+      const report = await storage.getQuarterlyReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      // Verify report belongs to the supervised user
+      const facilitator = await storage.getFacilitatorByUserId(userId);
+      if (!facilitator || report.facilitatorId !== facilitator.id) {
+        return res.status(403).json({ message: "Report access denied" });
+      }
+      
+      // Return report file path for download
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      res.status(500).json({ message: "Failed to fetch report" });
     }
   });
 

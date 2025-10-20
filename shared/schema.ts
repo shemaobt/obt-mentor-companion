@@ -118,12 +118,14 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isSupervisor: boolean("is_supervisor").notNull().default(false),
+  supervisorId: varchar("supervisor_id"), // ID of the supervisor (if this user has one)
   // OpenAI thread for intertwined chats (shared across all user's chats)
   userThreadId: varchar("user_thread_id"),
   // Approval system fields
   approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"),
   approvedAt: timestamp("approved_at"),
-  approvedBy: varchar("approved_by"), // Admin user ID who approved this user
+  approvedBy: varchar("approved_by"), // Admin or Supervisor user ID who approved this user
   // Usage tracking fields
   chatCount: integer("chat_count").notNull().default(0),
   messageCount: integer("message_count").notNull().default(0),
