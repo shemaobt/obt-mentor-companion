@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,8 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import Sidebar from "@/components/sidebar";
-import { Upload, FileText, Trash2, Save } from "lucide-react";
+import { Upload, FileText, Trash2, Save, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 interface Document {
   id: string;
@@ -25,6 +25,8 @@ export default function AdminDocuments() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [systemPrompt, setSystemPrompt] = useState("");
+
+  console.log('[AdminDocuments] RENDERING - user:', user?.email, 'isAdmin:', user?.isAdmin);
 
   // Carregar documentos
   const { data: documents = [] } = useQuery<Document[]>({
@@ -84,132 +86,151 @@ export default function AdminDocuments() {
   };
 
   if (!user?.isAdmin) {
-    return <div className="p-8">Acesso negado</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Acesso Negado</h1>
+          <p className="text-muted-foreground mb-4">Apenas administradores podem acessar esta página</p>
+          <Link href="/">
+            <Button>Voltar ao Chat</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto p-8">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-card">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold">Configuração do Assistente</h1>
+              <p className="text-sm text-muted-foreground">Prompt e documentos de contexto</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        
+        {/* SEÇÃO 1: PROMPT DO SISTEMA */}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <FileText className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-semibold">Prompt do Sistema</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Instruções que o assistente seguirá em todas as conversas
+          </p>
+          <Textarea
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            placeholder="Digite as instruções do sistema aqui..."
+            className="min-h-[200px] mb-4 font-mono text-sm"
+          />
+          <Button onClick={() => toast({ title: "Prompt salvo (funcionalidade em desenvolvimento)" })}>
+            <Save className="mr-2 h-4 w-4" />
+            Salvar Prompt
+          </Button>
+        </Card>
+
+        {/* SEÇÃO 2: DOCUMENTOS DE CONTEXTO */}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Upload className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-semibold">Documentos de Contexto</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">
+            Faça upload de documentos (PDF, DOCX, TXT) que o assistente usará como referência
+          </p>
           
-          {/* TÍTULO PRINCIPAL */}
+          {/* Upload */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Configuração do Assistente</h1>
-            <p className="text-muted-foreground">
-              Configure o prompt do sistema e adicione documentos de contexto
-            </p>
+            <Label htmlFor="file-upload" className="cursor-pointer">
+              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm font-medium mb-1">
+                  Clique para fazer upload ou arraste o arquivo aqui
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PDF, DOCX ou TXT (máx. 10MB)
+                </p>
+              </div>
+            </Label>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
           </div>
 
-          {/* SEÇÃO 1: PROMPT DO SISTEMA */}
-          <Card className="p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <FileText className="h-6 w-6" />
-              <h2 className="text-2xl font-semibold">Prompt do Sistema</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Instruções que o assistente seguirá em todas as conversas
-            </p>
-            <Textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Digite as instruções do sistema aqui..."
-              className="min-h-[200px] mb-4 font-mono text-sm"
-            />
-            <Button onClick={() => toast({ title: "Prompt salvo (em desenvolvimento)" })}>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Prompt
-            </Button>
-          </Card>
-
-          {/* SEÇÃO 2: DOCUMENTOS DE CONTEXTO */}
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Upload className="h-6 w-6" />
-              <h2 className="text-2xl font-semibold">Documentos de Contexto</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">
-              Faça upload de documentos (PDF, DOCX, TXT) que o assistente usará como referência
-            </p>
+          {/* Lista de Documentos */}
+          <div className="space-y-3">
+            <h3 className="font-medium mb-3">
+              Documentos Carregados ({documents.length})
+            </h3>
             
-            {/* Upload */}
-            <div className="mb-8">
-              <Label htmlFor="file-upload" className="cursor-pointer">
-                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
-                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">
-                    Clique para fazer upload ou arraste o arquivo aqui
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PDF, DOCX ou TXT (máx. 10MB)
-                  </p>
-                </div>
-              </Label>
-              <input
-                id="file-upload"
-                type="file"
-                accept=".pdf,.docx,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-
-            {/* Lista de Documentos */}
-            <div className="space-y-3">
-              <h3 className="font-medium mb-3">
-                Documentos Carregados ({documents.length})
-              </h3>
-              
-              {documents.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
+            {documents.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
                   Nenhum documento carregado ainda
                 </p>
-              ) : (
-                documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg bg-card"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{doc.filename}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.chunkCount} chunks • {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={doc.isActive}
-                          onCheckedChange={() => toggleMutation.mutate(doc.documentId)}
-                        />
-                        <Label className="text-sm">
-                          {doc.isActive ? 'Ativo' : 'Inativo'}
-                        </Label>
-                      </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (confirm(`Remover "${doc.filename}"?`)) {
-                            deleteMutation.mutate(doc.documentId);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+              </div>
+            ) : (
+              documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">{doc.filename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {doc.chunkCount} chunks • {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={doc.isActive}
+                        onCheckedChange={() => toggleMutation.mutate(doc.documentId)}
+                      />
+                      <Label className="text-sm">
+                        {doc.isActive ? 'Ativo' : 'Inativo'}
+                      </Label>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm(`Remover "${doc.filename}"?`)) {
+                          deleteMutation.mutate(doc.documentId);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );
