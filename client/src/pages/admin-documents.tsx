@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,10 +25,13 @@ interface Document {
 }
 
 export default function AdminDocuments() {
+  const [location] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  console.log('[AdminDocuments] Component rendering:', { location, isAuthenticated, isLoading, isAdmin: user?.isAdmin });
 
   // Redirect to login if not authenticated, to dashboard if not admin
   useEffect(() => {
@@ -182,8 +186,11 @@ export default function AdminDocuments() {
   };
 
   if (!isAuthenticated || !user?.isAdmin) {
+    console.log('[AdminDocuments] Returning null - auth check failed');
     return null;
   }
+
+  console.log('[AdminDocuments] Rendering full page layout');
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -191,7 +198,7 @@ export default function AdminDocuments() {
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto p-4 md:p-8 max-w-6xl">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Document Management</h1>
+            <h1 className="text-3xl font-bold mb-2" data-testid="heading-document-management">Document Management</h1>
             <p className="text-muted-foreground">
               Upload and manage documents for the AI assistant's knowledge base
             </p>
