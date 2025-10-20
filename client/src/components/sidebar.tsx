@@ -34,7 +34,8 @@ import {
   UserCheck,
   Shield,
   Link2,
-  Play
+  Play,
+  FileText
 } from "lucide-react";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
