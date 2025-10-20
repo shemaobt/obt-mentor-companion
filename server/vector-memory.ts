@@ -597,6 +597,30 @@ export async function deleteChatEmbeddings(chatId: string): Promise<void> {
 }
 
 /**
+ * Delete all embeddings for a specific document
+ */
+export async function deleteDocumentChunks(documentId: string): Promise<void> {
+  try {
+    // Delete all points with this documentId
+    await qdrant.delete(COLLECTION_NAME, {
+      filter: {
+        must: [
+          {
+            key: 'documentId',
+            match: { value: documentId },
+          },
+        ],
+      },
+    });
+
+    console.log(`[Qdrant] Deleted all chunks for document ${documentId}`);
+  } catch (error) {
+    console.error(`[Qdrant] Error deleting chunks for document ${documentId}:`, error);
+    // Don't throw - we don't want embedding deletion failures to break document deletion
+  }
+}
+
+/**
  * Search for relevant active document chunks
  */
 export async function searchActiveDocuments(params: {
