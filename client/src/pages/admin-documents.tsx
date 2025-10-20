@@ -75,7 +75,7 @@ export default function AdminDocuments() {
   // Toggle ativo/inativo
   const toggleMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      return apiRequest(`/api/admin/documents/${documentId}/toggle`, { method: 'PATCH' });
+      return apiRequest('PATCH', `/api/admin/documents/${documentId}/toggle`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
@@ -86,7 +86,7 @@ export default function AdminDocuments() {
   // Deletar documento
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      return apiRequest(`/api/admin/documents/${documentId}`, { method: 'DELETE' });
+      return apiRequest('DELETE', `/api/admin/documents/${documentId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/documents"] });
@@ -97,11 +97,7 @@ export default function AdminDocuments() {
   // Salvar prompt do sistema
   const savePromptMutation = useMutation({
     mutationFn: async (prompt: string) => {
-      return apiRequest('/api/admin/system-prompt', {
-        method: 'POST',
-        body: JSON.stringify({ prompt }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiRequest('POST', '/api/admin/system-prompt', { prompt });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/system-prompt"] });
