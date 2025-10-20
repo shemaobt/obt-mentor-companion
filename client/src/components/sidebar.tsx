@@ -568,6 +568,17 @@ export default function Sidebar({
                     )}
                   </Button>
                 </Link>
+                <Link href="/admin/documents" className="block">
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start text-sm px-3 md:px-4 ${isMobile ? 'h-10 sm:h-12' : 'py-2 h-auto'}`}
+                    onClick={() => setUserMenuOpen(false)}
+                    data-testid="link-admin-documents"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span className="flex-1 text-left">Documents</span>
+                  </Button>
+                </Link>
                 <Separator className="my-1" />
               </>
             )}
