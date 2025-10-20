@@ -1058,18 +1058,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })}\n\n`);
 
       try {
-        // Generate streaming AI response with relevant context
-        const threadId = await getChatThreadId(chatId, userId);
         let assistantMessageId: string | null = null;
         let fullContent = "";
 
-        // Prepare user message with context if available
-        const messageWithContext = relevantContext 
-          ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
-          : content;
+        // Check if using LangChain or OpenAI Assistant API
+        if (USE_LANGCHAIN) {
+          console.log('[LangChain Streaming] Processing message with RAG-optimized LangChain agent');
+          
+          // Verify facilitator exists for LangChain (required for portfolio tools)
+          if (!facilitatorId) {
+            res.write(`data: ${JSON.stringify({ 
+              type: 'error', 
+              data: { message: "Facilitator profile required. Please complete your profile first." }
+            })}\n\n`);
+            res.end();
+            return;
+          }
+          
+          // Get chat history for LangChain
+          const chatHistory = await storage.getChatMessages(chatId, userId);
+          
+          // Process with LangChain agent (this uses RAG and is optimized!)
+          const langchainResponse = await processMessageWithLangChain(
+            storage,
+            userId,
+            facilitatorId,
+            content,
+            chatHistory,
+            relevantContext,
+            imageFilePaths.length > 0 ? imageFilePaths : undefined
+          );
+          
+          // Create assistant message
+          const assistantMessage = await storage.createMessage({
+            chatId,
+            role: "assistant",
+            content: "", // Will be updated incrementally
+          });
+          assistantMessageId = assistantMessage.id;
+          
+          // Send assistant message created event
+          res.write(`data: ${JSON.stringify({ 
+            type: 'assistant_message_start',
+            data: assistantMessage
+          })}\n\n`);
+          
+          // Simulate streaming by chunking the response
+          const words = langchainResponse.split(' ');
+          const chunkSize = 3; // Stream 3 words at a time for smooth experience
+          
+          for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
+            fullContent += chunk;
+            
+            res.write(`data: ${JSON.stringify({ 
+              type: 'content', 
+              data: chunk 
+            })}\n\n`);
+            
+            // Small delay for smooth streaming effect
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          
+          // Update the assistant message with final content
+          await storage.updateMessage(assistantMessageId, { content: fullContent });
+          
+          // Store assistant message embedding in Qdrant (non-blocking)
+          storeMessageEmbedding({
+            messageId: assistantMessageId,
+            chatId,
+            userId,
+            facilitatorId,
+            content: fullContent,
+            role: 'assistant',
+            timestamp: new Date(),
+          }).catch(err => console.error('Error storing assistant message embedding:', err));
+          
+          // Track message creation and API usage for streaming
+          await Promise.all([
+            storage.incrementUserMessageCount(userId),
+            storage.incrementUserApiUsage(userId)
+          ]);
+          
+          // Send completion event
+          res.write(`data: ${JSON.stringify({ 
+            type: 'done', 
+            data: { content: fullContent, threadId: null }
+          })}\n\n`);
+          
+        } else {
+          // Original OpenAI Assistant API path
+          console.log('[OpenAI Assistant Streaming] Using Assistants API');
+          
+          const threadId = await getChatThreadId(chatId, userId);
 
-        // Tool call executor for portfolio functions
-        const toolCallExecutor = {
+          // Prepare user message with context if available
+          const messageWithContext = relevantContext 
+            ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
+            : content;
+
+          // Tool call executor for portfolio functions
+          const toolCallExecutor = {
           executeToolCall: async (toolName: string, args: any): Promise<string> => {
             console.log(`[Tool Call] ${toolName}`, args);
             
@@ -1280,6 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
         }
+        } // End of else block (OpenAI Assistant API path)
       } catch (streamError) {
         console.error("Error in streaming response:", streamError);
         res.write(`data: ${JSON.stringify({ 
