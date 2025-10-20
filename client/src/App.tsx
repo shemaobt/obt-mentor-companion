@@ -39,16 +39,16 @@ function Router() {
         </>
       ) : (
         <>
-          <Route path="/" component={Home} />
-          <Route path="/chat/:chatId" component={Home} />
-          <Route path="/portfolio" component={Portfolio} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/api-keys" component={Dashboard} />
-          <Route path="/settings" component={Dashboard} />
           <Route path="/admin/feedback" component={AdminFeedback} />
           <Route path="/admin/users" component={AdminUsers} />
           <Route path="/admin/documents" component={AdminDocuments} />
           <Route path="/admin/portfolio/:userId" component={AdminPortfolioView} />
+          <Route path="/portfolio" component={Portfolio} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/api-keys" component={Dashboard} />
+          <Route path="/settings" component={Dashboard} />
+          <Route path="/chat/:chatId" component={Home} />
+          <Route path="/" component={Home} />
           <Route path="*" component={NotFound} />
         </>
       )}
