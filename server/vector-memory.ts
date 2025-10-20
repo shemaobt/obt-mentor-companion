@@ -347,6 +347,27 @@ export async function getComprehensiveContext(params: {
     
     let context = '';
 
+    // 0. Active Document Chunks (RAG context) - Search first as authoritative reference
+    try {
+      const documentChunks = await searchActiveDocuments({
+        query: params.query,
+        limit: 3,
+        scoreThreshold: 0.6,
+      });
+      
+      if (documentChunks && documentChunks.length > 0) {
+        context += '## Reference Materials:\n';
+        context += 'The following information is from uploaded training documents and should be used as authoritative reference:\n\n';
+        documentChunks.forEach((chunk, idx) => {
+          context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}):**\n`;
+          context += `${chunk.chunkText}\n\n`;
+        });
+        console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks`);
+      }
+    } catch (error) {
+      console.error('[Comprehensive Context] Error fetching documents:', error);
+    }
+
     // 1. Portfolio Data - Always include current facilitator profile
     if (params.facilitatorId) {
       try {
@@ -474,5 +495,57 @@ export async function getComprehensiveContext(params: {
   } catch (error) {
     console.error('[Comprehensive Context] Error building comprehensive context:', error);
     return '';
+  }
+}
+
+/**
+ * Search for relevant active document chunks
+ */
+export async function searchActiveDocuments(params: {
+  query: string;
+  limit?: number;
+  scoreThreshold?: number;
+}): Promise<Array<{
+  documentId: string;
+  documentName: string;
+  chunkText: string;
+  chunkIndex: number;
+  score: number;
+}>> {
+  try {
+    const queryEmbedding = await generateEmbedding(params.query);
+    const limit = params.limit || 5;
+    const scoreThreshold = params.scoreThreshold || 0.5;
+
+    // Build filter to only search active documents
+    const filter: any = {
+      must: [
+        {
+          key: 'isActive',
+          match: { value: true },
+        },
+      ],
+    };
+
+    const searchResults = await qdrant.search(COLLECTION_NAME, {
+      vector: queryEmbedding,
+      limit,
+      filter,
+      score_threshold: scoreThreshold,
+      with_payload: true,
+    });
+
+    return searchResults
+      .filter((result) => result.payload?.type === 'document')
+      .map((result) => ({
+        documentId: result.payload?.documentId as string,
+        documentName: result.payload?.documentName as string,
+        chunkText: result.payload?.chunkText as string,
+        chunkIndex: result.payload?.chunkIndex as number,
+        score: result.score,
+      }));
+  } catch (error) {
+    console.error('Error searching active documents:', error);
+    return [];
   }
 }

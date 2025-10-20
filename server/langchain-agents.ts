@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
-import { searchRelevantMessages, searchGlobalMemory } from "./vector-memory";
+import { searchRelevantMessages, searchGlobalMemory, searchActiveDocuments } from "./vector-memory";
 import { calculateCompetencyScores, scoreToStatus } from "./competency-mapping";
 import { CORE_COMPETENCIES } from "@shared/schema";
 
@@ -358,6 +358,21 @@ async function getRelevantContext(
   try {
     let contextParts: string[] = [];
 
+    // Search active document chunks (RAG context)
+    const documentChunks = await searchActiveDocuments({
+      query: userMessage,
+      limit: 3,
+      scoreThreshold: 0.6,
+    });
+    if (documentChunks && documentChunks.length > 0) {
+      contextParts.push("## Reference Materials:");
+      contextParts.push("The following information is from uploaded training documents and should be used as authoritative reference:");
+      documentChunks.forEach((chunk, idx) => {
+        contextParts.push(`\n### From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}):`);
+        contextParts.push(chunk.chunkText);
+      });
+    }
+
     // Search facilitator-specific memories
     if (facilitatorId) {
       const facilitatorMemories = await searchRelevantMessages({
@@ -366,7 +381,7 @@ async function getRelevantContext(
         limit: 5,
       });
       if (facilitatorMemories && facilitatorMemories.length > 0) {
-        contextParts.push("## Relevant Past Conversations:");
+        contextParts.push("\n## Relevant Past Conversations:");
         facilitatorMemories.forEach((memory, idx) => {
           contextParts.push(`\n### Memory ${idx + 1}:`);
           contextParts.push(memory.content);
