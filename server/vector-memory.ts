@@ -398,7 +398,7 @@ export async function getComprehensiveContext(params: {
       const documentChunks = await searchActiveDocuments({
         query: params.query,
         limit: 3,
-        scoreThreshold: 0.6,
+        scoreThreshold: 0.5, // Lowered from 0.6 to find more relevant matches
       });
       
       if (documentChunks && documentChunks.length > 0) {
@@ -408,7 +408,9 @@ export async function getComprehensiveContext(params: {
           context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}):**\n`;
           context += `${chunk.chunkText}\n\n`;
         });
-        console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks`);
+        console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks from PDFs`);
+      } else {
+        console.log('[Comprehensive Context] No relevant document chunks found for this query');
       }
     } catch (error) {
       console.error('[Comprehensive Context] Error fetching documents:', error);
@@ -522,7 +524,33 @@ export async function getComprehensiveContext(params: {
       console.error('[Comprehensive Context] Error fetching recent messages:', error);
     }
 
-    // 3. Vector Search Results (semantic search across past conversations)
+    // 3. Reference Materials from Uploaded Documents (HIGHEST PRIORITY)
+    try {
+      const documentChunks = await searchActiveDocuments({
+        query: params.query,
+        limit: 3,
+        scoreThreshold: 0.6,
+      });
+
+      if (documentChunks && documentChunks.length > 0) {
+        context += '\n\n## Reference Materials:\n';
+        context += 'The following excerpts are from official OBT training documents. Use ONLY this information to answer questions about OBT methodology, competencies, and best practices.\n\n';
+        
+        documentChunks.forEach((chunk, idx) => {
+          context += `\n### Document: ${chunk.documentName} (Chunk ${chunk.chunkIndex + 1})\n`;
+          context += `${chunk.chunkText}\n`;
+          context += `(Relevance score: ${(chunk.score * 100).toFixed(1)}%)\n`;
+        });
+        
+        console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks from PDFs`);
+      } else {
+        console.log('[Comprehensive Context] No relevant document chunks found');
+      }
+    } catch (error) {
+      console.error('[Comprehensive Context] Error searching documents:', error);
+    }
+
+    // 4. Vector Search Results (semantic search across past conversations)
     const vectorContext = await getContextForQuery({
       query: params.query,
       chatId: params.chatId,
@@ -587,9 +615,15 @@ export async function searchActiveDocuments(params: {
     const limit = params.limit || 5;
     const scoreThreshold = params.scoreThreshold || 0.5;
 
+    console.log(`[Document Search] Searching for: "${params.query}" (threshold: ${scoreThreshold}, limit: ${limit})`);
+
     // Build filter to only search active documents
     const filter: any = {
       must: [
+        {
+          key: 'type',
+          match: { value: 'document' },
+        },
         {
           key: 'isActive',
           match: { value: true },
@@ -605,7 +639,15 @@ export async function searchActiveDocuments(params: {
       with_payload: true,
     });
 
-    return searchResults
+    console.log(`[Document Search] Found ${searchResults.length} chunks from Qdrant`);
+    
+    if (searchResults.length > 0) {
+      searchResults.forEach((result, idx) => {
+        console.log(`  ${idx + 1}. ${result.payload?.documentName} (score: ${(result.score * 100).toFixed(1)}%)`);
+      });
+    }
+
+    const documentResults = searchResults
       .filter((result) => result.payload?.type === 'document')
       .map((result) => ({
         documentId: result.payload?.documentId as string,
@@ -614,8 +656,12 @@ export async function searchActiveDocuments(params: {
         chunkIndex: result.payload?.chunkIndex as number,
         score: result.score,
       }));
+
+    console.log(`[Document Search] Returning ${documentResults.length} document chunks`);
+    
+    return documentResults;
   } catch (error) {
-    console.error('Error searching active documents:', error);
+    console.error('[Document Search] Error searching active documents:', error);
     return [];
   }
 }
