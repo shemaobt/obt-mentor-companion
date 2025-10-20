@@ -3,11 +3,9 @@ import OpenAI from 'openai';
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
-import { createRequire } from 'module';
 
-// Use require for pdf-parse since it's a CommonJS module
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+// Lazy load pdf-parse (CommonJS module)
+let pdfParse: any = null;
 
 // Initialize Qdrant client
 const qdrant = new QdrantClient({
@@ -33,6 +31,11 @@ export async function parseDocument(filePath: string, fileType: string): Promise
   try {
     switch (fileType) {
       case 'pdf':
+        // Lazy load pdf-parse on first use
+        if (!pdfParse) {
+          const module = await import('pdf-parse');
+          pdfParse = module.default || module;
+        }
         const pdfBuffer = await fs.readFile(filePath);
         const pdfData = await pdfParse(pdfBuffer);
         return pdfData.text;
