@@ -118,10 +118,10 @@ export async function storeDocumentChunks(params: {
         payload: {
           type: 'document',
           documentId: params.documentId,
-          filename: params.filename,
+          documentName: params.filename, // Changed from 'filename' to 'documentName' for consistency
+          chunkText: chunk, // Changed from 'content' to 'chunkText' for consistency
           chunkIndex: i,
           totalChunks: params.chunks.length,
-          content: chunk,
           isActive: params.isActive,
           timestamp: new Date().toISOString(),
         },

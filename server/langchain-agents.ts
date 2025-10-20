@@ -369,65 +369,20 @@ export async function createMentorAgent(storage: IStorage, userId: string, facil
 
 /**
  * Retrieve relevant context from Qdrant vector memory
+ * NOTE: This function is DEPRECATED - use getComprehensiveContext instead which includes:
+ * - Document chunks (PDFs) 
+ * - Portfolio data
+ * - Recent messages
+ * - Vector search
+ * This function is kept for backward compatibility but should NOT be used
  */
 async function getRelevantContext(
   userId: string,
   facilitatorId: string | undefined,
   userMessage: string
 ): Promise<string> {
-  try {
-    let contextParts: string[] = [];
-
-    // Search active document chunks (RAG context)
-    const documentChunks = await searchActiveDocuments({
-      query: userMessage,
-      limit: 3,
-      scoreThreshold: 0.6,
-    });
-    if (documentChunks && documentChunks.length > 0) {
-      contextParts.push("## Reference Materials:");
-      contextParts.push("The following information is from uploaded training documents and should be used as authoritative reference:");
-      documentChunks.forEach((chunk, idx) => {
-        contextParts.push(`\n### From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}):`);
-        contextParts.push(chunk.chunkText);
-      });
-    }
-
-    // Search facilitator-specific memories
-    if (facilitatorId) {
-      const facilitatorMemories = await searchRelevantMessages({
-        query: userMessage,
-        facilitatorId,
-        limit: 5,
-      });
-      if (facilitatorMemories && facilitatorMemories.length > 0) {
-        contextParts.push("\n## Relevant Past Conversations:");
-        facilitatorMemories.forEach((memory, idx) => {
-          contextParts.push(`\n### Memory ${idx + 1}:`);
-          contextParts.push(memory.content);
-        });
-      }
-    }
-
-    // Search global memories from other facilitators
-    const globalMemories = await searchGlobalMemory({
-      query: userMessage,
-      excludeUserId: userId,
-      limit: 3,
-    });
-    if (globalMemories && globalMemories.length > 0) {
-      contextParts.push("\n## Related Experiences from Other Facilitators:");
-      globalMemories.forEach((memory, idx) => {
-        contextParts.push(`\n### Experience ${idx + 1}:`);
-        contextParts.push(memory.content);
-      });
-    }
-
-    return contextParts.length > 0 ? contextParts.join('\n') : '';
-  } catch (error) {
-    console.error('Error retrieving context from Qdrant:', error);
-    return '';
-  }
+  console.warn('[DEPRECATED] getRelevantContext called - should use getComprehensiveContext instead');
+  return ''; // Return empty string to avoid duplicate searches
 }
 
 /**
@@ -459,23 +414,19 @@ export async function processMessageWithLangChain(
   // Route to Mentor Agent (default for conversations, assessments, portfolio updates)
   const agent = await createMentorAgent(storage, userId, facilitatorId);
 
-  // Format chat history for LangGraph
-  const formattedHistory = chatHistory.slice(-20).map(msg => {
+  // Format chat history for LangGraph - trim to last 10 messages to reduce token usage
+  // This prevents old conversations from polluting the context
+  const formattedHistory = chatHistory.slice(-10).map(msg => {
     return {
       role: msg.role === 'user' ? 'human' : 'ai',
       content: msg.content,
     };
   });
 
-  // Retrieve relevant context from Qdrant if not provided
-  let context = providedContext;
-  if (!context) {
-    context = await getRelevantContext(userId, facilitatorId, userMessage);
-  }
-
-  // Add context to the user message if available
-  const messageWithContext = context 
-    ? `${context}\n\n${userMessage}`
+  // Use provided context (which already includes PDF search from getComprehensiveContext)
+  // Don't search again to avoid duplication
+  const messageWithContext = providedContext 
+    ? `${providedContext}\n\n---\n\nUser Question:\n${userMessage}`
     : userMessage;
 
   // Prepare message content (text + images for vision processing)
