@@ -597,7 +597,31 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool];
+  const attachCertificateTool = new DynamicStructuredTool({
+    name: "attach_certificate_to_qualification",
+    description: "Attach a certificate or document file that was uploaded in this conversation to a specific qualification. Use this when the user uploads a file (PDF, image, etc.) and tells you it's a certificate for one of their qualifications. You'll need the attachment ID from the message context and the qualification ID from their portfolio.",
+    schema: z.object({
+      attachmentId: z.string().describe("ID of the uploaded file attachment from the current message"),
+      qualificationId: z.string().describe("ID of the qualification to attach the certificate to"),
+    }),
+    func: async ({ attachmentId, qualificationId }) => {
+      try {
+        // Attach the certificate from message attachment to qualification with ownership validation
+        const attachment = await storage.attachCertificateFromMessageAttachment(attachmentId, qualificationId, facilitatorId);
+        
+        return `Certificate "${attachment.originalName}" successfully attached to qualification.`;
+      } catch (error: any) {
+        console.error("[Tool] Error attaching certificate:", error);
+        // Return explicit error message for AI to communicate to user
+        if (error.message.includes("Unauthorized")) {
+          return `Authorization error: ${error.message}`;
+        }
+        return `Error attaching certificate: ${error.message}`;
+      }
+    },
+  });
+
+  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool, attachCertificateTool];
 }
 
 /**

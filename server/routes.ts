@@ -924,15 +924,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wait a bit for attachments to be uploaded (they come in a separate request)
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Get any image attachments for vision processing
+      // Get any attachments for vision processing and context
       const attachments = await storage.getMessageAttachments(userMessage.id);
       const imageAttachments = attachments.filter(att => att.fileType === 'image');
       const imageFilePaths = imageAttachments.map(att => att.storagePath);
+      
+      // Include all attachment metadata in context for AI awareness
+      let attachmentContext = "";
+      if (attachments.length > 0) {
+        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachments.map(att => 
+          `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`
+        ).join("\n") + "\n";
+      }
 
       // Prepare user message with context if available
       const messageWithContext = relevantContext 
-        ? `${relevantContext}\n\n---\n\nUser Question:\n${content}`
-        : content;
+        ? `${relevantContext}${attachmentContext}\n\n---\n\nUser Question:\n${content}`
+        : `${attachmentContext}${content}`;
 
       // Verify facilitator exists for LangChain (required for portfolio tools)
       if (!facilitatorId) {

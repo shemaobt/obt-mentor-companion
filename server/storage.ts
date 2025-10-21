@@ -1233,6 +1233,98 @@ export class DatabaseStorage implements IStorage {
       .where(eq(qualificationAttachments.id, attachmentId));
   }
 
+  async attachCertificateFromMessageAttachment(messageAttachmentId: string, qualificationId: string, facilitatorId: string): Promise<QualificationAttachment> {
+    // Get the original message attachment with chat ownership info
+    const [sourceAttachmentRow] = await db
+      .select({
+        attachment: messageAttachments,
+        message: messages,
+        chat: chats,
+      })
+      .from(messageAttachments)
+      .innerJoin(messages, eq(messageAttachments.messageId, messages.id))
+      .innerJoin(chats, eq(messages.chatId, chats.id))
+      .where(eq(messageAttachments.id, messageAttachmentId));
+    
+    if (!sourceAttachmentRow) {
+      throw new Error("Message attachment not found");
+    }
+    
+    const sourceAttachment = sourceAttachmentRow.attachment;
+    const attachmentOwnerFacilitatorId = sourceAttachmentRow.chat.facilitatorId;
+    
+    // Verify qualification exists and get its facilitator ID
+    const [qualification] = await db
+      .select()
+      .from(facilitatorQualifications)
+      .where(eq(facilitatorQualifications.id, qualificationId));
+    
+    if (!qualification) {
+      throw new Error("Qualification not found");
+    }
+    
+    // CRITICAL AUTHORIZATION: Verify both attachment and qualification belong to the authenticated facilitator
+    if (attachmentOwnerFacilitatorId !== facilitatorId) {
+      throw new Error("Unauthorized: Cannot attach files from other users' messages");
+    }
+    
+    if (qualification.facilitatorId !== facilitatorId) {
+      throw new Error("Unauthorized: Cannot modify other users' qualifications");
+    }
+    
+    // Check if this attachment is already linked to this qualification (prevent duplicates)
+    const existing = await db
+      .select()
+      .from(qualificationAttachments)
+      .where(
+        and(
+          eq(qualificationAttachments.qualificationId, qualificationId),
+          eq(qualificationAttachments.originalName, sourceAttachment.originalName)
+        )
+      );
+    
+    if (existing.length > 0) {
+      return existing[0]; // Return existing attachment idempotently
+    }
+    
+    // Copy file to certificates directory
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    
+    const sourceFilePath = sourceAttachment.storagePath;
+    const fileExtension = path.extname(sourceAttachment.originalName);
+    const newFilename = `cert_${Date.now()}${fileExtension}`;
+    const certificatesDir = 'uploads/certificates';
+    
+    // Ensure certificates directory exists
+    await fs.mkdir(certificatesDir, { recursive: true });
+    
+    const targetPath = path.join(certificatesDir, newFilename);
+    
+    try {
+      // Copy the file
+      await fs.copyFile(sourceFilePath, targetPath);
+      
+      // Create qualification attachment record
+      const [newAttachment] = await db
+        .insert(qualificationAttachments)
+        .values({
+          qualificationId,
+          filename: newFilename,
+          originalName: sourceAttachment.originalName,
+          mimeType: sourceAttachment.mimeType,
+          fileSize: sourceAttachment.fileSize,
+          storagePath: targetPath,
+        })
+        .returning();
+      
+      return newAttachment;
+    } catch (error) {
+      console.error("Error copying certificate file:", error);
+      throw new Error("Failed to copy certificate file");
+    }
+  }
+
   // Mentorship activity operations
   async getFacilitatorActivities(facilitatorId: string): Promise<MentorshipActivity[]> {
     return await db
