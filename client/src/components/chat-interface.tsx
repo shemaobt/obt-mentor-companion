@@ -597,10 +597,10 @@ export default function ChatInterface({
     }
   };
 
-  // Auto-scroll disabled per user request
-  // useEffect(() => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  // }, [messages, isTyping]);
+  // Auto-scroll to show latest messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping, streamingMessage]);
 
   if (!chatId) {
     return (
