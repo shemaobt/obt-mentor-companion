@@ -48,17 +48,44 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const padding = 8;
       ctx.drawImage(img, padding, padding, 64 - padding * 2, 64 - padding * 2);
       
-      // Update favicon link elements
-      const faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-      const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
-      const shortcutIcon = document.querySelector('link[rel="shortcut icon"]') as HTMLLinkElement;
-      
+      // Convert canvas to data URL
       const faviconUrl = canvas.toDataURL('image/png');
       
-      if (faviconLink) faviconLink.href = faviconUrl;
-      if (appleTouchIcon) appleTouchIcon.href = faviconUrl;
-      if (shortcutIcon) shortcutIcon.href = faviconUrl;
+      // Update all favicon link elements
+      let faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      let appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+      let shortcutIcon = document.querySelector('link[rel="shortcut icon"]') as HTMLLinkElement;
+      
+      // Create link elements if they don't exist
+      if (!faviconLink) {
+        faviconLink = document.createElement('link');
+        faviconLink.rel = 'icon';
+        faviconLink.type = 'image/png';
+        document.head.appendChild(faviconLink);
+      }
+      
+      if (!appleTouchIcon) {
+        appleTouchIcon = document.createElement('link');
+        appleTouchIcon.rel = 'apple-touch-icon';
+        document.head.appendChild(appleTouchIcon);
+      }
+      
+      if (!shortcutIcon) {
+        shortcutIcon = document.createElement('link');
+        shortcutIcon.rel = 'shortcut icon';
+        document.head.appendChild(shortcutIcon);
+      }
+      
+      // Update href for all favicon links
+      faviconLink.href = faviconUrl;
+      appleTouchIcon.href = faviconUrl;
+      shortcutIcon.href = faviconUrl;
     };
+    
+    img.onerror = () => {
+      console.error('Failed to load logo-white.png for favicon generation');
+    };
+    
     img.src = '/logo-white.png';
   };
 
