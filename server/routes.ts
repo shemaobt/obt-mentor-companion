@@ -2875,6 +2875,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Competency Suggestions Routes
+  app.get('/api/facilitator/competency-suggestions', requireAuth, async (req: any, res) => {
+    try {
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.json([]);
+      }
+      
+      const suggestions = await storage.getPendingSuggestions(facilitator.id);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error fetching competency suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch competency suggestions" });
+    }
+  });
+
+  app.post('/api/facilitator/competency-suggestions/:id/respond', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { action } = req.body; // "accepted" or "rejected"
+      
+      if (!['accepted', 'rejected'].includes(action)) {
+        return res.status(400).json({ message: "Invalid action. Must be 'accepted' or 'rejected'" });
+      }
+
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+
+      // Update the suggestion status (with authorization check)
+      const suggestion = await storage.respondToSuggestion(id, facilitator.id, action);
+      
+      if (!suggestion) {
+        return res.status(404).json({ message: "Suggestion not found, already responded to, or not authorized" });
+      }
+      
+      // If accepted, update the competency level
+      if (action === 'accepted') {
+        await storage.upsertCompetency({
+          facilitatorId: facilitator.id,
+          competencyId: suggestion.competencyId,
+          status: suggestion.suggestedStatus,
+          notes: `Updated based on AI suggestion (${suggestion.evidenceCount} observations)`,
+        });
+      }
+      
+      res.json({ 
+        message: action === 'accepted' ? "Competency updated successfully" : "Suggestion rejected",
+        suggestion 
+      });
+    } catch (error) {
+      console.error("Error responding to competency suggestion:", error);
+      res.status(500).json({ message: "Failed to respond to suggestion" });
+    }
+  });
+
   // Qualification Routes
   app.get('/api/facilitator/qualifications', requireAuth, async (req: any, res) => {
     try {
