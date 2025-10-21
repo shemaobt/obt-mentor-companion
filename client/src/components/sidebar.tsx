@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/contexts/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
   MoreHorizontal, 
@@ -62,8 +62,6 @@ export default function Sidebar({
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { currentLogo } = useTheme();
-  const logoImage = currentLogo;
 
   // Check if user is admin (only admin can see dashboard, settings, etc.)
   // Properly type the user object for admin check
@@ -285,13 +283,8 @@ export default function Sidebar({
       <div className={`${isMobile ? 'p-3 phone-xs:p-2 phone-sm:p-3 pt-[max(1rem,env(safe-area-inset-top))]' : 'p-4'} border-b border-border`}>
         <div className="flex items-center justify-center h-10 relative">
           <div className="flex items-center space-x-3 phone-xs:space-x-2 phone-sm:space-x-3">
-            <Link href="/" className="h-8 w-8 phone-xs:h-6 phone-xs:w-6 phone-sm:h-8 phone-sm:w-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer">
-              <img 
-                src={logoImage} 
-                alt="OBT Mentor Companion Logo" 
-                className="h-8 w-8 phone-xs:h-6 phone-xs:w-6 phone-sm:h-8 phone-sm:w-8 object-contain"
-                data-testid="img-app-logo"
-              />
+            <Link href="/" className="flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer" data-testid="link-app-logo">
+              <LogoWithBackground size="sm" />
             </Link>
             <span className={`font-semibold text-foreground ${isMobile ? 'text-sm phone-xs:text-xs phone-sm:text-lg' : 'text-sm md:text-base'}`}>OBT Mentor Companion</span>
           </div>

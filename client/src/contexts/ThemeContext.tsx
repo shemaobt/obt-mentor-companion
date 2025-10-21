@@ -3,7 +3,6 @@ import { themes } from '@/lib/themes';
 
 interface ThemeContextType {
   currentTheme: string;
-  currentLogo: string;
   setTheme: (themeKey: string) => void;
 }
 
@@ -11,39 +10,65 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState('verdeClaro');
-  const [currentLogo, setCurrentLogo] = useState('/logo-verde.png');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
     setCurrentTheme(savedTheme);
-    updateLogo(savedTheme);
+    updateFavicon(savedTheme);
 
     const handleThemeChange = () => {
       const newTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
       setCurrentTheme(newTheme);
-      updateLogo(newTheme);
+      updateFavicon(newTheme);
     };
 
     window.addEventListener('theme-changed', handleThemeChange);
     return () => window.removeEventListener('theme-changed', handleThemeChange);
   }, []);
 
-  const updateLogo = (themeKey: string) => {
+  const updateFavicon = (themeKey: string) => {
     const theme = themes[themeKey];
-    if (theme?.icon) {
-      setCurrentLogo(theme.icon);
-    } else {
-      setCurrentLogo('/logo-verde.png');
-    }
+    if (!theme) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+    
+    // Fill background with theme color
+    ctx.fillStyle = theme.brand.hex;
+    ctx.fillRect(0, 0, 64, 64);
+    
+    // Load and draw white logo
+    const img = new Image();
+    img.onload = () => {
+      // Center the logo with padding
+      const padding = 8;
+      ctx.drawImage(img, padding, padding, 64 - padding * 2, 64 - padding * 2);
+      
+      // Update favicon link elements
+      const faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+      const shortcutIcon = document.querySelector('link[rel="shortcut icon"]') as HTMLLinkElement;
+      
+      const faviconUrl = canvas.toDataURL('image/png');
+      
+      if (faviconLink) faviconLink.href = faviconUrl;
+      if (appleTouchIcon) appleTouchIcon.href = faviconUrl;
+      if (shortcutIcon) shortcutIcon.href = faviconUrl;
+    };
+    img.src = '/logo-white.png';
   };
 
   const setTheme = (themeKey: string) => {
     setCurrentTheme(themeKey);
-    updateLogo(themeKey);
+    updateFavicon(themeKey);
   };
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, currentLogo, setTheme }}>
+    <ThemeContext.Provider value={{ currentTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

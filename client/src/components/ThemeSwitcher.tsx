@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,7 @@ import {
 import { themes, type ColorTheme } from '@/lib/themes';
 
 export function ThemeSwitcher() {
-  const [selectedTheme, setSelectedTheme] = useState<string>('olive');
+  const [selectedTheme, setSelectedTheme] = useState<string>('verdeClaro');
   const [open, setOpen] = useState(false);
 
   const applyTheme = (themeKey: string) => {
@@ -49,11 +49,11 @@ export function ThemeSwitcher() {
   };
 
   // Apply saved theme on mount
-  useState(() => {
+  useEffect(() => {
     const savedTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
     applyTheme(savedTheme);
     setSelectedTheme(savedTheme);
-  });
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -69,11 +69,7 @@ export function ThemeSwitcher() {
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          {Object.entries(themes).map(([key, theme]) => {
-            if (import.meta.env.DEV) {
-              console.log(`[ThemeSwitcher] ${key}: icon=${theme.icon}, hex=${theme.brand.hex}`);
-            }
-            return (
+          {Object.entries(themes).map(([key, theme]) => (
             <button
               key={key}
               onClick={() => {
@@ -91,19 +87,16 @@ export function ThemeSwitcher() {
               data-testid={`button-theme-${key}`}
             >
               <div className="flex flex-col items-center text-center gap-3">
-                {theme.icon ? (
+                <div
+                  className="w-16 h-16 rounded-lg flex items-center justify-center p-3"
+                  style={{ backgroundColor: theme.brand.hex }}
+                >
                   <img
-                    src={theme.icon}
+                    src="/logo-white.png"
                     alt={theme.name}
-                    className="w-16 h-16 rounded-md object-contain bg-white dark:bg-gray-100"
-                    key={theme.icon}
+                    className="w-full h-full object-contain"
                   />
-                ) : (
-                  <div
-                    className="w-16 h-16 rounded-md"
-                    style={{ backgroundColor: theme.brand.hex }}
-                  />
-                )}
+                </div>
                 <div>
                   <h3 className="font-semibold text-base mb-1">{theme.name}</h3>
                   <p className="text-xs text-muted-foreground">
@@ -131,8 +124,7 @@ export function ThemeSwitcher() {
                 </div>
               )}
             </button>
-          );
-          })}
+          ))}
         </div>
       </DialogContent>
     </Dialog>
