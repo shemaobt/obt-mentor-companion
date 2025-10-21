@@ -153,6 +153,39 @@ const documentUpload = multer({
   }
 });
 
+// Multer configuration for certificate uploads (PDF, images, DOCX)
+const certificateStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/certificates/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const certificateUpload = multer({
+  storage: certificateStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for certificates
+  },
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, JPEG, PNG, and DOCX files are allowed for certificates'));
+    }
+  }
+});
+
 // Original multer configuration for audio uploads (for backward compatibility)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -3028,6 +3061,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete qualification" });
     }
   });
+
+  // Qualification Certificate Routes
+  app.get('/api/facilitator/qualifications/:qualificationId/certificates', requireAuth, async (req: any, res) => {
+    try {
+      const { qualificationId } = req.params;
+      const attachments = await storage.getQualificationAttachments(qualificationId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching certificates:", error);
+      res.status(500).json({ message: "Failed to fetch certificates" });
+    }
+  });
+
+  app.post('/api/facilitator/qualifications/:qualificationId/certificates', 
+    requireAuth, 
+    requireCSRFHeader,
+    certificateUpload.single('certificate'), 
+    async (req: any, res) => {
+      try {
+        const { qualificationId } = req.params;
+        const file = req.file;
+        
+        if (!file) {
+          return res.status(400).json({ message: "Certificate file is required" });
+        }
+
+        // Ensure uploads/certificates directory exists
+        const certDir = path.join(process.cwd(), 'uploads', 'certificates');
+        await fs.mkdir(certDir, { recursive: true });
+        
+        const attachment = await storage.createQualificationAttachment({
+          qualificationId,
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          storagePath: file.path,
+        });
+        
+        res.json(attachment);
+      } catch (error) {
+        console.error("Error uploading certificate:", error);
+        res.status(500).json({ message: "Failed to upload certificate" });
+      }
+    }
+  );
+
+  app.delete('/api/facilitator/qualifications/:qualificationId/certificates/:attachmentId', 
+    requireAuth, 
+    requireCSRFHeader, 
+    async (req: any, res) => {
+      try {
+        const { attachmentId } = req.params;
+        
+        // Get attachment to delete file
+        const attachments = await storage.getQualificationAttachments(req.params.qualificationId);
+        const attachment = attachments.find(a => a.id === attachmentId);
+        
+        if (attachment) {
+          // Delete file from disk
+          try {
+            await fs.unlink(attachment.storagePath);
+          } catch (err) {
+            console.error("Error deleting file from disk:", err);
+          }
+        }
+        
+        await storage.deleteQualificationAttachment(attachmentId);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting certificate:", error);
+        res.status(500).json({ message: "Failed to delete certificate" });
+      }
+    }
+  );
+
+  app.get('/api/facilitator/qualifications/certificates/:attachmentId/download', 
+    requireAuth, 
+    async (req: any, res) => {
+      try {
+        const { attachmentId } = req.params;
+        
+        // Find the attachment across all qualifications
+        const facilitator = await storage.getFacilitatorByUserId(req.userId);
+        if (!facilitator) {
+          return res.status(404).json({ message: "Facilitator profile not found" });
+        }
+        
+        const qualifications = await storage.getFacilitatorQualifications(facilitator.id);
+        let attachment: any = null;
+        
+        for (const qual of qualifications) {
+          const attachments = await storage.getQualificationAttachments(qual.id);
+          attachment = attachments.find(a => a.id === attachmentId);
+          if (attachment) break;
+        }
+        
+        if (!attachment) {
+          return res.status(404).json({ message: "Certificate not found" });
+        }
+        
+        res.download(attachment.storagePath, attachment.originalName);
+      } catch (error) {
+        console.error("Error downloading certificate:", error);
+        res.status(500).json({ message: "Failed to download certificate" });
+      }
+    }
+  );
 
   // Mentorship Activity Routes
   app.get('/api/facilitator/activities', requireAuth, async (req: any, res) => {
