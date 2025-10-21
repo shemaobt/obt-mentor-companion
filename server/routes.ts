@@ -2773,6 +2773,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/facilitator/recalculate-competencies', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+      
+      await storage.recalculateCompetencies(facilitator.id);
+      const competencies = await storage.getFacilitatorCompetencies(facilitator.id);
+      
+      res.json({ 
+        message: "Competencies recalculated successfully",
+        competencies 
+      });
+    } catch (error) {
+      console.error("Error recalculating competencies:", error);
+      res.status(500).json({ message: "Failed to recalculate competencies" });
+    }
+  });
+
   // Qualification Routes
   app.get('/api/facilitator/qualifications', requireAuth, async (req: any, res) => {
     try {

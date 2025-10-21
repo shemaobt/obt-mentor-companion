@@ -33,7 +33,8 @@ import {
   Sparkles,
   Zap,
   Menu,
-  Pencil
+  Pencil,
+  RefreshCw
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -150,6 +151,27 @@ export default function Portfolio() {
       toast({
         title: "Error",
         description: "Failed to update competency",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Recalculate competencies mutation
+  const recalculateCompetenciesMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/facilitator/recalculate-competencies", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competencies'] });
+      toast({
+        title: "Success",
+        description: "Competencies recalculated successfully based on your qualifications and activities",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to recalculate competencies",
         variant: "destructive",
       });
     },
@@ -588,13 +610,27 @@ export default function Portfolio() {
             <TabsContent value="competencies" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Target className="h-5 w-5" />
-                    <span>Core Competencies</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Track the development of your OBT facilitation competencies
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Target className="h-5 w-5" />
+                        <span>Core Competencies</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Track the development of your OBT facilitation competencies
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => recalculateCompetenciesMutation.mutate()}
+                      disabled={recalculateCompetenciesMutation.isPending}
+                      variant="outline"
+                      size={isMobile ? "sm" : "default"}
+                      data-testid="button-recalculate-competencies"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${recalculateCompetenciesMutation.isPending ? 'animate-spin' : ''}`} />
+                      {!isMobile && "Recalculate"}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {loadingCompetencies ? (
