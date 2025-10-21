@@ -2987,6 +2987,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseTitle, institution, completionDate, credential, description } = req.body;
       
+      // Validate required fields
+      if (!courseTitle || !institution || !description) {
+        return res.status(400).json({ 
+          message: "Course title, institution, and description are required" 
+        });
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
       
       if (!facilitator) {
