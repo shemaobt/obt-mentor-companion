@@ -99,7 +99,15 @@ export default function Sidebar({
     select: (data: any) => data?.count || 0,
   });
 
-  // Show toast notification for pending users
+  // Fetch pending users count for supervisor users
+  const { data: supervisorPendingUsersCount = 0 } = useQuery<number>({
+    queryKey: ["/api/supervisor/pending-users/count"],
+    enabled: isSupervisor && !isAdmin, // Only for non-admin supervisors
+    retry: false,
+    select: (data: any) => data?.count || 0,
+  });
+
+  // Show toast notification for pending users (admin)
   useEffect(() => {
     if (isAdmin && pendingUsersCount > 0) {
       toast({
@@ -109,6 +117,17 @@ export default function Sidebar({
       });
     }
   }, [pendingUsersCount, isAdmin, toast]);
+
+  // Show toast notification for pending users (supervisor)
+  useEffect(() => {
+    if (isSupervisor && !isAdmin && supervisorPendingUsersCount > 0) {
+      toast({
+        title: "Pending User Approvals",
+        description: `You have ${supervisorPendingUsersCount} supervised user${supervisorPendingUsersCount > 1 ? 's' : ''} awaiting approval. Click My Supervised Users to review.`,
+        variant: "default",
+      });
+    }
+  }, [supervisorPendingUsersCount, isSupervisor, isAdmin, toast]);
 
   const createChatMutation = useMutation({
     mutationFn: async (assistantId: AssistantId) => {
@@ -591,6 +610,15 @@ export default function Sidebar({
                   >
                     <Users className="mr-2 h-4 w-4" />
                     <span className="flex-1 text-left">My Supervised Users</span>
+                    {supervisorPendingUsersCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="ml-2 h-5 min-w-[1.25rem] text-xs px-1.5 py-0 rounded-full flex items-center justify-center"
+                        data-testid="badge-supervisor-pending-users"
+                      >
+                        {supervisorPendingUsersCount}
+                      </Badge>
+                    )}
                   </Button>
                 </Link>
                 <Separator className="my-1" />

@@ -138,6 +138,7 @@ export default function SupervisorUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/supervisor/supervised-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supervisor/pending-users/count"] });
       toast({
         title: "Success",
         description: "User approved successfully",
@@ -173,6 +174,7 @@ export default function SupervisorUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/supervisor/supervised-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supervisor/pending-users/count"] });
       toast({
         title: "Success",
         description: "User rejected successfully",
