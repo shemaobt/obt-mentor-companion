@@ -259,6 +259,18 @@ export const facilitatorQualifications = pgTable("facilitator_qualifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Qualification certificate attachments
+export const qualificationAttachments = pgTable("qualification_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  qualificationId: varchar("qualification_id").notNull().references(() => facilitatorQualifications.id, { onDelete: "cascade" }),
+  filename: varchar("filename").notNull(), // Stored filename
+  originalName: varchar("original_name").notNull(), // User's original filename
+  mimeType: varchar("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(), // In bytes
+  storagePath: varchar("storage_path").notNull(), // Relative path to file
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Mentorship activities tracking (includes both translation work and general experiences)
 export const mentorshipActivities = pgTable("mentorship_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -451,10 +463,18 @@ export const facilitatorCompetenciesRelations = relations(facilitatorCompetencie
   }),
 }));
 
-export const facilitatorQualificationsRelations = relations(facilitatorQualifications, ({ one }) => ({
+export const facilitatorQualificationsRelations = relations(facilitatorQualifications, ({ one, many }) => ({
   facilitator: one(facilitators, {
     fields: [facilitatorQualifications.facilitatorId],
     references: [facilitators.id],
+  }),
+  attachments: many(qualificationAttachments),
+}));
+
+export const qualificationAttachmentsRelations = relations(qualificationAttachments, ({ one }) => ({
+  qualification: one(facilitatorQualifications, {
+    fields: [qualificationAttachments.qualificationId],
+    references: [facilitatorQualifications.id],
   }),
 }));
 
@@ -577,6 +597,11 @@ export const insertFacilitatorQualificationSchema = createInsertSchema(facilitat
   createdAt: true,
 });
 
+export const insertQualificationAttachmentSchema = createInsertSchema(qualificationAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMentorshipActivitySchema = createInsertSchema(mentorshipActivities).omit({
   id: true,
   createdAt: true,
@@ -631,6 +656,8 @@ export type FacilitatorCompetency = typeof facilitatorCompetencies.$inferSelect;
 export type InsertFacilitatorCompetency = z.infer<typeof insertFacilitatorCompetencySchema>;
 export type FacilitatorQualification = typeof facilitatorQualifications.$inferSelect;
 export type InsertFacilitatorQualification = z.infer<typeof insertFacilitatorQualificationSchema>;
+export type QualificationAttachment = typeof qualificationAttachments.$inferSelect;
+export type InsertQualificationAttachment = z.infer<typeof insertQualificationAttachmentSchema>;
 export type MentorshipActivity = typeof mentorshipActivities.$inferSelect;
 export type InsertMentorshipActivity = z.infer<typeof insertMentorshipActivitySchema>;
 export type QuarterlyReport = typeof quarterlyReports.$inferSelect;
