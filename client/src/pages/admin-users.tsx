@@ -643,7 +643,7 @@ export default function AdminUsers() {
                                       Admin
                                     </Badge>
                                   )}
-                                  {user.isSupervisor && !user.isAdmin && (
+                                  {user.isSupervisor && (
                                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" data-testid={`badge-supervisor-${user.id}`}>
                                       <UserCheck className="h-3 w-3 mr-1" />
                                       Supervisor
