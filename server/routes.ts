@@ -3024,6 +3024,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { qualificationId } = req.params;
       const { courseTitle, institution, completionDate, credential, description } = req.body;
       
+      // Validate that description is not empty if provided
+      if (description !== undefined && (!description || !description.trim())) {
+        return res.status(400).json({ 
+          message: "Description cannot be empty" 
+        });
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
       
       if (!facilitator) {

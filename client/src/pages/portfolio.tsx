@@ -203,7 +203,7 @@ export default function Portfolio() {
 
   // Create qualification mutation
   const createQualificationMutation = useMutation({
-    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; description?: string }) => {
+    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; description: string }) => {
       await apiRequest("POST", "/api/facilitator/qualifications", data);
     },
     onSuccess: () => {
@@ -230,7 +230,7 @@ export default function Portfolio() {
 
   // Update qualification mutation
   const updateQualificationMutation = useMutation({
-    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; description?: string }) => {
+    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; description: string }) => {
       const { id, ...updates } = data;
       await apiRequest("PATCH", `/api/facilitator/qualifications/${id}`, updates);
     },
