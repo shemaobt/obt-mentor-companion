@@ -4,10 +4,10 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/contexts/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageComponent from "./message";
+import LogoWithBackground from "./LogoWithBackground";
 import FeedbackForm from "./feedback-form";
 import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music } from "lucide-react";
 import { useOpenAISpeechRecognition } from "@/hooks/useOpenAISpeechRecognition";
@@ -76,8 +76,6 @@ export default function ChatInterface({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { currentLogo } = useTheme();
-  const logoImage = currentLogo;
   
   // Check for pending initial message from sessionStorage
   useEffect(() => {
@@ -720,13 +718,8 @@ export default function ChatInterface({
         
         <div className="flex-1 flex justify-center items-center">
           <div className={`max-w-2xl text-center mx-auto ${isMobile ? 'px-4 phone-xs:px-3 phone-sm:px-4' : ''}`}>
-            <div className="h-16 w-16 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
-              <img 
-                src={logoImage} 
-                alt="OBT Mentor Companion Logo" 
-                className="h-16 w-16 object-contain"
-                data-testid="img-welcome-screen-logo"
-              />
+            <div className="flex justify-center mx-auto mb-4">
+              <LogoWithBackground size="lg" />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-2">Welcome to OBT Mentor Companion</h2>
             <p className="text-muted-foreground mb-6">Your friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors within Youth With A Mission (YWAM).</p>
@@ -958,13 +951,8 @@ export default function ChatInterface({
         {messages.length === 0 && !streamingMessage && (
           <div className="flex justify-center">
             <div className={`max-w-2xl text-center mx-auto ${isMobile ? 'px-4 phone-xs:px-3 phone-sm:px-4' : ''}`}>
-              <div className="h-16 w-16 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                <img 
-                  src={logoImage} 
-                  alt="OBT Mentor Companion Logo" 
-                  className="h-16 w-16 object-contain"
-                  data-testid="img-welcome-logo"
-                />
+              <div className="flex justify-center mx-auto mb-4">
+                <LogoWithBackground size="lg" />
               </div>
               <h2 className="text-xl font-semibold text-foreground mb-2">Start a conversation</h2>
               <p className="text-muted-foreground mb-4">{ASSISTANT_CONFIG[currentAssistant]?.description || 'A friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators.'}</p>
@@ -987,13 +975,8 @@ export default function ChatInterface({
           <div className="flex justify-start" data-testid="streaming-message">
             <div className="max-w-2xl">
               <div className="flex items-start space-x-3">
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                  <img 
-                    src={logoImage} 
-                    alt="Assistant" 
-                    className="h-6 w-6 object-contain"
-                    data-testid="img-assistant-avatar-streaming"
-                  />
+                <div className="flex-shrink-0 mt-1">
+                  <LogoWithBackground size="sm" />
                 </div>
                 <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
                   <div className="text-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-streaming-content">
@@ -1016,13 +999,8 @@ export default function ChatInterface({
           <div className="flex justify-start" data-testid="typing-indicator">
             <div className="max-w-2xl">
               <div className="flex items-start space-x-3">
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                  <img 
-                    src={logoImage} 
-                    alt="Assistant" 
-                    className="h-6 w-6 object-contain"
-                    data-testid="img-assistant-avatar-typing"
-                  />
+                <div className="flex-shrink-0 mt-1">
+                  <LogoWithBackground size="sm" />
                 </div>
                 <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
                   <div className="flex space-x-1">

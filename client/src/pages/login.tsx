@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, CheckCircle, Clock, XCircle } from "lucide-react";
-import { getActiveTheme } from "@/lib/themes";
+import LogoWithBackground from "@/components/LogoWithBackground";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -27,11 +27,6 @@ function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
-
-  // Get the active theme's logo
-  const activeTheme = getActiveTheme();
-  const logoImage = activeTheme.icon || "/logo.png";
-  console.log("[Login] Active theme:", activeTheme.name, "Logo path:", logoImage);
 
   // Get URL search parameters to check for messages
   const urlParams = new URLSearchParams(window.location.search);
@@ -105,17 +100,8 @@ function Login() {
     <div className="min-h-screen overflow-y-auto px-4 flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div 
-            className="mx-auto h-16 w-16 rounded-lg flex items-center justify-center mb-4 overflow-hidden"
-            style={{ backgroundColor: `hsl(${activeTheme.brand.hsl})` }}
-          >
-            <img 
-              src={logoImage} 
-              alt="Logo" 
-              className="h-14 w-14 object-contain"
-              data-testid="img-login-logo"
-              style={{ filter: 'brightness(0) invert(1)' }}
-            />
+          <div className="mx-auto mb-4 flex justify-center">
+            <LogoWithBackground size="lg" />
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>

@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 import type { Message, MessageAttachment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
+import LogoWithBackground from "./LogoWithBackground";
 
 interface MessageProps {
   message: Message;
@@ -21,7 +21,6 @@ interface MessageProps {
 export default function MessageComponent({ message, speechSynthesis, selectedLanguage }: MessageProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { currentLogo } = useTheme();
   
   // Fetch attachments for this message
   const { data: attachments = [] } = useQuery<MessageAttachment[]>({
@@ -146,13 +145,8 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
     <div className="flex justify-start" data-testid={`message-assistant-${message.id}`}>
       <div className="max-w-2xl">
         <div className="flex items-start space-x-3">
-          <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-            <img 
-              src={currentLogo} 
-              alt="Assistant" 
-              className="h-6 w-6 object-contain"
-              data-testid={`img-assistant-avatar-${message.id}`}
-            />
+          <div className="flex-shrink-0 mt-1">
+            <LogoWithBackground size="sm" />
           </div>
           <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
             <div className="text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none" data-testid={`text-message-content-${message.id}`}>

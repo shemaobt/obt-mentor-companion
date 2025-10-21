@@ -9,7 +9,6 @@
 export interface ColorTheme {
   name: string;
   description: string;
-  icon?: string;      // Path to theme icon
   brand: {
     hex: string;        // Main brand color in hex
     rgb: string;        // RGB values
@@ -21,7 +20,6 @@ export const themes: Record<string, ColorTheme> = {
   areia: {
     name: "Sand",
     description: "Sandy beige tone",
-    icon: "/logo-areia.png",
     brand: {
       hex: "#C5C29F",
       rgb: "197, 194, 159",
@@ -32,7 +30,6 @@ export const themes: Record<string, ColorTheme> = {
   azul: {
     name: "Blue",
     description: "Soft blue-teal",
-    icon: "/logo-azul.png",
     brand: {
       hex: "#89AAA3",
       rgb: "137, 170, 163",
@@ -43,7 +40,6 @@ export const themes: Record<string, ColorTheme> = {
   telha: {
     name: "Terracotta",
     description: "Warm terracotta orange",
-    icon: "/logo-telha.png",
     brand: {
       hex: "#BE4A01",
       rgb: "190, 74, 1",
@@ -54,7 +50,6 @@ export const themes: Record<string, ColorTheme> = {
   verdeClaro: {
     name: "Light Green",
     description: "Light olive green",
-    icon: "/logo-verde-claro.png",
     brand: {
       hex: "#777D45",
       rgb: "119, 125, 69",
@@ -65,7 +60,6 @@ export const themes: Record<string, ColorTheme> = {
   verde: {
     name: "Green",
     description: "Dark forest green",
-    icon: "/logo-verde-escuro.png",
     brand: {
       hex: "#3F3E20",
       rgb: "63, 62, 32",
@@ -76,7 +70,6 @@ export const themes: Record<string, ColorTheme> = {
   preto: {
     name: "Black",
     description: "Deep charcoal black",
-    icon: "/logo-preto.png",
     brand: {
       hex: "#0A0703",
       rgb: "10, 7, 3",
