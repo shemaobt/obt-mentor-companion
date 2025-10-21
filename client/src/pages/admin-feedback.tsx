@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   Circle,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Menu
 } from "lucide-react";
 import type { Feedback } from "@shared/schema";
 
@@ -33,7 +34,7 @@ export default function AdminFeedback() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  // Sidebar is always visible, no toggle state needed
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -195,26 +196,56 @@ export default function AdminFeedback() {
 
   return (
     <div className="h-screen bg-background flex relative overflow-hidden" data-testid="page-admin-feedback">
-      {/* Sidebar - Always visible */}
-      <div className="h-screen w-80">
+      {/* Sidebar - Hidden on mobile by default */}
+      <div className={`
+        ${isMobile 
+          ? `fixed inset-y-0 left-0 z-50 transition-transform duration-300 ${
+              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            } w-4/5 max-w-sm`
+          : 'h-screen w-80'
+        }
+      `}>
         <Sidebar 
           isMobile={isMobile}
-          isOpen={true}
+          isOpen={isMobile ? sidebarOpen : true}
+          onClose={() => setSidebarOpen(false)}
         />
       </div>
+
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+          data-testid="overlay-sidebar"
+        />
+      )}
       
       <div className={`flex-1 h-screen overflow-y-auto ${isMobile ? 'p-4' : 'p-8'}`}>
         <div className={`${isMobile ? 'max-w-full' : 'max-w-7xl'} mx-auto`}>
           {/* Header */}
           <div className={`${isMobile ? 'mb-6' : 'mb-8'}`}>
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-foreground`}>
-                  Admin Feedback
-                </h1>
-                <p className={`text-muted-foreground mt-2 ${isMobile ? 'text-sm' : ''}`}>
-                  Manage user feedback and support requests
-                </p>
+              <div className="flex items-center gap-3">
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarOpen(true)}
+                    className="min-h-[44px] min-w-[44px]"
+                    data-testid="button-open-sidebar"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                )}
+                <div>
+                  <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-foreground`}>
+                    Admin Feedback
+                  </h1>
+                  <p className={`text-muted-foreground mt-2 ${isMobile ? 'text-sm' : ''}`}>
+                    Manage user feedback and support requests
+                  </p>
+                </div>
               </div>
             </div>
           </div>
