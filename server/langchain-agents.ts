@@ -216,6 +216,18 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
       try {
+        // Check for duplicate qualification (same course title and institution)
+        const existingQualifications = await storage.getQualificationsByFacilitatorId(facilitatorId);
+        const duplicate = existingQualifications.find(q => 
+          q.courseTitle.toLowerCase().trim() === courseTitle.toLowerCase().trim() &&
+          q.institution.toLowerCase().trim() === institution.toLowerCase().trim()
+        );
+        
+        if (duplicate) {
+          console.log(`[Tool] Duplicate qualification detected: ${courseTitle} from ${institution}`);
+          return `This qualification already exists in your portfolio: "${courseTitle}" from ${institution} (completed ${duplicate.completionDate ? new Date(duplicate.completionDate).toLocaleDateString() : 'unknown date'}). If you want to update it, please tell me what information needs to be changed.`;
+        }
+        
         // Parse completion date string to Date object
         let parsedDate: Date | undefined;
         if (completionDate) {
@@ -246,7 +258,11 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         return `Successfully added qualification: ${courseTitle} from ${institution}${levelInfo}. Competency scores have been automatically updated.`;
       } catch (error) {
         console.error(`[Tool Error] add_qualification failed:`, error);
-        return `Error adding qualification: ${error.message}`;
+        // Provide a more helpful error message
+        if (error.message && error.message.includes('duplicate')) {
+          return `This qualification appears to already exist in your portfolio. If you'd like to update it instead, please let me know what needs to be changed.`;
+        }
+        return `I encountered an error while trying to add this qualification. Error details: ${error.message}. Please try again or contact support if the problem persists.`;
       }
     },
   });
