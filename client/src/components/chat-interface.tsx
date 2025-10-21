@@ -9,6 +9,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageComponent from "./message";
 import LogoWithBackground from "./LogoWithBackground";
 import FeedbackForm from "./feedback-form";
+import ApiQuotaErrorDialog from "./api-quota-error-dialog";
 import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music } from "lucide-react";
 import { useOpenAISpeechRecognition } from "@/hooks/useOpenAISpeechRecognition";
 import { useOpenAISpeechSynthesis } from "@/hooks/useOpenAISpeechSynthesis";
@@ -69,6 +70,7 @@ export default function ChatInterface({
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showQuotaErrorDialog, setShowQuotaErrorDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -345,8 +347,10 @@ export default function ChatInterface({
         const messageData = await messageResponse.json();
         userMessageId = messageData.id;
         
-        // Upload the file
-        await uploadFileAttachment(userMessageId, file);
+        // Upload the file (userMessageId is guaranteed to be set here)
+        if (userMessageId) {
+          await uploadFileAttachment(userMessageId, file);
+        }
         setUploadProgress(0);
         
         // Update queries to show the message
@@ -381,6 +385,13 @@ export default function ChatInterface({
       });
 
       if (!response.ok) {
+        // Check if it's a quota error (429)
+        if (response.status === 429) {
+          setShowQuotaErrorDialog(true);
+          setIsTyping(false);
+          setStreamingMessage(null);
+          return;
+        }
         throw new Error('Streaming request failed');
       }
 
@@ -448,7 +459,20 @@ export default function ChatInterface({
                   break;
                   
                 case 'error':
-                  throw new Error(data.data.message);
+                  // Check if this is an API quota error
+                  const errorMessage = data.data.message || '';
+                  const isQuotaError = errorMessage.toLowerCase().includes('quota') || 
+                                       errorMessage.toLowerCase().includes('insufficient_quota') ||
+                                       errorMessage.includes('429');
+                  
+                  if (isQuotaError) {
+                    setShowQuotaErrorDialog(true);
+                    setIsTyping(false);
+                    setStreamingMessage(null);
+                    return; // Exit streaming
+                  }
+                  
+                  throw new Error(errorMessage);
               }
             } catch (parseError) {
               console.error('Error parsing SSE data:', parseError);
@@ -460,12 +484,22 @@ export default function ChatInterface({
       setMessage("");
       setIsTyping(false);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Streaming error:', error);
       setIsTyping(false);
       setStreamingMessage(null);
       
-      // Fallback to regular message sending
+      // Check if error is quota-related
+      const errorMessage = error?.message || '';
+      const isQuotaError = errorMessage.toLowerCase().includes('quota') || 
+                           errorMessage.toLowerCase().includes('insufficient_quota');
+      
+      if (isQuotaError) {
+        setShowQuotaErrorDialog(true);
+        return;
+      }
+      
+      // Fallback to regular message sending for other errors
       toast({
         title: "Streaming failed",
         description: "Falling back to regular messaging",
@@ -1150,6 +1184,11 @@ export default function ChatInterface({
           You are chatting with {ASSISTANT_CONFIG[currentAssistant]?.name || 'OBT Mentor Assistant'}
         </p>
       </div>
+      
+      <ApiQuotaErrorDialog 
+        open={showQuotaErrorDialog} 
+        onOpenChange={setShowQuotaErrorDialog}
+      />
     </div>
   );
 }
