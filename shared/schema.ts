@@ -291,6 +291,22 @@ export const quarterlyReports = pgTable("quarterly_reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Competency evidence tracking - observational data from conversations
+export const competencyEvidence = pgTable("competency_evidence", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull(), // References CORE_COMPETENCIES keys
+  evidenceText: text("evidence_text").notNull(), // What was observed/mentioned
+  chatId: varchar("chat_id").references(() => chats.id, { onDelete: "set null" }), // Which chat this came from
+  messageId: varchar("message_id").references(() => messages.id, { onDelete: "set null" }), // Specific message
+  source: varchar("source", { 
+    enum: ["conversation", "activity_log", "qualification_add", "supervisor_note"] 
+  }).notNull().default("conversation"),
+  strengthScore: integer("strength_score").notNull().default(5), // 1-10, how strong is this evidence
+  isAppliedToLevel: boolean("is_applied_to_level").notNull().default(false), // Was this used in a level update?
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Documents for RAG context
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -395,6 +411,7 @@ export const facilitatorsRelations = relations(facilitators, ({ one, many }) => 
   qualifications: many(facilitatorQualifications),
   activities: many(mentorshipActivities),
   reports: many(quarterlyReports),
+  evidence: many(competencyEvidence),
 }));
 
 export const facilitatorCompetenciesRelations = relations(facilitatorCompetencies, ({ one }) => ({
@@ -422,6 +439,21 @@ export const quarterlyReportsRelations = relations(quarterlyReports, ({ one }) =
   facilitator: one(facilitators, {
     fields: [quarterlyReports.facilitatorId],
     references: [facilitators.id],
+  }),
+}));
+
+export const competencyEvidenceRelations = relations(competencyEvidence, ({ one }) => ({
+  facilitator: one(facilitators, {
+    fields: [competencyEvidence.facilitatorId],
+    references: [facilitators.id],
+  }),
+  chat: one(chats, {
+    fields: [competencyEvidence.chatId],
+    references: [chats.id],
+  }),
+  message: one(messages, {
+    fields: [competencyEvidence.messageId],
+    references: [messages.id],
   }),
 }));
 
@@ -511,6 +543,11 @@ export const insertQuarterlyReportSchema = createInsertSchema(quarterlyReports).
   generatedAt: true,
 });
 
+export const insertCompetencyEvidenceSchema = createInsertSchema(competencyEvidence).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageAttachmentSchema = createInsertSchema(messageAttachments).omit({
   id: true,
   createdAt: true,
@@ -547,6 +584,8 @@ export type MentorshipActivity = typeof mentorshipActivities.$inferSelect;
 export type InsertMentorshipActivity = z.infer<typeof insertMentorshipActivitySchema>;
 export type QuarterlyReport = typeof quarterlyReports.$inferSelect;
 export type InsertQuarterlyReport = z.infer<typeof insertQuarterlyReportSchema>;
+export type CompetencyEvidence = typeof competencyEvidence.$inferSelect;
+export type InsertCompetencyEvidence = z.infer<typeof insertCompetencyEvidenceSchema>;
 export type MessageAttachment = typeof messageAttachments.$inferSelect;
 export type InsertMessageAttachment = z.infer<typeof insertMessageAttachmentSchema>;
 export type Document = typeof documents.$inferSelect;

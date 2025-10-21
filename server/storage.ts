@@ -12,6 +12,7 @@ import {
   facilitatorQualifications,
   mentorshipActivities,
   quarterlyReports,
+  competencyEvidence,
   systemSettings,
   documents,
   type User,
@@ -41,6 +42,8 @@ import {
   type InsertMentorshipActivity,
   type QuarterlyReport,
   type InsertQuarterlyReport,
+  type CompetencyEvidence,
+  type InsertCompetencyEvidence,
   type Document,
   type InsertDocument,
 } from "@shared/schema";
@@ -189,6 +192,13 @@ export interface IStorage {
   getLatestReport(facilitatorId: string): Promise<QuarterlyReport | undefined>;
   getQuarterlyReport(reportId: string): Promise<QuarterlyReport | undefined>;
   deleteQuarterlyReport(reportId: string): Promise<void>;
+  
+  // Competency evidence operations
+  getFacilitatorEvidence(facilitatorId: string): Promise<CompetencyEvidence[]>;
+  getCompetencyEvidence(facilitatorId: string, competencyId: string): Promise<CompetencyEvidence[]>;
+  createCompetencyEvidence(evidence: InsertCompetencyEvidence): Promise<CompetencyEvidence>;
+  getRecentEvidence(facilitatorId: string, limit: number): Promise<CompetencyEvidence[]>;
+  markEvidenceApplied(evidenceIds: string[]): Promise<void>;
   
   // Document operations
   getAllDocuments(): Promise<Document[]>;
@@ -1271,6 +1281,54 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(quarterlyReports)
       .where(eq(quarterlyReports.id, reportId));
+  }
+
+  // Competency evidence operations
+  async getFacilitatorEvidence(facilitatorId: string): Promise<CompetencyEvidence[]> {
+    return await db
+      .select()
+      .from(competencyEvidence)
+      .where(eq(competencyEvidence.facilitatorId, facilitatorId))
+      .orderBy(desc(competencyEvidence.createdAt));
+  }
+
+  async getCompetencyEvidence(facilitatorId: string, competencyId: string): Promise<CompetencyEvidence[]> {
+    return await db
+      .select()
+      .from(competencyEvidence)
+      .where(
+        and(
+          eq(competencyEvidence.facilitatorId, facilitatorId),
+          eq(competencyEvidence.competencyId, competencyId)
+        )
+      )
+      .orderBy(desc(competencyEvidence.createdAt));
+  }
+
+  async createCompetencyEvidence(evidence: InsertCompetencyEvidence): Promise<CompetencyEvidence> {
+    const [created] = await db
+      .insert(competencyEvidence)
+      .values(evidence)
+      .returning();
+    return created;
+  }
+
+  async getRecentEvidence(facilitatorId: string, limit: number): Promise<CompetencyEvidence[]> {
+    return await db
+      .select()
+      .from(competencyEvidence)
+      .where(eq(competencyEvidence.facilitatorId, facilitatorId))
+      .orderBy(desc(competencyEvidence.createdAt))
+      .limit(limit);
+  }
+
+  async markEvidenceApplied(evidenceIds: string[]): Promise<void> {
+    if (evidenceIds.length === 0) return;
+    
+    await db
+      .update(competencyEvidence)
+      .set({ isAppliedToLevel: true })
+      .where(inArray(competencyEvidence.id, evidenceIds));
   }
 
   // Document operations
