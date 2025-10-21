@@ -3224,7 +3224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reportId } = req.params;
       const userId = req.userId;
       
-      // Get user to check if admin
+      // Get user to check if admin/supervisor
       const user = await storage.getUserById(userId);
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
@@ -3235,11 +3235,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Report not found" });
       }
       
-      // Verify authorization: owner or admin
+      // Get the user who owns this report to check supervisor relationship
+      const reportOwnerUser = await storage.getUserByFacilitatorId(report.facilitatorId);
+      
+      // Verify authorization: owner, admin, or supervisor
       const isOwner = facilitator && report.facilitatorId === facilitator.id;
       const isAdmin = user?.isAdmin === true;
+      const isSupervisor = user?.isSupervisor === true && reportOwnerUser?.supervisorId === userId;
       
-      if (!isOwner && !isAdmin) {
+      if (!isOwner && !isAdmin && !isSupervisor) {
         return res.status(403).json({ message: "Unauthorized to download this report" });
       }
       
