@@ -206,7 +206,7 @@ function Login() {
 
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground text-[28px]">Don't have an account? </span>
-            <Link href="/signup" className="text-primary hover:underline" data-testid="link-signup">
+            <Link href="/signup" className="text-primary hover:underline text-[24px]" data-testid="link-signup">
               Sign up
             </Link>
           </div>
