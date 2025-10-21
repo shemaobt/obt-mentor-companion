@@ -6,6 +6,11 @@ The OBT Mentor Companion is an AI-powered full-stack web application designed fo
 - **Brand Color**: #86884C (olive-green tone) - RGB(134, 136, 76) - HSL(62, 28%, 42%)
 - **UI Framework**: Consistent olive-green palette throughout light and dark modes
 - **Typography**: Inter font family with English UI labels
+- **Logo System**: Unified white logo icon with theme-colored backgrounds across all 6 themes
+  - Single white logo file (`/logo-white.png`) used universally
+  - LogoWithBackground component dynamically applies theme colors
+  - Favicon automatically updates with theme changes using canvas generation
+  - Theme switcher shows white logos on colored backgrounds for all theme previews
 
 # User Preferences
 
