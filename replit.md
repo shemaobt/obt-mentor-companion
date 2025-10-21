@@ -41,8 +41,9 @@ Preferred communication style: Simple, everyday language.
 - **Schema Management**: Drizzle Kit
 
 ## Data Models
-- **Core Entities**: Users, Facilitators, Facilitator Competencies, Facilitator Qualifications, Mentorship Activities, Quarterly Reports, Chats, Messages, Message Attachments.
+- **Core Entities**: Users, Facilitators, Facilitator Competencies, Facilitator Qualifications, Qualification Attachments, Mentorship Activities, Quarterly Reports, Chats, Messages, Message Attachments.
 - **Competencies**: Tracks 11 OBT core competencies with bilingual names and status levels (not_started, emerging, growing, proficient, advanced).
+- **Qualification Attachments**: Stores certificate files (PDF, JPEG, PNG, DOCX) linked to qualifications with duplicate detection and facilitator-scoped authorization.
 
 ### 11 Core Competencies (Bilingual Framework)
 1. **Habilidades Interpessoais / Interpersonal Skills** - Lead team with active listening, empathy, facilitation
@@ -67,15 +68,16 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - **Framework**: LangChain/LangGraph with React Agent pattern
 - **Provider**: OpenAI GPT-4o for all agents
 - **Agent**: LangGraph `createReactAgent` (modern 2025 approach)
-- **Tools**: DynamicStructuredTool with Zod validation (add_qualification, add_activity, update_competency, create_general_experience, track_competency_evidence, suggest_competency_update)
+- **Tools**: DynamicStructuredTool with Zod validation (add_qualification, add_activity, update_competency, create_general_experience, track_competency_evidence, suggest_competency_update, attach_certificate_to_qualification)
 - **Duplicate Detection**: Robust text normalization with Unicode handling, diacritic removal, whitespace collapsing, preserving significant symbols (+, #, .) for technical terms. Returns idempotent success responses to prevent AI retries.
 - **Thread Management**: Message history managed by LangGraph
-- **Context System**: Enhanced three-layer injection with conversation analysis:
+- **Context System**: Enhanced four-layer injection with conversation analysis:
     1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities with two-pillar gap analysis
     2. **Recent Message History**: Last 20 messages with role-based formatting
     3. **Semantic Vector Search**: Qdrant-powered facilitator-specific + global search with competency-aware filtering
     4. **Conversation Analysis**: Automatic detection of competencies being discussed with targeted best practices retrieval
-- **Vision**: Planned (currently logs attachment awareness)
+    5. **Attachment Awareness**: Message attachments (files uploaded) are surfaced with ID, filename, type, size for AI context
+- **Vision**: GPT-4o vision for images
 - **Audio**: Whisper API for transcription
 - **Validation**: Requires facilitator profile
 - **Intelligent Competency Evaluation**: Automatic scoring based on education (qualifications) and experience (activities) with course-level multipliers and duration weighting
@@ -85,7 +87,9 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
     - **Evidence-Based Thresholds**: Requires minimum evidence count and quality before suggesting updates
     - **Suggestion Approval Workflow**: Backend creates suggestions with evidence summaries; facilitators accept/reject via API endpoints
     - **Security**: Facilitator-scoped authorization prevents cross-facilitator tampering
+    - **attach_certificate_to_qualification**: AI can attach uploaded files (certificates) from chat to qualifications with ownership validation
 - **Conversational System Prompt**: AI acts as trusted friend/mentor that observes naturally, evaluates continuously, and gently corrects using ONLY uploaded documentation
+- **Certificate Attachment System**: Users can upload certificates (PDF, images, DOCX) in chat; AI can attach them to qualifications with facilitator ownership validation
 
 ### Shared Infrastructure
 - **Global Memory**: Qdrant Cloud vector database for conversation embeddings
@@ -123,7 +127,12 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 
 ## Portfolio Management
 - **Competencies**: Track progress and update status.
-- **Qualifications**: Record formal courses and credentials.
+- **Qualifications**: Record formal courses and credentials with MANDATORY descriptions and OPTIONAL certificate attachments.
+  - Descriptions are enforced at all layers (DB schema .notNull(), backend validation, TypeScript types, UI validation)
+  - Certificate uploads support PDF, JPEG, PNG, DOCX up to 10MB
+  - Multiple certificates per qualification with download, preview, and delete capabilities
+  - Facilitator-scoped authorization prevents cross-user access
+  - AI can attach uploaded chat files to qualifications via attach_certificate_to_qualification tool
 - **Activities**: Log language translation mentorship work.
 - **Reports**: Generate, view, and delete quarterly reports. All portfolio sections include English labels.
 
