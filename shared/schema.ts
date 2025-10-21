@@ -307,6 +307,29 @@ export const competencyEvidence = pgTable("competency_evidence", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Competency suggestions - AI-proposed competency level updates awaiting user approval
+export const competencySuggestions = pgTable("competency_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull(), // References CORE_COMPETENCIES keys
+  currentStatus: varchar("current_status", { 
+    enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
+  }).notNull(),
+  suggestedStatus: varchar("suggested_status", { 
+    enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
+  }).notNull(),
+  evidenceSummary: text("evidence_summary").notNull(), // Summary of evidence supporting this suggestion
+  evidenceCount: integer("evidence_count").notNull(), // Number of evidence pieces
+  averageStrength: integer("average_strength").notNull(), // Average strength score
+  status: varchar("status", { 
+    enum: ["pending", "accepted", "rejected"] 
+  }).notNull().default("pending"),
+  chatId: varchar("chat_id").references(() => chats.id, { onDelete: "set null" }), // Which chat triggered this
+  messageId: varchar("message_id").references(() => messages.id, { onDelete: "set null" }), // AI message containing suggestion
+  respondedAt: timestamp("responded_at"), // When user accepted/rejected
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Documents for RAG context
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -464,6 +487,21 @@ export const competencyEvidenceRelations = relations(competencyEvidence, ({ one 
   }),
 }));
 
+export const competencySuggestionsRelations = relations(competencySuggestions, ({ one }) => ({
+  facilitator: one(facilitators, {
+    fields: [competencySuggestions.facilitatorId],
+    references: [facilitators.id],
+  }),
+  chat: one(chats, {
+    fields: [competencySuggestions.chatId],
+    references: [chats.id],
+  }),
+  message: one(messages, {
+    fields: [competencySuggestions.messageId],
+    references: [messages.id],
+  }),
+}));
+
 export const documentsRelations = relations(documents, ({ one }) => ({
   uploader: one(users, {
     fields: [documents.uploadedBy],
@@ -555,6 +593,12 @@ export const insertCompetencyEvidenceSchema = createInsertSchema(competencyEvide
   createdAt: true,
 });
 
+export const insertCompetencySuggestionSchema = createInsertSchema(competencySuggestions).omit({
+  id: true,
+  createdAt: true,
+  respondedAt: true,
+});
+
 export const insertMessageAttachmentSchema = createInsertSchema(messageAttachments).omit({
   id: true,
   createdAt: true,
@@ -593,6 +637,8 @@ export type QuarterlyReport = typeof quarterlyReports.$inferSelect;
 export type InsertQuarterlyReport = z.infer<typeof insertQuarterlyReportSchema>;
 export type CompetencyEvidence = typeof competencyEvidence.$inferSelect;
 export type InsertCompetencyEvidence = z.infer<typeof insertCompetencyEvidenceSchema>;
+export type CompetencySuggestion = typeof competencySuggestions.$inferSelect;
+export type InsertCompetencySuggestion = z.infer<typeof insertCompetencySuggestionSchema>;
 export type MessageAttachment = typeof messageAttachments.$inferSelect;
 export type InsertMessageAttachment = z.infer<typeof insertMessageAttachmentSchema>;
 export type Document = typeof documents.$inferSelect;

@@ -513,11 +513,13 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const suggestCompetencyUpdateTool = new DynamicStructuredTool({
     name: "suggest_competency_update",
-    description: "Analyze accumulated evidence and suggest a competency level update. Only use this when you've observed MULTIPLE strong pieces of evidence (3+ mentions with average strength 6+) demonstrating consistent growth. The system will validate if there's enough evidence before making a suggestion.",
+    description: "Analyze accumulated evidence and suggest a competency level update. Only use this when you've observed MULTIPLE strong pieces of evidence (3+ mentions with average strength 6+) demonstrating consistent growth. Creates a stored suggestion for user approval.",
     schema: z.object({
       competencyId: z.string().describe("ID of the competency to analyze"),
+      chatId: z.string().optional().describe("Current chat ID"),
+      messageId: z.string().optional().describe("Current message ID"),
     }),
-    func: async ({ competencyId }) => {
+    func: async ({ competencyId, chatId, messageId }) => {
       try {
         // Verify competency ID is valid
         if (!CORE_COMPETENCIES[competencyId]) {
@@ -564,14 +566,30 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           return `${CORE_COMPETENCIES[competencyId].name} is already at or above suggested level (${currentStatus}).`;
         }
 
-        // Get most recent 3 pieces of evidence for context
-        const recentEvidence = evidence.slice(0, 3);
-        const evidenceList = recentEvidence.map(e => `"${e.evidenceText}"`).join(', ');
+        // Get most recent 5 pieces of evidence for summary
+        const recentEvidence = evidence.slice(0, 5);
+        const evidenceSummary = recentEvidence.map((e, idx) => 
+          `${idx + 1}. ${e.evidenceText} (strength: ${e.strengthScore}/10)`
+        ).join('\n');
 
         const competencyName = CORE_COMPETENCIES[competencyId].name;
 
-        // Return a message the AI should present to the user
-        return `I've noticed consistent growth in your ${competencyName} skills! Based on ${evidence.length} observations (average strength ${avgStrength.toFixed(1)}/10), including: ${evidenceList}. Your current level is "${currentStatus}", but "${suggestedStatus}" seems more fitting. Would you like me to update this?`;
+        // Create stored suggestion for user approval
+        await storage.createCompetencySuggestion({
+          facilitatorId,
+          competencyId,
+          currentStatus,
+          suggestedStatus,
+          evidenceSummary: `Based on ${evidence.length} observations (avg strength: ${avgStrength.toFixed(1)}/10):\n\n${evidenceSummary}`,
+          evidenceCount: evidence.length,
+          averageStrength: Math.round(avgStrength),
+          status: 'pending',
+          chatId: chatId || null,
+          messageId: messageId || null,
+        });
+
+        // Return a message for the AI to present conversationally
+        return `SUCCESS: Created pending suggestion for ${competencyName} (${currentStatus} → ${suggestedStatus}). Present this to the user: "I've been noticing your ${competencyName.toLowerCase()} skills really developing through what you've shared. Based on ${evidence.length} observations, I've created a suggestion to update your portfolio from ${currentStatus} to ${suggestedStatus}. You can review and approve it in your portfolio page whenever you're ready!"`;
       } catch (error) {
         console.error(`[Tool Error] suggest_competency_update failed:`, error);
         return `Error analyzing competency: ${error.message}`;
