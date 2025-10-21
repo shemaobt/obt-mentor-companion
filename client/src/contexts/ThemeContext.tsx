@@ -13,11 +13,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
+    console.log('[ThemeContext] Initializing with theme:', savedTheme);
     setCurrentTheme(savedTheme);
     updateFavicon(savedTheme);
 
     const handleThemeChange = () => {
       const newTheme = localStorage.getItem('obt-theme') || 'verdeClaro';
+      console.log('[ThemeContext] Theme changed to:', newTheme);
       setCurrentTheme(newTheme);
       updateFavicon(newTheme);
     };
@@ -27,15 +29,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateFavicon = (themeKey: string) => {
+    console.log('[ThemeContext] updateFavicon called with theme:', themeKey);
     const theme = themes[themeKey];
-    if (!theme) return;
+    if (!theme) {
+      console.error('[ThemeContext] Theme not found:', themeKey);
+      return;
+    }
+    
+    console.log('[ThemeContext] Using theme color:', theme.brand.hex);
     
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
     
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('[ThemeContext] Could not get canvas context');
+      return;
+    }
     
     // Fill background with theme color
     ctx.fillStyle = theme.brand.hex;
@@ -44,12 +55,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Load and draw white logo
     const img = new Image();
     img.onload = () => {
+      console.log('[ThemeContext] White logo loaded successfully');
       // Center the logo with padding
       const padding = 8;
       ctx.drawImage(img, padding, padding, 64 - padding * 2, 64 - padding * 2);
       
       // Convert canvas to data URL
       const faviconUrl = canvas.toDataURL('image/png');
+      console.log('[ThemeContext] Favicon generated, length:', faviconUrl.length);
       
       // Update all favicon link elements
       let faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
@@ -58,6 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       
       // Create link elements if they don't exist
       if (!faviconLink) {
+        console.log('[ThemeContext] Creating icon link element');
         faviconLink = document.createElement('link');
         faviconLink.rel = 'icon';
         faviconLink.type = 'image/png';
@@ -65,12 +79,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
       
       if (!appleTouchIcon) {
+        console.log('[ThemeContext] Creating apple-touch-icon link element');
         appleTouchIcon = document.createElement('link');
         appleTouchIcon.rel = 'apple-touch-icon';
         document.head.appendChild(appleTouchIcon);
       }
       
       if (!shortcutIcon) {
+        console.log('[ThemeContext] Creating shortcut icon link element');
         shortcutIcon = document.createElement('link');
         shortcutIcon.rel = 'shortcut icon';
         document.head.appendChild(shortcutIcon);
@@ -80,12 +96,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       faviconLink.href = faviconUrl;
       appleTouchIcon.href = faviconUrl;
       shortcutIcon.href = faviconUrl;
+      
+      console.log('[ThemeContext] Favicon updated successfully');
     };
     
     img.onerror = () => {
-      console.error('Failed to load logo-white.png for favicon generation');
+      console.error('[ThemeContext] Failed to load logo-white.png for favicon generation');
     };
     
+    console.log('[ThemeContext] Loading logo-white.png...');
     img.src = '/logo-white.png';
   };
 
