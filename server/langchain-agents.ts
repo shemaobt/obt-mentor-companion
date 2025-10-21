@@ -477,7 +477,75 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool];
+  const suggestCompetencyUpdateTool = new DynamicStructuredTool({
+    name: "suggest_competency_update",
+    description: "Analyze accumulated evidence and suggest a competency level update. Only use this when you've observed MULTIPLE strong pieces of evidence (3+ mentions with average strength 6+) demonstrating consistent growth. The system will validate if there's enough evidence before making a suggestion.",
+    schema: z.object({
+      competencyId: z.string().describe("ID of the competency to analyze"),
+    }),
+    func: async ({ competencyId }) => {
+      try {
+        // Verify competency ID is valid
+        if (!CORE_COMPETENCIES[competencyId]) {
+          return `Invalid competency ID: ${competencyId}`;
+        }
+
+        // Get current competency status
+        const competencies = await storage.getFacilitatorCompetencies(facilitatorId);
+        const currentComp = competencies.find(c => c.competencyId === competencyId);
+        const currentStatus = currentComp?.status || 'not_started';
+
+        // Get ALL evidence for this competency and sort by most recent first
+        const allEvidence = await storage.getCompetencyEvidence(facilitatorId, competencyId);
+        const evidence = allEvidence.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        
+        // Evidence analysis thresholds
+        const MIN_EVIDENCE_COUNT = 3;
+        const MIN_AVG_STRENGTH = 6;
+
+        if (evidence.length < MIN_EVIDENCE_COUNT) {
+          return `Not enough evidence yet for ${CORE_COMPETENCIES[competencyId].name}. Need ${MIN_EVIDENCE_COUNT} observations, currently have ${evidence.length}.`;
+        }
+
+        // Calculate average strength score
+        const avgStrength = evidence.reduce((sum, e) => sum + e.strengthScore, 0) / evidence.length;
+
+        if (avgStrength < MIN_AVG_STRENGTH) {
+          return `Evidence strength too low for ${CORE_COMPETENCIES[competencyId].name}. Average: ${avgStrength.toFixed(1)}/10, need ${MIN_AVG_STRENGTH}+.`;
+        }
+
+        // Determine suggested status based on evidence strength and count
+        const statusProgression = ['not_started', 'emerging', 'growing', 'proficient', 'advanced'];
+        const currentIndex = statusProgression.indexOf(currentStatus);
+        
+        // Strong evidence (8+) or many items (5+) → jump 2 levels, otherwise 1 level
+        const levelsToIncrease = (avgStrength >= 8 || evidence.length >= 5) ? 2 : 1;
+        const suggestedIndex = Math.min(currentIndex + levelsToIncrease, statusProgression.length - 1);
+        const suggestedStatus = statusProgression[suggestedIndex];
+
+        // Don't suggest if already at suggested level or higher
+        if (suggestedIndex <= currentIndex) {
+          return `${CORE_COMPETENCIES[competencyId].name} is already at or above suggested level (${currentStatus}).`;
+        }
+
+        // Get most recent 3 pieces of evidence for context
+        const recentEvidence = evidence.slice(0, 3);
+        const evidenceList = recentEvidence.map(e => `"${e.evidenceText}"`).join(', ');
+
+        const competencyName = CORE_COMPETENCIES[competencyId].name;
+
+        // Return a message the AI should present to the user
+        return `I've noticed consistent growth in your ${competencyName} skills! Based on ${evidence.length} observations (average strength ${avgStrength.toFixed(1)}/10), including: ${evidenceList}. Your current level is "${currentStatus}", but "${suggestedStatus}" seems more fitting. Would you like me to update this?`;
+      } catch (error) {
+        console.error(`[Tool Error] suggest_competency_update failed:`, error);
+        return `Error analyzing competency: ${error.message}`;
+      }
+    },
+  });
+
+  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool];
 }
 
 /**
