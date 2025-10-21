@@ -45,6 +45,7 @@ function Router() {
           <Route path="/admin/documents" component={AdminDocuments} />
           <Route path="/admin/portfolio/:userId" component={AdminPortfolioView} />
           <Route path="/supervisor/users" component={SupervisorUsers} />
+          <Route path="/supervisor/users/:userId/portfolio" component={AdminPortfolioView} />
           <Route path="/portfolio" component={Portfolio} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/api-keys" component={Dashboard} />
