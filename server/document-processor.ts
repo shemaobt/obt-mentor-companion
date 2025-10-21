@@ -4,6 +4,7 @@ import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { createRequire } from 'module';
+import { detectCompetenciesInConversation } from './competency-mapping.js';
 
 // Import pdf-parse using require (CommonJS module)
 const require = createRequire(import.meta.url);
@@ -59,21 +60,132 @@ export async function parseDocument(filePath: string, fileType: string): Promise
 }
 
 /**
- * Chunk text into smaller pieces for embedding
- * Note: Using ~225 words per chunk as proxy for 300 tokens (1 token ≈ 0.75 words)
+ * Enhanced semantic chunking with smaller, more precise chunks
+ * - Respects paragraph boundaries (double newlines)
+ * - Smaller chunks (~100 words) for better retrieval precision
+ * - Falls back to sentence splitting if paragraphs are too large
+ * - Maintains overlap for context continuity
  */
-export function chunkText(text: string, chunkSize: number = 225, overlap: number = 50): string[] {
+export function chunkText(text: string, maxChunkSize: number = 100, overlap: number = 20): string[] {
   const chunks: string[] = [];
-  const words = text.split(/\s+/);
   
-  for (let i = 0; i < words.length; i += chunkSize - overlap) {
-    const chunk = words.slice(i, i + chunkSize).join(' ');
-    if (chunk.trim().length > 0) {
-      chunks.push(chunk.trim());
+  // Split by double newlines (paragraphs)
+  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  
+  let currentChunk: string[] = [];
+  let currentWordCount = 0;
+  
+  for (const paragraph of paragraphs) {
+    const paragraphWords = paragraph.trim().split(/\s+/);
+    const paragraphWordCount = paragraphWords.length;
+    
+    // If paragraph itself is small enough, try to combine with previous
+    if (paragraphWordCount <= maxChunkSize) {
+      // Check if adding this paragraph would exceed max size
+      if (currentWordCount + paragraphWordCount <= maxChunkSize) {
+        currentChunk.push(paragraph.trim());
+        currentWordCount += paragraphWordCount;
+      } else {
+        // Save current chunk and start new one
+        if (currentChunk.length > 0) {
+          chunks.push(currentChunk.join('\n\n'));
+          
+          // Add overlap from end of previous chunk
+          const overlapWords = currentChunk.join(' ').split(/\s+/).slice(-overlap);
+          currentChunk = overlapWords.length > 0 ? [overlapWords.join(' ')] : [];
+          currentWordCount = overlapWords.length;
+        }
+        currentChunk.push(paragraph.trim());
+        currentWordCount = paragraphWordCount;
+      }
+    } else {
+      // Paragraph is too large, split by sentences
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join('\n\n'));
+        const overlapWords = currentChunk.join(' ').split(/\s+/).slice(-overlap);
+        currentChunk = overlapWords.length > 0 ? [overlapWords.join(' ')] : [];
+        currentWordCount = overlapWords.length;
+      }
+      
+      // Split paragraph by sentences
+      const sentences = paragraph.split(/(?<=[.!?])\s+/);
+      for (const sentence of sentences) {
+        const sentenceWords = sentence.trim().split(/\s+/);
+        const sentenceWordCount = sentenceWords.length;
+        
+        if (currentWordCount + sentenceWordCount <= maxChunkSize) {
+          currentChunk.push(sentence.trim());
+          currentWordCount += sentenceWordCount;
+        } else {
+          if (currentChunk.length > 0) {
+            chunks.push(currentChunk.join(' '));
+            const overlapWords = currentChunk.join(' ').split(/\s+/).slice(-overlap);
+            currentChunk = overlapWords.length > 0 ? [overlapWords.join(' ')] : [];
+            currentWordCount = overlapWords.length;
+          }
+          
+          // If single sentence is still too large, force split
+          if (sentenceWordCount > maxChunkSize) {
+            for (let i = 0; i < sentenceWords.length; i += maxChunkSize - overlap) {
+              const subChunk = sentenceWords.slice(i, i + maxChunkSize).join(' ');
+              if (subChunk.trim().length > 0) {
+                chunks.push(subChunk.trim());
+              }
+            }
+            currentChunk = [];
+            currentWordCount = 0;
+          } else {
+            currentChunk.push(sentence.trim());
+            currentWordCount = sentenceWordCount;
+          }
+        }
+      }
     }
   }
   
-  return chunks;
+  // Add final chunk
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join('\n\n'));
+  }
+  
+  return chunks.filter(chunk => chunk.trim().length > 0);
+}
+
+/**
+ * Automatically detect competency tags for a chunk based on content
+ * Returns array of competency IDs that are relevant to this chunk
+ */
+export function detectChunkCompetencies(chunkText: string): string[] {
+  // Use the same detection function as conversation analysis
+  // Get up to 5 competencies per chunk (more comprehensive tagging)
+  return detectCompetenciesInConversation(chunkText, 5);
+}
+
+/**
+ * Extract section header from chunk text if present
+ * Looks for lines that might be headers (short lines, capitalized, etc.)
+ */
+export function extractSectionHeader(chunkText: string): string | null {
+  const lines = chunkText.split('\n');
+  
+  // Check first few lines for potential headers
+  for (let i = 0; i < Math.min(3, lines.length); i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Potential header: short (< 100 chars), no ending punctuation, or all caps
+    if (line.length < 100 && (
+      /^[A-Z0-9\s\-:]+$/.test(line) || // All caps
+      /^(?:[A-Z][a-z]*\s*)+$/.test(line) || // Title case
+      /^(?:\d+\.?\s+)?[A-Z]/.test(line) && !line.endsWith('.') // Starts with number or capital, no period
+    )) {
+      return line;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -94,7 +206,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 /**
- * Process and store document chunks in Qdrant
+ * Process and store document chunks in Qdrant with automatic competency tagging
  */
 export async function storeDocumentChunks(params: {
   documentId: string;
@@ -112,6 +224,18 @@ export async function storeDocumentChunks(params: {
       const chunk = params.chunks[i];
       const embedding = await generateEmbedding(chunk);
       
+      // Automatically detect competencies in this chunk
+      const autoDetectedCompetencies = detectChunkCompetencies(chunk);
+      
+      // Combine manual tags with auto-detected competencies (deduplicate)
+      const allCompetencies = Array.from(new Set([
+        ...(params.competencyTags || []),
+        ...autoDetectedCompetencies
+      ]));
+      
+      // Extract section header if present
+      const sectionHeader = extractSectionHeader(chunk);
+      
       // Create a unique point ID for each chunk
       const pointId = randomUUID();
 
@@ -121,16 +245,18 @@ export async function storeDocumentChunks(params: {
         payload: {
           type: 'document',
           documentId: params.documentId,
-          documentName: params.filename, // Changed from 'filename' to 'documentName' for consistency
-          chunkText: chunk, // Changed from 'content' to 'chunkText' for consistency
+          documentName: params.filename,
+          chunkText: chunk,
           chunkIndex: i,
           totalChunks: params.chunks.length,
           isActive: params.isActive,
           timestamp: new Date().toISOString(),
-          // Metadata for competency-aware retrieval
-          competencyTags: params.competencyTags || [],
+          // Enhanced metadata for better retrieval
+          competencyTags: allCompetencies,
           topicTags: params.topicTags || [],
           contentType: params.contentType || null,
+          sectionHeader: sectionHeader,
+          wordCount: chunk.split(/\s+/).length,
         },
       });
     }
@@ -143,7 +269,7 @@ export async function storeDocumentChunks(params: {
       });
     }
 
-    console.log(`Stored ${points.length} chunks for document ${params.documentId}`);
+    console.log(`Stored ${points.length} chunks for document ${params.documentId} with automatic competency tagging`);
     return points.length;
   } catch (error) {
     console.error('Error storing document chunks:', error);
@@ -152,7 +278,7 @@ export async function storeDocumentChunks(params: {
 }
 
 /**
- * Search for relevant document chunks
+ * Search for relevant document chunks with enhanced metadata
  */
 export async function searchDocumentChunks(params: {
   query: string;
@@ -164,6 +290,9 @@ export async function searchDocumentChunks(params: {
   content: string;
   chunkIndex: number;
   score: number;
+  competencyTags?: string[];
+  sectionHeader?: string | null;
+  wordCount?: number;
 }>> {
   try {
     const queryEmbedding = await generateEmbedding(params.query);
@@ -188,10 +317,15 @@ export async function searchDocumentChunks(params: {
 
     return searchResults.map((result) => ({
       documentId: result.payload?.documentId as string,
-      filename: result.payload?.filename as string,
-      content: result.payload?.content as string,
+      // Backward compatible: try new field name, fallback to old
+      filename: (result.payload?.documentName || result.payload?.filename) as string,
+      content: (result.payload?.chunkText || result.payload?.content) as string,
       chunkIndex: result.payload?.chunkIndex as number,
       score: result.score,
+      // Enhanced metadata (only present in new chunks)
+      competencyTags: result.payload?.competencyTags as string[] | undefined,
+      sectionHeader: result.payload?.sectionHeader as string | null | undefined,
+      wordCount: result.payload?.wordCount as number | undefined,
     }));
   } catch (error) {
     console.error('Error searching document chunks:', error);
