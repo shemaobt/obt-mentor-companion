@@ -12,6 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Sidebar from "@/components/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   CheckCircle2,
   Circle,
@@ -26,7 +29,8 @@ import {
   Edit,
   Save,
   X,
-  Menu
+  Menu,
+  Plus
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -74,6 +78,11 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
   // Competency editing state
   const [editingCompetency, setEditingCompetency] = useState<CompetencyId | null>(null);
   const [tempNotes, setTempNotes] = useState("");
+  
+  // Report generation state
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportPeriodStart, setReportPeriodStart] = useState("");
+  const [reportPeriodEnd, setReportPeriodEnd] = useState("");
 
   // Fetch competencies for the user
   const { data: competencies = [], isLoading: loadingCompetencies } = useQuery<FacilitatorCompetency[]>({
@@ -138,6 +147,31 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
       toast({
         title: "Error",
         description: "Failed to update competency",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Generate report mutation
+  const generateReportMutation = useMutation({
+    mutationFn: async ({ periodStart, periodEnd }: { periodStart: string; periodEnd: string }) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/generate-report`, { periodStart, periodEnd });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'reports'] });
+      setReportDialogOpen(false);
+      setReportPeriodStart("");
+      setReportPeriodEnd("");
+      toast({
+        title: "Success",
+        description: "Report generated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
         variant: "destructive",
       });
     },
@@ -540,13 +574,67 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
             <TabsContent value="reports" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="h-5 w-5" />
-                    <span>Quarterly Reports</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Generated assessment reports
-                  </CardDescription>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center space-x-2">
+                        <FileText className="h-5 w-5" />
+                        <span>Quarterly Reports</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Generate and view quarterly progress reports
+                      </CardDescription>
+                    </div>
+                    <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button data-testid="button-generate-report">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Generate Report
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Generate Quarterly Report</DialogTitle>
+                          <DialogDescription>
+                            Select the period for the report
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="periodStart">Period Start</Label>
+                            <Input
+                              id="periodStart"
+                              type="date"
+                              value={reportPeriodStart}
+                              onChange={(e) => setReportPeriodStart(e.target.value)}
+                              data-testid="input-period-start"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="periodEnd">Period End</Label>
+                            <Input
+                              id="periodEnd"
+                              type="date"
+                              value={reportPeriodEnd}
+                              onChange={(e) => setReportPeriodEnd(e.target.value)}
+                              data-testid="input-period-end"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            onClick={() => generateReportMutation.mutate({
+                              periodStart: reportPeriodStart,
+                              periodEnd: reportPeriodEnd
+                            })}
+                            disabled={!reportPeriodStart || !reportPeriodEnd || generateReportMutation.isPending}
+                            data-testid="button-confirm-generate-report"
+                          >
+                            {generateReportMutation.isPending ? "Generating..." : "Generate Report"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {loadingReports ? (

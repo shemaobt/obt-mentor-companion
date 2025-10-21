@@ -2168,11 +2168,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin endpoint to generate report for any user
-  app.post('/api/admin/users/:userId/generate-report', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+  // Admin/Supervisor endpoint to generate report for any user (admin) or supervised user (supervisor)
+  app.post('/api/admin/users/:userId/generate-report', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
     try {
       const { userId } = req.params;
       const { periodStart, periodEnd } = req.body;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only generate reports for users you supervise" });
+        }
+      }
       
       // Validation
       const userIdSchema = z.string().uuid();
