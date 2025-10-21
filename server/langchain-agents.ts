@@ -334,11 +334,20 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ languageName, chaptersCount, activityDate, notes }) => {
       try {
+        // Parse activity date string to Date object
+        const parsedDate = new Date(activityDate);
+        
+        // Validate the date is valid
+        if (isNaN(parsedDate.getTime())) {
+          console.error(`[Tool Error] Invalid date format: ${activityDate}`);
+          return `Error: Invalid date format "${activityDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
+        }
+        
         await storage.createActivity({
           facilitatorId,
           languageName,
           chaptersCount,
-          activityDate,
+          activityDate: parsedDate,
           notes,
           activityType: 'translation',
         });
@@ -367,6 +376,18 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ title, activityType, description, organization, yearsOfExperience, activityDate }) => {
       try {
+        // Parse activity date string to Date object if provided
+        let parsedDate: Date | undefined;
+        if (activityDate) {
+          parsedDate = new Date(activityDate);
+          
+          // Validate the date is valid
+          if (isNaN(parsedDate.getTime())) {
+            console.error(`[Tool Error] Invalid date format: ${activityDate}`);
+            return `Error: Invalid date format "${activityDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
+          }
+        }
+        
         await storage.createActivity({
           facilitatorId,
           title,
@@ -374,7 +395,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           description,
           organization,
           yearsOfExperience,
-          activityDate,
+          activityDate: parsedDate,
         });
         
         // Automatically recalculate competencies after adding activity
