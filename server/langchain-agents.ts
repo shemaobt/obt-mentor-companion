@@ -189,7 +189,9 @@ async function recalculateCompetencies(storage: IStorage, facilitatorId: string)
     const educationScore = scores.education.get(competencyId) || 0;
     const experienceScore = scores.experience.get(competencyId) || 0;
     
-    await storage.upsertCompetency(facilitatorId, competencyId, {
+    await storage.upsertCompetency({
+      facilitatorId,
+      competencyId,
       status,
       autoScore: Math.round(score),
       statusSource: 'auto',
