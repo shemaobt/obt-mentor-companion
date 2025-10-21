@@ -62,14 +62,15 @@ export default function Sidebar({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Check if user is admin (only admin can see dashboard, settings, etc.)
-  // Properly type the user object for admin check
-  const userWithAdmin = user as any;
-  const isAdmin = userWithAdmin?.isAdmin === true;
+  // Check if user is admin or supervisor
+  // Properly type the user object for admin/supervisor check
+  const userWithRoles = user as any;
+  const isAdmin = userWithRoles?.isAdmin === true;
+  const isSupervisor = userWithRoles?.isSupervisor === true;
   
-  // Debug logging for admin status (only in development)
+  // Debug logging for role status (only in development)
   if (import.meta.env.DEV) {
-    console.log(`[Sidebar] User: ${userWithAdmin?.email}, isAdmin: ${isAdmin}, raw user object:`, user);
+    console.log(`[Sidebar] User: ${userWithRoles?.email}, isAdmin: ${isAdmin}, isSupervisor: ${isSupervisor}, raw user object:`, user);
   }
 
   const { data: chats = [] } = useQuery<Chat[]>({
@@ -573,6 +574,23 @@ export default function Sidebar({
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     <span className="flex-1 text-left">Documents</span>
+                  </Button>
+                </Link>
+                <Separator className="my-1" />
+              </>
+            )}
+            {/* Supervisor-only options (visible to supervisors who are not admins) */}
+            {isSupervisor && !isAdmin && (
+              <>
+                <Link href="/supervisor/users" className="block">
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start text-sm px-3 md:px-4 ${isMobile ? 'h-10 sm:h-12' : 'py-2 h-auto'}`}
+                    onClick={() => setUserMenuOpen(false)}
+                    data-testid="link-supervisor-users"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    <span className="flex-1 text-left">My Supervised Users</span>
                   </Button>
                 </Link>
                 <Separator className="my-1" />
