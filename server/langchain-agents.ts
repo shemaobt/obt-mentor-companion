@@ -216,15 +216,30 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
       try {
+        // Normalize text for robust duplicate detection (preserves significant symbols like +, #, .)
+        const normalizeText = (text: string): string => {
+          return text
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, ' ') // Collapse multiple spaces
+            .replace(/[^\w\s+#.]/g, '') // Remove punctuation but preserve +, #, . for tech terms
+            .normalize('NFKD') // Unicode normalization
+            .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+        };
+        
         // Check for duplicate qualification (same course title and institution)
         const existingQualifications = await storage.getQualificationsByFacilitatorId(facilitatorId);
+        const normalizedTitle = normalizeText(courseTitle);
+        const normalizedInstitution = normalizeText(institution);
+        
         const duplicate = existingQualifications.find(q => 
-          q.courseTitle.toLowerCase().trim() === courseTitle.toLowerCase().trim() &&
-          q.institution.toLowerCase().trim() === institution.toLowerCase().trim()
+          normalizeText(q.courseTitle) === normalizedTitle &&
+          normalizeText(q.institution) === normalizedInstitution
         );
         
         if (duplicate) {
           console.log(`[Tool] Duplicate qualification detected: ${courseTitle} from ${institution}`);
+          // Return success response so the agent won't retry
           return `This qualification already exists in your portfolio: "${courseTitle}" from ${institution} (completed ${duplicate.completionDate ? new Date(duplicate.completionDate).toLocaleDateString() : 'unknown date'}). If you want to update it, please tell me what information needs to be changed.`;
         }
         

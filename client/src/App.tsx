@@ -13,6 +13,7 @@ import AdminFeedback from "@/pages/admin-feedback";
 import AdminUsers from "@/pages/admin-users";
 import AdminDocuments from "@/pages/admin-documents";
 import AdminPortfolioView from "@/pages/admin-portfolio-view";
+import AdminDbSync from "@/pages/admin-db-sync";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
@@ -42,6 +43,7 @@ function Router() {
           <Route path="/admin/feedback" component={AdminFeedback} />
           <Route path="/admin/users" component={AdminUsers} />
           <Route path="/admin/documents" component={AdminDocuments} />
+          <Route path="/admin/db-sync" component={AdminDbSync} />
           <Route path="/admin/portfolio/:userId" component={AdminPortfolioView} />
           <Route path="/portfolio" component={Portfolio} />
           <Route path="/dashboard" component={Dashboard} />

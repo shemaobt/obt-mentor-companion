@@ -19,6 +19,7 @@ import { transcribeAudio as whisperTranscribe } from "./whisper";
 import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
 import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
 import { randomUUID } from "crypto";
+import { registerDbSyncRoutes } from "./routes-db-sync";
 
 // Server-side audio cache for faster TTS responses
 interface CachedAudio {
@@ -3171,6 +3172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to download report" });
     }
   });
+
+  // Database sync routes (admin only)
+  registerDbSyncRoutes(app, requireAdmin, requireCSRFHeader);
 
   // Serve uploaded files
   app.use('/uploads', requireAuth, (req: any, res, next) => {
