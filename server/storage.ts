@@ -55,7 +55,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getUserByFacilitatorId(facilitatorId: number): Promise<User | undefined>;
+  getUserByFacilitatorId(facilitatorId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   
@@ -217,7 +217,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByFacilitatorId(facilitatorId: number): Promise<User | undefined> {
+  async getUserByFacilitatorId(facilitatorId: string): Promise<User | undefined> {
     const [result] = await db
       .select({ user: users })
       .from(facilitators)
