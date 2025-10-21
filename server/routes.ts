@@ -2587,6 +2587,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/supervisor/pending-users/count', requireSupervisor, async (req: any, res) => {
+    try {
+      const pendingUsers = await storage.getPendingUsersForSupervisor(req.userId);
+      res.json({ count: pendingUsers.length });
+    } catch (error) {
+      console.error("Error fetching pending users count:", error);
+      res.status(500).json({ message: "Failed to fetch pending users count" });
+    }
+  });
+
   app.patch('/api/supervisor/users/:userId/approve', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
     try {
       const { userId } = req.params;
