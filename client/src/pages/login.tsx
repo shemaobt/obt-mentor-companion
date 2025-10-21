@@ -205,7 +205,7 @@ function Login() {
           </Form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
+            <span className="text-muted-foreground text-[28px]">Don't have an account? </span>
             <Link href="/signup" className="text-primary hover:underline" data-testid="link-signup">
               Sign up
             </Link>
