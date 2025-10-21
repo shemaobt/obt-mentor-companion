@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import Sidebar from "@/components/sidebar";
 import { 
   Award, 
@@ -34,7 +36,9 @@ import {
   Zap,
   Menu,
   Pencil,
-  RefreshCw
+  RefreshCw,
+  Check,
+  ChevronsUpDown
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -45,6 +49,15 @@ import {
   type MentorshipActivity,
   type QuarterlyReport
 } from "@shared/schema";
+import { cn } from "@/lib/utils";
+
+interface Supervisor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  fullName: string;
+}
 
 const competencyStatusOptions = ['not_started', 'emerging', 'growing', 'proficient', 'advanced'] as const;
 type CompetencyStatus = typeof competencyStatusOptions[number];
@@ -71,6 +84,7 @@ export default function Portfolio() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("profile");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [supervisorPopoverOpen, setSupervisorPopoverOpen] = useState(false);
 
   // Ensure sidebar is closed when switching to mobile
   useEffect(() => {
@@ -125,14 +139,20 @@ export default function Portfolio() {
   });
 
   // Fetch facilitator profile
-  const { data: facilitatorProfile, isLoading: loadingProfile } = useQuery<{ region: string | null; mentorSupervisor: string | null }>({
+  const { data: facilitatorProfile, isLoading: loadingProfile } = useQuery<{ region: string | null; mentorSupervisor: string | null; supervisorId: string | null }>({
     queryKey: ['/api/facilitator/profile'],
+    enabled: isAuthenticated
+  });
+
+  // Fetch available supervisors
+  const { data: supervisors = [], isLoading: loadingSupervisors } = useQuery<Supervisor[]>({
+    queryKey: ['/api/supervisors'],
     enabled: isAuthenticated
   });
 
   // Profile editing state
   const [profileRegion, setProfileRegion] = useState("");
-  const [profileSupervisor, setProfileSupervisor] = useState("");
+  const [profileSupervisorId, setProfileSupervisorId] = useState<string | undefined>(undefined);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Update competency status mutation
@@ -298,7 +318,7 @@ export default function Portfolio() {
 
   // Update facilitator profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { region: string; mentorSupervisor: string }) => {
+    mutationFn: async (data: { region: string; supervisorId: string | undefined }) => {
       await apiRequest("POST", "/api/facilitator/profile", data);
     },
     onSuccess: () => {
@@ -375,7 +395,7 @@ export default function Portfolio() {
   useEffect(() => {
     if (facilitatorProfile) {
       setProfileRegion(facilitatorProfile.region || "");
-      setProfileSupervisor(facilitatorProfile.mentorSupervisor || "");
+      setProfileSupervisorId(facilitatorProfile.supervisorId || undefined);
     }
   }, [facilitatorProfile]);
 
@@ -548,15 +568,74 @@ export default function Portfolio() {
                       </div>
                       <div>
                         <Label htmlFor="profile-supervisor">Supervisor (optional)</Label>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Input
-                            id="profile-supervisor"
-                            value={profileSupervisor}
-                            onChange={(e) => setProfileSupervisor(e.target.value)}
-                            placeholder="Supervisor name"
-                            disabled={!isEditingProfile}
-                            data-testid="input-profile-supervisor"
-                          />
+                        <div className="mt-2">
+                          <Popover open={supervisorPopoverOpen} onOpenChange={setSupervisorPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={supervisorPopoverOpen}
+                                className={cn(
+                                  "w-full justify-between",
+                                  !profileSupervisorId && "text-muted-foreground"
+                                )}
+                                disabled={!isEditingProfile}
+                                data-testid="button-select-supervisor"
+                              >
+                                {profileSupervisorId
+                                  ? supervisors.find((supervisor) => supervisor.id === profileSupervisorId)?.fullName
+                                  : "Select supervisor..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0">
+                              <Command>
+                                <CommandInput placeholder="Search supervisor..." data-testid="input-search-supervisor" />
+                                <CommandEmpty>
+                                  {loadingSupervisors ? "Loading..." : "No supervisor found."}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem
+                                    value="none"
+                                    onSelect={() => {
+                                      setProfileSupervisorId(undefined);
+                                      setSupervisorPopoverOpen(false);
+                                    }}
+                                    data-testid="option-supervisor-none"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        !profileSupervisorId ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    No supervisor
+                                  </CommandItem>
+                                  {supervisors.map((supervisor) => (
+                                    <CommandItem
+                                      key={supervisor.id}
+                                      value={supervisor.fullName}
+                                      onSelect={() => {
+                                        setProfileSupervisorId(supervisor.id);
+                                        setSupervisorPopoverOpen(false);
+                                      }}
+                                      data-testid={`option-supervisor-${supervisor.id}`}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          supervisor.id === profileSupervisorId
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {supervisor.fullName}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                       <div className="flex space-x-2">
@@ -566,7 +645,7 @@ export default function Portfolio() {
                               onClick={() => {
                                 updateProfileMutation.mutate({
                                   region: profileRegion,
-                                  mentorSupervisor: profileSupervisor
+                                  supervisorId: profileSupervisorId
                                 });
                               }}
                               disabled={updateProfileMutation.isPending}
@@ -581,7 +660,7 @@ export default function Portfolio() {
                                 setIsEditingProfile(false);
                                 if (facilitatorProfile) {
                                   setProfileRegion(facilitatorProfile.region || "");
-                                  setProfileSupervisor(facilitatorProfile.mentorSupervisor || "");
+                                  setProfileSupervisorId(facilitatorProfile.supervisorId || undefined);
                                 }
                               }}
                               disabled={updateProfileMutation.isPending}
