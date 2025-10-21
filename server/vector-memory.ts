@@ -395,17 +395,43 @@ export async function getComprehensiveContext(params: {
 
     // 0. Active Document Chunks (RAG context) - Search first as authoritative reference
     try {
-      const documentChunks = await searchActiveDocuments({
+      // Import competency detection function
+      const { detectCompetenciesInConversation } = await import('./competency-mapping.js');
+      
+      // Detect which competencies are being discussed
+      const detectedCompetencies = detectCompetenciesInConversation(params.query, 3);
+      
+      if (detectedCompetencies.length > 0) {
+        console.log(`[Comprehensive Context] Detected competencies: ${detectedCompetencies.join(', ')}`);
+      }
+      
+      // Search for documents with competency filtering if competencies detected
+      let documentChunks = await searchActiveDocuments({
         query: params.query,
-        limit: 5, // Increased from 3 to provide more comprehensive coverage
-        scoreThreshold: 0.3, // Lowered from 0.5 to retrieve more potentially relevant content
+        limit: 5,
+        scoreThreshold: 0.3,
+        competencyFilter: detectedCompetencies.length > 0 ? detectedCompetencies : undefined,
       });
+      
+      // Defensive fallback: if competency filter returned no results, retry without filter
+      // This ensures backward compatibility with documents that don't have metadata yet
+      if ((!documentChunks || documentChunks.length === 0) && detectedCompetencies.length > 0) {
+        console.log('[Comprehensive Context] No results with competency filter, retrying without filter');
+        documentChunks = await searchActiveDocuments({
+          query: params.query,
+          limit: 5,
+          scoreThreshold: 0.3,
+        });
+      }
       
       if (documentChunks && documentChunks.length > 0) {
         context += '## Reference Materials:\n';
         context += 'The following information is from uploaded training documents and should be used as authoritative reference:\n\n';
         documentChunks.forEach((chunk, idx) => {
-          context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}):**\n`;
+          const competencyNote = chunk.competencyTags && chunk.competencyTags.length > 0 
+            ? ` [Relevant to: ${chunk.competencyTags.join(', ')}]` 
+            : '';
+          context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1})${competencyNote}:**\n`;
           context += `${chunk.chunkText}\n\n`;
         });
         console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks from PDFs`);
@@ -627,19 +653,22 @@ export async function searchActiveDocuments(params: {
   query: string;
   limit?: number;
   scoreThreshold?: number;
+  competencyFilter?: string[]; // Filter by competency tags
 }): Promise<Array<{
   documentId: string;
   documentName: string;
   chunkText: string;
   chunkIndex: number;
   score: number;
+  competencyTags?: string[];
 }>> {
   try {
     const queryEmbedding = await generateEmbedding(params.query);
     const limit = params.limit || 5;
     const scoreThreshold = params.scoreThreshold || 0.5;
 
-    console.log(`[Document Search] Searching for: "${params.query}" (threshold: ${scoreThreshold}, limit: ${limit})`);
+    const competencyInfo = params.competencyFilter ? ` (competencies: ${params.competencyFilter.join(', ')})` : '';
+    console.log(`[Document Search] Searching for: "${params.query}" (threshold: ${scoreThreshold}, limit: ${limit})${competencyInfo}`);
 
     // Build filter to only search active documents
     const filter: any = {
@@ -654,6 +683,14 @@ export async function searchActiveDocuments(params: {
         },
       ],
     };
+    
+    // Add competency filter if provided (match ANY of the competencies)
+    if (params.competencyFilter && params.competencyFilter.length > 0) {
+      filter.should = params.competencyFilter.map(competency => ({
+        key: 'competencyTags',
+        match: { any: [competency] },
+      }));
+    }
 
     const searchResults = await qdrant.search(COLLECTION_NAME, {
       vector: queryEmbedding,
@@ -679,6 +716,7 @@ export async function searchActiveDocuments(params: {
         chunkText: result.payload?.chunkText as string,
         chunkIndex: result.payload?.chunkIndex as number,
         score: result.score,
+        competencyTags: (result.payload?.competencyTags as string[]) || [],
       }));
 
     console.log(`[Document Search] Returning ${documentResults.length} document chunks`);

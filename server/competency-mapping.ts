@@ -378,3 +378,85 @@ export function calculateCompetencyScores(
     experience: experienceScores,
   };
 }
+
+/**
+ * Conversation keywords mapping to competencies
+ * Used to detect which competencies are being discussed in conversation
+ */
+const CONVERSATION_COMPETENCY_KEYWORDS: Record<string, string[]> = {
+  'interpersonal_skills': [
+    'leadership', 'team', 'listening', 'empathy', 'facilitation', 'conflict', 'relationship',
+    'communication', 'collaboration', 'mediation', 'trust', 'group dynamics', 'active listening'
+  ],
+  'intercultural_communication': [
+    'cultural', 'culture', 'cross-cultural', 'intercultural', 'respect', 'adaptation',
+    'sensitivity', 'ethnography', 'anthropology', 'worldview', 'customs', 'traditions'
+  ],
+  'multimodal_skills': [
+    'oral', 'storytelling', 'story', 'gesture', 'visual', 'embodied', 'drama', 'song',
+    'performance', 'narrative', 'multimodal', 'spoken', 'voice', 'demonstration'
+  ],
+  'translation_theory': [
+    'translation', 'meaning', 'equivalence', 'accuracy', 'faithfulness', 'natural',
+    'receptor language', 'source language', 'translating', 'back-translation', 'consultant check'
+  ],
+  'languages_communication': [
+    'language', 'linguistic', 'grammar', 'vocabulary', 'semantics', 'discourse', 'metaphor',
+    'idiom', 'pragmatics', 'syntax', 'phonology', 'morphology', 'word order'
+  ],
+  'biblical_languages': [
+    'hebrew', 'greek', 'aramaic', 'exegesis', 'original language', 'septuagint', 'manuscripts',
+    'textual criticism', 'biblical languages', 'interlinear'
+  ],
+  'biblical_studies': [
+    'bible', 'biblical', 'theology', 'scripture', 'exegesis', 'hermeneutics', 'context',
+    'interpretation', 'testament', 'gospel', 'epistles', 'prophets', 'doctrine'
+  ],
+  'planning_quality': [
+    'plan', 'planning', 'quality', 'qa', 'assurance', 'schedule', 'timeline', 'milestone',
+    'testing', 'review', 'assessment', 'evaluation', 'checking', 'revision'
+  ],
+  'consulting_mentoring': [
+    'mentor', 'mentoring', 'coaching', 'consulting', 'advisor', 'guide', 'teaching',
+    'training', 'disciple', 'apprentice', 'servant-leader', 'feedback', 'development'
+  ],
+  'applied_technology': [
+    'technology', 'tech', 'software', 'tool', 'app', 'recording', 'digital', 'online',
+    'computer', 'mobile', 'platform', 'audio', 'video', 'collaboration tools'
+  ],
+  'reflective_practice': [
+    'reflection', 'self-awareness', 'feedback', 'learning', 'growth', 'evaluation',
+    'improvement', 'values', 'alignment', 'introspection', 'accountability', 'development'
+  ]
+};
+
+/**
+ * Detect which competencies are being discussed in a conversation
+ * Returns an array of competency IDs ranked by relevance
+ */
+export function detectCompetenciesInConversation(text: string, limit: number = 3): string[] {
+  const lowerText = text.toLowerCase();
+  const competencyScores = new Map<string, number>();
+  
+  // Score each competency based on keyword matches
+  for (const [competencyId, keywords] of Object.entries(CONVERSATION_COMPETENCY_KEYWORDS)) {
+    let score = 0;
+    for (const keyword of keywords) {
+      // Count occurrences of each keyword
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      const matches = lowerText.match(regex);
+      if (matches) {
+        score += matches.length;
+      }
+    }
+    if (score > 0) {
+      competencyScores.set(competencyId, score);
+    }
+  }
+  
+  // Sort by score and return top N
+  return Array.from(competencyScores.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([competencyId]) => competencyId);
+}

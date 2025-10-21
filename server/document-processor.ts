@@ -101,6 +101,9 @@ export async function storeDocumentChunks(params: {
   filename: string;
   chunks: string[];
   isActive: boolean;
+  competencyTags?: string[];
+  topicTags?: string[];
+  contentType?: string;
 }): Promise<number> {
   try {
     const points = [];
@@ -124,6 +127,10 @@ export async function storeDocumentChunks(params: {
           totalChunks: params.chunks.length,
           isActive: params.isActive,
           timestamp: new Date().toISOString(),
+          // Metadata for competency-aware retrieval
+          competencyTags: params.competencyTags || [],
+          topicTags: params.topicTags || [],
+          contentType: params.contentType || null,
         },
       });
     }
