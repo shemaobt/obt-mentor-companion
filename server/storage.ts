@@ -10,6 +10,7 @@ import {
   facilitators,
   facilitatorCompetencies,
   facilitatorQualifications,
+  qualificationAttachments,
   mentorshipActivities,
   quarterlyReports,
   competencyEvidence,
@@ -39,6 +40,8 @@ import {
   type InsertFacilitatorCompetency,
   type FacilitatorQualification,
   type InsertFacilitatorQualification,
+  type QualificationAttachment,
+  type InsertQualificationAttachment,
   type MentorshipActivity,
   type InsertMentorshipActivity,
   type QuarterlyReport,
@@ -182,6 +185,11 @@ export interface IStorage {
   createQualification(qualification: InsertFacilitatorQualification): Promise<FacilitatorQualification>;
   updateQualification(qualificationId: string, updates: Partial<Omit<InsertFacilitatorQualification, 'facilitatorId'>>): Promise<FacilitatorQualification>;
   deleteQualification(qualificationId: string): Promise<void>;
+  
+  // Qualification attachment operations
+  getQualificationAttachments(qualificationId: string): Promise<QualificationAttachment[]>;
+  createQualificationAttachment(attachment: InsertQualificationAttachment): Promise<QualificationAttachment>;
+  deleteQualificationAttachment(attachmentId: string): Promise<void>;
   
   // Mentorship activity operations
   getFacilitatorActivities(facilitatorId: string): Promise<MentorshipActivity[]>;
@@ -1201,6 +1209,28 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(facilitatorQualifications)
       .where(eq(facilitatorQualifications.id, qualificationId));
+  }
+
+  // Qualification attachment operations
+  async getQualificationAttachments(qualificationId: string): Promise<QualificationAttachment[]> {
+    return await db
+      .select()
+      .from(qualificationAttachments)
+      .where(eq(qualificationAttachments.qualificationId, qualificationId));
+  }
+
+  async createQualificationAttachment(attachment: InsertQualificationAttachment): Promise<QualificationAttachment> {
+    const [created] = await db
+      .insert(qualificationAttachments)
+      .values(attachment)
+      .returning();
+    return created;
+  }
+
+  async deleteQualificationAttachment(attachmentId: string): Promise<void> {
+    await db
+      .delete(qualificationAttachments)
+      .where(eq(qualificationAttachments.id, attachmentId));
   }
 
   // Mentorship activity operations
