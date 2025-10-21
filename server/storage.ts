@@ -205,8 +205,15 @@ export interface IStorage {
   getDocument(documentId: string): Promise<Document | undefined>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocumentActive(documentId: string, isActive: boolean): Promise<Document>;
+  updateDocumentMetadata(documentId: string, metadata: {
+    competencyTags?: string[];
+    topicTags?: string[];
+    contentType?: "best_practices" | "methodology" | "training_material" | "case_study" | "general";
+    description?: string;
+  }): Promise<Document>;
   deleteDocument(documentId: string): Promise<void>;
   getActiveDocuments(): Promise<Document[]>;
+  getDocumentsByCompetency(competencyId: string): Promise<Document[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1364,6 +1371,20 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async updateDocumentMetadata(documentId: string, metadata: {
+    competencyTags?: string[];
+    topicTags?: string[];
+    contentType?: "best_practices" | "methodology" | "training_material" | "case_study" | "general";
+    description?: string;
+  }): Promise<Document> {
+    const [updated] = await db
+      .update(documents)
+      .set(metadata)
+      .where(eq(documents.documentId, documentId))
+      .returning();
+    return updated;
+  }
+
   async deleteDocument(documentId: string): Promise<void> {
     await db
       .delete(documents)
@@ -1375,6 +1396,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(documents)
       .where(eq(documents.isActive, true))
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async getDocumentsByCompetency(competencyId: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(
+        and(
+          eq(documents.isActive, true),
+          sql`${documents.competencyTags} @> ARRAY[${competencyId}]::text[]`
+        )
+      )
       .orderBy(desc(documents.uploadedAt));
   }
 }
