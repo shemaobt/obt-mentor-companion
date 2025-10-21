@@ -72,11 +72,37 @@ export default function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialMessageSentRef = useRef(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { currentLogo } = useTheme();
   const logoImage = currentLogo;
+  
+  // Check for pending initial message from sessionStorage
+  useEffect(() => {
+    if (chatId && !initialMessageSentRef.current) {
+      const pendingKey = `pending_message_${chatId}`;
+      const pendingData = sessionStorage.getItem(pendingKey);
+      
+      if (pendingData) {
+        try {
+          const { content } = JSON.parse(pendingData);
+          initialMessageSentRef.current = true;
+          
+          // Send the message after a brief delay to ensure component is mounted
+          setTimeout(() => {
+            sendStreamingMessage(content);
+            // Clear the pending message
+            sessionStorage.removeItem(pendingKey);
+          }, 100);
+        } catch (error) {
+          console.error('Error processing pending message:', error);
+          sessionStorage.removeItem(pendingKey);
+        }
+      }
+    }
+  }, [chatId]);
   
   // Speech recognition hook with language support
   const {
@@ -521,19 +547,75 @@ export default function ChatInterface({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!message.trim() && !selectedFile) || !chatId || isTyping) return;
+    if ((!message.trim() && !selectedFile) || isTyping) return;
     
-    if (selectedFile) {
+    // Save message content before clearing
+    const messageContent = message.trim() || (selectedFile ? `[Attachment: ${selectedFile.name}]` : '');
+    const fileToUpload = selectedFile;
+    
+    // If no chat exists, create one and store the message for sending after navigation
+    if (!chatId) {
+      // Note: Attachments are not supported for the first message of a new chat
+      // Users should send text first, then add attachments in subsequent messages
+      if (fileToUpload) {
+        toast({
+          title: "Attachments not supported yet",
+          description: "Please send your first message without an attachment, then you can add files in follow-up messages.",
+          variant: "default",
+        });
+        setSelectedFile(null);
+        return;
+      }
+      
+      try {
+        const response = await apiRequest("POST", "/api/chats", {
+          title: "New Chat",
+          assistantId: currentAssistant,
+        });
+        const newChat = await response.json();
+        
+        // Store the message in sessionStorage to be sent after navigation
+        sessionStorage.setItem(`pending_message_${newChat.id}`, JSON.stringify({
+          content: messageContent
+        }));
+        
+        // Invalidate queries
+        queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+        
+        // Navigate to new chat - the message will be sent automatically via useEffect
+        setLocation(`/chat/${newChat.id}`);
+        return;
+        
+      } catch (error) {
+        if (isUnauthorizedError(error as Error)) {
+          toast({
+            title: "Unauthorized",
+            description: "You are logged out. Logging in again...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/api/login";
+          }, 500);
+          return;
+        }
+        toast({
+          title: "Error",
+          description: "Failed to create new chat",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // For existing chats, send message normally
+    if (fileToUpload) {
       setIsTyping(true);
-      const fileToUpload = selectedFile;
-      const messageContent = message.trim() || `[Attachment: ${selectedFile.name}]`;
       
       setMessage("");
       setSelectedFile(null);
       
       try {
         // Use streaming endpoint for messages with attachments
-        // This allows the backend to wait for attachment upload before processing
         sendStreamingMessage(messageContent, fileToUpload);
       } catch (error: unknown) {
         setIsTyping(false);
@@ -555,7 +637,7 @@ export default function ChatInterface({
         });
       }
     } else {
-      sendStreamingMessage(message.trim());
+      sendStreamingMessage(messageContent);
     }
   };
 
@@ -649,16 +731,11 @@ export default function ChatInterface({
             <h2 className="text-xl font-semibold text-foreground mb-2">Welcome to OBT Mentor Companion</h2>
             <p className="text-muted-foreground mb-6">Your friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors within Youth With A Mission (YWAM).</p>
             
-            {/* Start a New Chat Button */}
+            {/* Instructions - Chat will be created when first message is sent */}
             <div className="mt-4 space-y-3">
-              <Button 
-                onClick={() => createChatMutation.mutate()}
-                disabled={createChatMutation.isPending}
-                className={`w-full max-w-sm ${isMobile ? 'h-12' : ''} bg-primary hover:bg-primary/90 text-primary-foreground`}
-                data-testid="button-start-new-chat"
-              >
-                {createChatMutation.isPending ? "Starting..." : "Start a New Chat"}
-              </Button>
+              <p className="text-sm text-muted-foreground">
+                Start typing below to begin a new conversation
+              </p>
               
               {/* Feedback Button for Welcome Screen (Desktop and Mobile) */}
               <FeedbackForm
@@ -676,6 +753,132 @@ export default function ChatInterface({
               />
             </div>
           </div>
+        </div>
+        
+        {/* Message Input - Fixed at bottom (for new chat) */}
+        <div className={`border-t border-border bg-card sticky bottom-0 z-40 shadow-up ${isMobile ? 'p-3 phone-xs:p-2 phone-sm:p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]' : 'p-4'}`}>
+          {/* File Preview */}
+          {selectedFile && (
+            <div className="mb-3 p-3 bg-muted rounded-lg border border-border" data-testid="file-preview">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  {selectedFile.type.startsWith('image/') ? (
+                    <>
+                      <Image className="h-5 w-5 text-primary flex-shrink-0" />
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Preview"
+                        className="h-12 w-12 object-cover rounded border border-border"
+                        data-testid="img-file-preview"
+                      />
+                    </>
+                  ) : (
+                    <Music className="h-5 w-5 text-primary flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" data-testid="text-file-name">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground" data-testid="text-file-size">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveFile}
+                  className="h-8 w-8 p-0 flex-shrink-0"
+                  data-testid="button-remove-file"
+                  aria-label="Remove file"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'space-x-2 phone-xs:space-x-1 phone-sm:space-x-2' : 'space-x-3'}`} data-testid="form-message">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/ogg"
+              onChange={handleFileSelect}
+              className="hidden"
+              data-testid="input-file"
+            />
+            <div className="flex-1 min-w-0">
+              <Textarea
+                ref={textareaRef}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+                disabled={isTyping}
+                className={`resize-none ${isMobile ? 'min-h-[44px] max-h-[100px] phone-sm:max-h-[120px] text-sm phone-sm:text-base' : 'min-h-[44px] max-h-[120px]'} ${isTyping ? 'opacity-60' : ''}`}
+                placeholder={
+                  isTyping 
+                    ? "AI is responding..." 
+                    : isListening 
+                      ? "Listening..." 
+                      : (isMobile ? "Ask about stories..." : "Type your message...")
+                }
+                data-testid="textarea-message"
+              />
+            </div>
+            {/* Attachment Button */}
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              variant="secondary"
+              className={`${isMobile ? 'min-h-[44px] min-w-[44px] h-11 w-11 phone-sm:h-12 phone-sm:w-12 p-0 touch-manipulation shrink-0' : 'h-11 w-11'}`}
+              data-testid="button-attach-file"
+              aria-label="Attach file"
+              disabled={isTyping}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            {/* Voice Input Button */}
+            {isSpeechRecognitionSupported && (
+              <Button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                variant={isListening ? "destructive" : "secondary"}
+                className={`${isMobile ? 'min-h-[44px] min-w-[44px] h-11 w-11 phone-sm:h-12 phone-sm:w-12 p-0 touch-manipulation shrink-0' : 'h-11 w-11'} ${isListening ? 'recording-active' : ''}`}
+                data-testid="button-microphone"
+                aria-label={isListening ? "Stop recording" : "Start recording"}
+                disabled={permissionDenied || isTyping}
+              >
+                {isListening ? (
+                  <Square className="h-4 w-4" />
+                ) : permissionDenied ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={(!message.trim() && !selectedFile) || sendMessageMutation.isPending || isTyping}
+              className={`${isMobile ? 'min-h-[44px] min-w-[44px] h-11 w-11 phone-sm:h-12 phone-sm:w-12 p-0 touch-manipulation shrink-0' : 'h-11'}`}
+              data-testid="button-send"
+              aria-label={
+                isTyping || sendMessageMutation.isPending 
+                  ? "Sending..." 
+                  : "Send message"
+              }
+            >
+              {isTyping || sendMessageMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
+          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground mt-2 text-center`}>
+            You are chatting with {ASSISTANT_CONFIG[currentAssistant]?.name || 'OBT Mentor Assistant'}
+          </p>
         </div>
       </div>
     );

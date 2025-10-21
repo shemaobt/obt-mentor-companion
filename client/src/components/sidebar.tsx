@@ -313,9 +313,11 @@ export default function Sidebar({
       {/* New Chat Button */}
       <div className="p-3 phone-xs:p-2 phone-sm:p-4 md:p-4">
         <Button
-          onClick={() => createChatMutation.mutate('obtMentor')}
+          onClick={() => {
+            setLocation('/');
+            if (onClose) onClose();
+          }}
           className={`w-full justify-center space-x-2 ${isMobile ? 'min-h-[44px] h-11 phone-sm:h-12 text-sm phone-sm:text-base touch-manipulation' : 'h-9 md:h-10'}`}
-          disabled={createChatMutation.isPending}
           data-testid="button-new-chat"
         >
           <Plus className="h-4 w-4" />
