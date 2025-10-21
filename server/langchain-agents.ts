@@ -177,8 +177,8 @@ export function initializeModels() {
  */
 async function recalculateCompetencies(storage: IStorage, facilitatorId: string): Promise<void> {
   // Get all qualifications and activities
-  const qualifications = await storage.getQualificationsByFacilitatorId(facilitatorId);
-  const activities = await storage.getActivitiesByFacilitatorId(facilitatorId);
+  const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
+  const activities = await storage.getFacilitatorActivities(facilitatorId);
   
   // Calculate scores
   const scores = calculateCompetencyScores(qualifications, activities);
@@ -228,7 +228,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         };
         
         // Check for duplicate qualification (same course title and institution)
-        const existingQualifications = await storage.getQualificationsByFacilitatorId(facilitatorId);
+        const existingQualifications = await storage.getFacilitatorQualifications(facilitatorId);
         const normalizedTitle = normalizeText(courseTitle);
         const normalizedInstitution = normalizeText(institution);
         
