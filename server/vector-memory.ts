@@ -397,8 +397,8 @@ export async function getComprehensiveContext(params: {
     try {
       const documentChunks = await searchActiveDocuments({
         query: params.query,
-        limit: 3,
-        scoreThreshold: 0.5, // Lowered from 0.6 to find more relevant matches
+        limit: 5, // Increased from 3 to provide more comprehensive coverage
+        scoreThreshold: 0.3, // Lowered from 0.5 to retrieve more potentially relevant content
       });
       
       if (documentChunks && documentChunks.length > 0) {
