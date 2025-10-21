@@ -1081,7 +1081,7 @@ export default function Portfolio() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="qual-description">Description (optional)</Label>
+                            <Label htmlFor="qual-description">Description</Label>
                             <Textarea
                               id="qual-description"
                               value={newQualDescription}
@@ -1089,6 +1089,7 @@ export default function Portfolio() {
                               placeholder="Brief description of content..."
                               rows={3}
                               data-testid="input-description"
+                              required
                             />
                           </div>
                         </div>
@@ -1099,9 +1100,9 @@ export default function Portfolio() {
                               institution: newQualInstitution,
                               completionDate: newQualCompletionDate,
                               credential: newQualCredential || undefined,
-                              description: newQualDescription || undefined
+                              description: newQualDescription
                             })}
-                            disabled={!newQualCourseTitle.trim() || !newQualInstitution.trim() || !newQualCompletionDate || createQualificationMutation.isPending}
+                            disabled={!newQualCourseTitle.trim() || !newQualInstitution.trim() || !newQualCompletionDate || !newQualDescription.trim() || createQualificationMutation.isPending}
                             data-testid="button-confirm-add-qualification"
                           >
                             {createQualificationMutation.isPending ? "Adding..." : "Add Qualification"}
@@ -1236,7 +1237,7 @@ export default function Portfolio() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit-qual-description">Description (optional)</Label>
+                      <Label htmlFor="edit-qual-description">Description</Label>
                       <Textarea
                         id="edit-qual-description"
                         value={editingQualification?.description || ""}
@@ -1244,6 +1245,7 @@ export default function Portfolio() {
                         placeholder="Brief description of content..."
                         rows={3}
                         data-testid="input-edit-description"
+                        required
                       />
                     </div>
                   </div>
@@ -1257,11 +1259,11 @@ export default function Portfolio() {
                             institution: editingQualification.institution,
                             completionDate: new Date(editingQualification.completionDate).toISOString().split('T')[0],
                             credential: editingQualification.credential || undefined,
-                            description: editingQualification.description || undefined
+                            description: editingQualification.description
                           });
                         }
                       }}
-                      disabled={!editingQualification?.courseTitle?.trim() || !editingQualification?.institution?.trim() || !editingQualification?.completionDate || updateQualificationMutation.isPending}
+                      disabled={!editingQualification?.courseTitle?.trim() || !editingQualification?.institution?.trim() || !editingQualification?.completionDate || !editingQualification?.description?.trim() || updateQualificationMutation.isPending}
                       data-testid="button-confirm-edit-qualification"
                     >
                       {updateQualificationMutation.isPending ? "Updating..." : "Update Qualification"}
