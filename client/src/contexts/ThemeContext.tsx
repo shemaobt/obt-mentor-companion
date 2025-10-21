@@ -59,7 +59,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (appleTouchIcon) appleTouchIcon.href = faviconUrl;
       if (shortcutIcon) shortcutIcon.href = faviconUrl;
     };
-    img.src = '/logo-white.png';
+    img.src = '/logo.png';
   };
 
   const setTheme = (themeKey: string) => {
