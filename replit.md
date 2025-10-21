@@ -63,6 +63,7 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - **Provider**: OpenAI GPT-4o for all agents
 - **Agent**: LangGraph `createReactAgent` (modern 2025 approach)
 - **Tools**: DynamicStructuredTool with Zod validation (add_qualification, add_activity, update_competency, create_general_experience)
+- **Duplicate Detection**: Robust text normalization with Unicode handling, diacritic removal, whitespace collapsing, preserving significant symbols (+, #, .) for technical terms. Returns idempotent success responses to prevent AI retries.
 - **Thread Management**: Message history managed by LangGraph
 - **Context System**: Enhanced three-layer injection:
     1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities with two-pillar gap analysis
@@ -134,6 +135,19 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - CSRF protection for state-changing endpoints.
 - Admin and supervisor-controlled user approval workflow.
 - Secure report access (only to owning facilitator or their supervisor/admin).
+- One-way database synchronization (production → development) with password security.
+
+## Database Synchronization (Admin Feature)
+- **Purpose**: Sync production user data to development environment for testing and development.
+- **Direction**: One-way only (production → development), never writes back to production.
+- **Scope**: Syncs `users` and `facilitators` tables only. Does NOT sync chats, messages, documents, or vector memory.
+- **Security**: 
+  - Production passwords are NEVER copied to development
+  - New synced users receive random unusable password hashes
+  - Existing users with production hashes are automatically remediated on sync
+  - Admin-only access with CSRF protection
+- **Access**: Admin UI at `/admin/db-sync` with status display and manual sync trigger.
+- **Files**: `server/db-sync.ts`, `server/routes-db-sync.ts`, `client/src/pages/admin-db-sync.tsx`
 
 # External Dependencies
 
