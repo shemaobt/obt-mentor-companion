@@ -68,12 +68,15 @@ interface AdminPortfolioProps {
 }
 
 export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("competencies");
   const userId = params.userId;
+  
+  // Determine if this is supervisor view based on URL
+  const isSupervisorView = window.location.pathname.includes('/supervisor/');
   
   // Competency editing state
   const [editingCompetency, setEditingCompetency] = useState<CompetencyId | null>(null);
@@ -239,10 +242,10 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
               )}
               <div>
                 <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-foreground`}>
-                  Facilitator Portfolio (Admin View)
+                  Facilitator Portfolio {isSupervisorView ? '(Supervisor View)' : '(Admin View)'}
                 </h1>
                 <p className={`text-muted-foreground mt-2 ${isMobile ? 'text-sm' : ''}`}>
-                  Read-only view of facilitator portfolio
+                  {isSupervisorView ? 'View and manage supervised facilitator portfolio' : 'Read-only view of facilitator portfolio'}
                 </p>
               </div>
             </div>
