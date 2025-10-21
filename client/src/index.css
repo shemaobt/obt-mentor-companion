@@ -408,3 +408,15 @@
     padding: var(--space-sm) !important;
   }
 }
+
+/* Hide Replit dev tools duplicate content */
+iframe[src*="replit"],
+div[class*="replit-dev"],
+div[id*="replit-dev"] {
+  display: none !important;
+}
+
+/* Ensure only one root render */
+#root ~ #root {
+  display: none !important;
+}
