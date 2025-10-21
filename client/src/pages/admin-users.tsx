@@ -643,6 +643,12 @@ export default function AdminUsers() {
                                       Admin
                                     </Badge>
                                   )}
+                                  {user.isSupervisor && !user.isAdmin && (
+                                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" data-testid={`badge-supervisor-${user.id}`}>
+                                      <UserCheck className="h-3 w-3 mr-1" />
+                                      Supervisor
+                                    </Badge>
+                                  )}
                                   {/* Approval Status Badge */}
                                   {user.approvalStatus === 'pending' && (
                                     <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300" data-testid={`badge-pending-${user.id}`}>
