@@ -2685,16 +2685,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/facilitator/profile', requireAuth, async (req: any, res) => {
     try {
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      const user = await storage.getUserById(req.userId);
       
       if (!facilitator) {
         // Auto-create facilitator profile if it doesn't exist
         const newFacilitator = await storage.createFacilitator({
           userId: req.userId,
         });
-        return res.json(newFacilitator);
+        return res.json({
+          ...newFacilitator,
+          supervisorId: user?.supervisorId || null,
+        });
       }
       
-      res.json(facilitator);
+      res.json({
+        ...facilitator,
+        supervisorId: user?.supervisorId || null,
+      });
     } catch (error) {
       console.error("Error fetching facilitator profile:", error);
       res.status(500).json({ message: "Failed to fetch facilitator profile" });
@@ -2703,7 +2710,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/facilitator/profile', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
-      const { region, mentorSupervisor } = req.body;
+      const { region, supervisorId } = req.body;
+      
+      // Update user's supervisorId in users table
+      if (supervisorId !== undefined) {
+        await storage.updateUserSupervisor(req.userId, supervisorId || null);
+      }
       
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
       
@@ -2711,17 +2723,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing facilitator
         const updated = await storage.updateFacilitator(facilitator.id, {
           region,
-          mentorSupervisor,
         });
-        return res.json(updated);
+        return res.json({
+          ...updated,
+          supervisorId: supervisorId || null,
+        });
       } else {
         // Create new facilitator
         const created = await storage.createFacilitator({
           userId: req.userId,
           region,
-          mentorSupervisor,
         });
-        return res.json(created);
+        return res.json({
+          ...created,
+          supervisorId: supervisorId || null,
+        });
       }
     } catch (error) {
       console.error("Error updating facilitator profile:", error);
