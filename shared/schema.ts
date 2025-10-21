@@ -317,6 +317,13 @@ export const documents = pgTable("documents", {
   isActive: boolean("is_active").notNull().default(true),
   fileType: varchar("file_type", { enum: ["pdf", "docx", "txt"] }).notNull(),
   chunkCount: integer("chunk_count").notNull().default(0),
+  // Metadata for better RAG retrieval
+  competencyTags: text("competency_tags").array(), // Which competencies this document covers
+  topicTags: text("topic_tags").array(), // Specific topics (e.g., "translation methods", "cultural sensitivity")
+  contentType: varchar("content_type", { 
+    enum: ["best_practices", "methodology", "training_material", "case_study", "general"] 
+  }).default("general"), // Type of content for targeted retrieval
+  description: text("description"), // Brief summary of document content
 });
 
 // System settings
