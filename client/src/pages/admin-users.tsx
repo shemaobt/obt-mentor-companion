@@ -40,7 +40,8 @@ import {
   UserCheck,
   UserX,
   FileText,
-  FileBarChart2
+  FileBarChart2,
+  Menu
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -50,6 +51,7 @@ interface UserWithStats {
   firstName?: string | null;
   lastName?: string | null;
   isAdmin: boolean;
+  isSupervisor?: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastLoginAt: string | Date | null;
@@ -69,7 +71,7 @@ export default function AdminUsers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  // Sidebar is always visible, no toggle state needed
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -183,6 +185,41 @@ export default function AdminUsers() {
       toast({
         title: "Error",
         description: "Failed to update user admin status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleSupervisorStatusMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/supervisor`, 
+        {},
+        { "X-Requested-With": "XMLHttpRequest" }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "User supervisor status updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user supervisor status",
         variant: "destructive",
       });
     },
@@ -472,26 +509,56 @@ export default function AdminUsers() {
 
   return (
     <div className="h-screen bg-background flex relative overflow-hidden" data-testid="page-admin-users">
-      {/* Sidebar - Always visible */}
-      <div className="h-screen w-80">
+      {/* Sidebar - Hidden on mobile by default */}
+      <div className={`
+        ${isMobile 
+          ? `fixed inset-y-0 left-0 z-50 transition-transform duration-300 ${
+              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            } w-4/5 max-w-sm`
+          : 'h-screen w-80'
+        }
+      `}>
         <Sidebar 
           isMobile={isMobile}
-          isOpen={true}
+          isOpen={isMobile ? sidebarOpen : true}
+          onClose={() => setSidebarOpen(false)}
         />
       </div>
+
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+          data-testid="overlay-sidebar"
+        />
+      )}
       
       <div className={`flex-1 h-screen overflow-y-auto ${isMobile ? 'p-4' : 'p-8'}`}>
         <div className={`${isMobile ? 'max-w-full' : 'max-w-7xl'} mx-auto`}>
           {/* Header */}
           <div className={`${isMobile ? 'mb-6' : 'mb-8'}`}>
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-foreground`}>
-                  User Management
-                </h1>
-                <p className={`text-muted-foreground mt-2 ${isMobile ? 'text-sm' : ''}`}>
-                  Manage user accounts, permissions, and view usage statistics
-                </p>
+              <div className="flex items-center gap-3">
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarOpen(true)}
+                    className="min-h-[44px] min-w-[44px]"
+                    data-testid="button-open-sidebar"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                )}
+                <div>
+                  <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-foreground`}>
+                    User Management
+                  </h1>
+                  <p className={`text-muted-foreground mt-2 ${isMobile ? 'text-sm' : ''}`}>
+                    Manage user accounts, permissions, and view usage statistics
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -691,6 +758,23 @@ export default function AdminUsers() {
                                     <>
                                       <Shield className="mr-2 h-4 w-4" />
                                       Make Admin
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => toggleSupervisorStatusMutation.mutate(user.id)}
+                                  disabled={toggleSupervisorStatusMutation.isPending}
+                                  data-testid={`menu-toggle-supervisor-${user.id}`}
+                                >
+                                  {user.isSupervisor ? (
+                                    <>
+                                      <UserX className="mr-2 h-4 w-4" />
+                                      Remove Supervisor
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="mr-2 h-4 w-4" />
+                                      Make Supervisor
                                     </>
                                   )}
                                 </DropdownMenuItem>
