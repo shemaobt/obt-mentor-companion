@@ -204,11 +204,31 @@ function Login() {
             </form>
           </Form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground text-[28px]">Don't have an account? </span>
-            <Link href="/signup" className="text-primary hover:underline text-[24px]" data-testid="link-signup">
-              Sign up
+          <div className="mt-6 space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  New here?
+                </span>
+              </div>
+            </div>
+            
+            <Link href="/signup" className="block" data-testid="link-signup">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                type="button"
+              >
+                Create a new account
+              </Button>
             </Link>
+            
+            <p className="text-center text-xs text-muted-foreground">
+              Don't have an account yet? Sign up to get started with OBT Mentor Companion
+            </p>
           </div>
         </CardContent>
       </Card>
