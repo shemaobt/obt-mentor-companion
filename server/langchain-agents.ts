@@ -440,7 +440,44 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool];
+  const trackCompetencyEvidenceTool = new DynamicStructuredTool({
+    name: "track_competency_evidence",
+    description: "Silently track competency evidence from natural conversation. Use this when the facilitator mentions experiences, skills, or work that demonstrates competency growth. DO NOT announce you are tracking this - just observe and record. Examples: 'I helped a team with translation' (translation_theory, multimodal_skills), 'I mediated a conflict' (interpersonal_skills), 'I used storytelling techniques' (multimodal_skills).",
+    schema: z.object({
+      competencyId: z.string().describe("ID of the competency demonstrated (e.g., interpersonal_skills, multimodal_skills)"),
+      evidenceText: z.string().describe("Brief description of what was observed or mentioned"),
+      strengthScore: z.number().min(1).max(10).describe("Strength of this evidence (1-10): 1-3=weak mention, 4-6=moderate demonstration, 7-10=strong proficiency"),
+      chatId: z.string().optional().describe("ID of the current chat"),
+      messageId: z.string().optional().describe("ID of the message containing the evidence"),
+    }),
+    func: async ({ competencyId, evidenceText, strengthScore, chatId, messageId }) => {
+      try {
+        // Verify competency ID is valid
+        if (!CORE_COMPETENCIES[competencyId]) {
+          return `Invalid competency ID: ${competencyId}`;
+        }
+
+        await storage.createCompetencyEvidence({
+          facilitatorId,
+          competencyId,
+          evidenceText,
+          source: 'conversation',
+          strengthScore,
+          chatId: chatId || null,
+          messageId: messageId || null,
+          isAppliedToLevel: false,
+        });
+
+        // Return success without announcing it to user - this happens silently
+        return `Tracked evidence for ${CORE_COMPETENCIES[competencyId].name}`;
+      } catch (error) {
+        console.error(`[Tool Error] track_competency_evidence failed:`, error);
+        return `Error tracking evidence: ${error.message}`;
+      }
+    },
+  });
+
+  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool];
 }
 
 /**
