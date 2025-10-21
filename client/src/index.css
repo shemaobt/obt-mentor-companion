@@ -409,14 +409,15 @@
   }
 }
 
-/* Hide Replit dev tools duplicate content */
-iframe[src*="replit"],
-div[class*="replit-dev"],
-div[id*="replit-dev"] {
+/* Hide Replit dev banner iframe that duplicates content */
+#vite-plugin-dev-banner,
+#vite-plugin-dev-banner-iframe,
+iframe[id*="vite-plugin"],
+iframe[id*="dev-banner"] {
   display: none !important;
-}
-
-/* Ensure only one root render */
-#root ~ #root {
-  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
 }
