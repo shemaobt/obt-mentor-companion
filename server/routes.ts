@@ -2259,10 +2259,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin endpoints to view user portfolio data
-  app.get('/api/admin/users/:userId/profile', requireAdmin, async (req: any, res) => {
+  // Admin endpoints to view user portfolio data (also accessible to supervisors for their supervised users)
+  app.get('/api/admin/users/:userId/profile', requireSupervisor, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view portfolios of users you supervise" });
+        }
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
       if (!facilitator) {
@@ -2276,9 +2285,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users/:userId/competencies', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/competencies', requireSupervisor, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view competencies of users you supervise" });
+        }
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
       if (!facilitator) {
@@ -2293,7 +2311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/users/:userId/competencies', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+  app.post('/api/admin/users/:userId/competencies', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
     try {
       const { userId } = req.params;
       
@@ -2329,9 +2347,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users/:userId/qualifications', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/qualifications', requireSupervisor, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view qualifications of users you supervise" });
+        }
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
       if (!facilitator) {
@@ -2346,9 +2373,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users/:userId/activities', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/activities', requireSupervisor, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view activities of users you supervise" });
+        }
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
       if (!facilitator) {
@@ -2363,9 +2399,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users/:userId/reports', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/reports', requireSupervisor, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view reports of users you supervise" });
+        }
+      }
+      
       const facilitator = await storage.getFacilitatorByUserId(userId);
       
       if (!facilitator) {
