@@ -92,7 +92,7 @@ export function ThemeSwitcher() {
                   style={{ backgroundColor: theme.brand.hex }}
                 >
                   <img
-                    src="/logo.png"
+                    src="/logo-white.png"
                     alt={theme.name}
                     className="w-full h-full object-contain"
                   />

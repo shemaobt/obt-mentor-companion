@@ -28,7 +28,7 @@ export default function LogoWithBackground({
       style={{ backgroundColor: theme.brand.hex }}
     >
       <img 
-        src="/logo.png" 
+        src="/logo-white.png" 
         alt="OBT Mentor" 
         className="w-full h-full object-contain"
       />
