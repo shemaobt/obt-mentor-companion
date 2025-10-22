@@ -204,7 +204,6 @@ export default function Portfolio() {
   const [newQualCourseTitle, setNewQualCourseTitle] = useState("");
   const [newQualInstitution, setNewQualInstitution] = useState("");
   const [newQualCompletionDate, setNewQualCompletionDate] = useState("");
-  const [newQualCredential, setNewQualCredential] = useState("");
   const [newQualCourseLevel, setNewQualCourseLevel] = useState<CourseLevel | "">("");
   const [newQualDescription, setNewQualDescription] = useState("");
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
@@ -306,7 +305,7 @@ export default function Portfolio() {
 
   // Create qualification mutation
   const createQualificationMutation = useMutation({
-    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: CourseLevel; description: string }) => {
+    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; courseLevel: CourseLevel; description: string }) => {
       await apiRequest("POST", "/api/facilitator/qualifications", data);
     },
     onSuccess: () => {
@@ -315,7 +314,6 @@ export default function Portfolio() {
       setNewQualCourseTitle("");
       setNewQualInstitution("");
       setNewQualCompletionDate("");
-      setNewQualCredential("");
       setNewQualCourseLevel("");
       setNewQualDescription("");
       toast({
@@ -334,7 +332,7 @@ export default function Portfolio() {
 
   // Update qualification mutation
   const updateQualificationMutation = useMutation({
-    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: CourseLevel; description: string }) => {
+    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; courseLevel: CourseLevel; description: string }) => {
       const { id, ...updates } = data;
       await apiRequest("PATCH", `/api/facilitator/qualifications/${id}`, updates);
     },
@@ -1113,16 +1111,6 @@ export default function Portfolio() {
                             </Select>
                           </div>
                           <div>
-                            <Label htmlFor="qual-credential">Credential (optional)</Label>
-                            <Input
-                              id="qual-credential"
-                              value={newQualCredential}
-                              onChange={(e) => setNewQualCredential(e.target.value)}
-                              placeholder="e.g., Certificate, Diploma"
-                              data-testid="input-credential"
-                            />
-                          </div>
-                          <div>
                             <Label htmlFor="qual-description">Description</Label>
                             <Textarea
                               id="qual-description"
@@ -1143,7 +1131,6 @@ export default function Portfolio() {
                                   courseTitle: newQualCourseTitle,
                                   institution: newQualInstitution,
                                   completionDate: newQualCompletionDate,
-                                  credential: newQualCredential || undefined,
                                   courseLevel: newQualCourseLevel,
                                   description: newQualDescription
                                 });
@@ -1304,16 +1291,6 @@ export default function Portfolio() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="edit-qual-credential">Credential (optional)</Label>
-                      <Input
-                        id="edit-qual-credential"
-                        value={editingQualification?.credential || ""}
-                        onChange={(e) => setEditingQualification(prev => prev ? { ...prev, credential: e.target.value } : null)}
-                        placeholder="e.g., Certificate"
-                        data-testid="input-edit-credential"
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor="edit-qual-description">Description</Label>
                       <Textarea
                         id="edit-qual-description"
@@ -1335,7 +1312,6 @@ export default function Portfolio() {
                             courseTitle: editingQualification.courseTitle,
                             institution: editingQualification.institution,
                             completionDate: new Date(editingQualification.completionDate).toISOString().split('T')[0],
-                            credential: editingQualification.credential || undefined,
                             courseLevel: editingQualification.courseLevel,
                             description: editingQualification.description
                           });
