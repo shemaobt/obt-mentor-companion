@@ -34,6 +34,13 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
     queryKey: ["/api/messages", message.id, "attachments"],
     retry: false,
   });
+
+  // Filter out [Attachment: ...] placeholder text from message content
+  // This is especially important for document attachments which render nicely on their own
+  const getDisplayContent = (content: string) => {
+    // Remove [Attachment: filename] pattern from content
+    return content.replace(/\[Attachment:\s*[^\]]+\]/g, '').trim();
+  };
   
   // Sync with speech synthesis state
   useEffect(() => {
@@ -70,14 +77,15 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
   };
 
   if (message.role === "user") {
+    const displayContent = getDisplayContent(message.content);
     return (
       <div className="flex justify-end" data-testid={`message-user-${message.id}`}>
         <div className="max-w-2xl">
           <div className="bg-primary text-primary-foreground rounded-lg rounded-br-sm p-4">
-            <p data-testid={`text-message-content-${message.id}`}>{message.content}</p>
+            {displayContent && <p data-testid={`text-message-content-${message.id}`}>{displayContent}</p>}
             {/* Display attachments */}
             {attachments.length > 0 && (
-              <div className="mt-3 space-y-2">
+              <div className={`space-y-2 ${displayContent ? 'mt-3' : ''}`}>
                 {attachments.map((attachment) => (
                   <div key={attachment.id} data-testid={`attachment-${attachment.id}`}>
                     {attachment.fileType === 'image' ? (
@@ -168,6 +176,7 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
     );
   }
 
+  const displayContent = getDisplayContent(message.content);
   return (
     <div className="flex justify-start" data-testid={`message-assistant-${message.id}`}>
       <div className="max-w-2xl">
@@ -176,29 +185,31 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
             <LogoWithBackground size="sm" />
           </div>
           <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
-            <div className="text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none" data-testid={`text-message-content-${message.id}`}>
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
-                  em: ({node, ...props}) => <em className="italic" {...props} />,
-                  ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
-                  ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
-                  li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                  code: ({node, inline, ...props}) => 
-                    inline 
-                      ? <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono" {...props} />
-                      : <pre className="bg-muted p-2 rounded overflow-x-auto"><code className="text-sm font-mono whitespace-pre" {...props} /></pre>,
-                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-2" {...props} />,
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-            </div>
+            {displayContent && (
+              <div className="text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none" data-testid={`text-message-content-${message.id}`}>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
+                    em: ({node, ...props}) => <em className="italic" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                    li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                    code: ({node, inline, ...props}) => 
+                      inline 
+                        ? <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono" {...props} />
+                        : <pre className="bg-muted p-2 rounded overflow-x-auto"><code className="text-sm font-mono whitespace-pre" {...props} /></pre>,
+                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-2" {...props} />,
+                  }}
+                >
+                  {displayContent}
+                </ReactMarkdown>
+              </div>
+            )}
             {/* Display attachments */}
             {attachments.length > 0 && (
-              <div className="mt-3 space-y-2">
+              <div className={`space-y-2 ${displayContent ? 'mt-3' : ''}`}>
                 {attachments.map((attachment) => (
                   <div key={attachment.id} data-testid={`attachment-${attachment.id}`}>
                     {attachment.fileType === 'image' ? (
