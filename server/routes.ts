@@ -3296,7 +3296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/facilitator/activities/:activityId', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
       const { activityId } = req.params;
-      const { languageName, chaptersCount, activityDate, notes } = req.body;
+      const { languageName, chaptersCount, durationYears, durationMonths, notes } = req.body;
       
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
       
@@ -3307,7 +3307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates: any = {};
       if (languageName !== undefined) updates.languageName = languageName;
       if (chaptersCount !== undefined) updates.chaptersCount = chaptersCount;
-      if (activityDate !== undefined) updates.activityDate = activityDate ? new Date(activityDate) : null;
+      if (durationYears !== undefined) updates.durationYears = durationYears;
+      if (durationMonths !== undefined) updates.durationMonths = durationMonths;
       if (notes !== undefined) updates.notes = notes;
       
       const activity = await storage.updateActivity(activityId, updates);
