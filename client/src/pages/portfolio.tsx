@@ -476,7 +476,7 @@ export default function Portfolio() {
 
   // Update activity mutation
   const updateActivityMutation = useMutation({
-    mutationFn: async (data: { id: string; languageName?: string; chaptersCount?: number; activityDate?: string; notes?: string }) => {
+    mutationFn: async (data: { id: string; languageName?: string; chaptersCount?: number; durationYears?: number; durationMonths?: number; notes?: string }) => {
       const { id, ...updates } = data;
       await apiRequest("PATCH", `/api/facilitator/activities/${id}`, updates);
     },
@@ -1585,21 +1585,36 @@ export default function Portfolio() {
                       <Input
                         id="edit-activity-chapters"
                         type="number"
-                        min="1"
-                        value={editingActivity?.chaptersCount || 1}
+                        min="0"
+                        value={editingActivity?.chaptersCount || 0}
                         onChange={(e) => setEditingActivity(prev => prev ? { ...prev, chaptersCount: parseInt(e.target.value) } : null)}
                         data-testid="input-edit-chapters"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="edit-activity-date">Activity Date</Label>
-                      <Input
-                        id="edit-activity-date"
-                        type="date"
-                        value={editingActivity?.activityDate ? new Date(editingActivity.activityDate).toISOString().split('T')[0] : ""}
-                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, activityDate: new Date(e.target.value) } : null)}
-                        data-testid="input-edit-activity-date"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="edit-duration-years">Duration (Years)</Label>
+                        <Input
+                          id="edit-duration-years"
+                          type="number"
+                          min="0"
+                          value={editingActivity?.durationYears || 0}
+                          onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationYears: parseInt(e.target.value) } : null)}
+                          data-testid="input-edit-duration-years"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-duration-months">Duration (Months)</Label>
+                        <Input
+                          id="edit-duration-months"
+                          type="number"
+                          min="0"
+                          max="11"
+                          value={editingActivity?.durationMonths || 0}
+                          onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationMonths: parseInt(e.target.value) } : null)}
+                          data-testid="input-edit-duration-months"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="edit-activity-notes">Notes</Label>
@@ -1616,17 +1631,18 @@ export default function Portfolio() {
                   <DialogFooter>
                     <Button
                       onClick={() => {
-                        if (editingActivity && editingActivity.activityDate) {
+                        if (editingActivity) {
                           updateActivityMutation.mutate({
                             id: editingActivity.id,
                             languageName: editingActivity.languageName || undefined,
                             chaptersCount: editingActivity.chaptersCount || undefined,
-                            activityDate: new Date(editingActivity.activityDate).toISOString().split('T')[0],
+                            durationYears: editingActivity.durationYears || undefined,
+                            durationMonths: editingActivity.durationMonths || undefined,
                             notes: editingActivity.notes || undefined
                           });
                         }
                       }}
-                      disabled={!editingActivity?.languageName || !editingActivity?.activityDate || updateActivityMutation.isPending}
+                      disabled={!editingActivity?.languageName || updateActivityMutation.isPending}
                       data-testid="button-confirm-edit-activity"
                     >
                       {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}

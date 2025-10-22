@@ -286,7 +286,10 @@ export const mentorshipActivities = pgTable("mentorship_activities", {
   description: text("description"), // Free-form description of the experience
   yearsOfExperience: integer("years_of_experience"), // e.g., "10 years as facilitator"
   organization: varchar("organization"), // Where the work was done
-  activityDate: timestamp("activity_date").defaultNow(),
+  // Duration tracking (preferred over activityDate)
+  durationYears: integer("duration_years"), // Years of experience/duration
+  durationMonths: integer("duration_months"), // Additional months (0-11)
+  activityDate: timestamp("activity_date").defaultNow(), // DEPRECATED: kept for backwards compatibility
   notes: text("notes"), // Additional context about the activity
   createdAt: timestamp("created_at").defaultNow(),
 });
