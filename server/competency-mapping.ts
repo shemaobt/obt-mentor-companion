@@ -240,22 +240,32 @@ export function calculateActivityImpacts(
   // Get base impacts for this activity type
   const baseImpacts = ACTIVITY_TYPE_IMPACTS[type] || ACTIVITY_TYPE_IMPACTS['general_experience'];
   
-  // Calculate multiplier based on years of experience
+  // Calculate multiplier based on YEARS OF EXPERIENCE (primary measure)
+  // Chapters are NOT used as a general multiplier for all competencies
   let multiplier = 1;
   if (yearsOfExperience && yearsOfExperience > 0) {
     // Scale: 1 year = 1.0x, 2 years = 1.2x, 3 years = 1.4x, 5+ years = 2.0x
     multiplier = Math.min(1 + (yearsOfExperience - 1) * 0.2, 2.0);
-  } else if (chaptersCount && chaptersCount > 0) {
-    // For translation activities, use chapters as a proxy for experience
-    // Scale: 1-5 chapters = 1.0x, 6-10 = 1.2x, 11-20 = 1.5x, 20+ = 2.0x
-    if (chaptersCount >= 20) multiplier = 2.0;
-    else if (chaptersCount >= 11) multiplier = 1.5;
-    else if (chaptersCount >= 6) multiplier = 1.2;
   }
   
-  // Apply base impacts with multiplier
+  // Apply base impacts with years multiplier
   for (const impact of baseImpacts) {
     impacts.set(impact.competencyId, impact.weight * multiplier);
+  }
+  
+  // TRANSLATION-SPECIFIC BONUS: Add small chapter bonus ONLY for translation_theory
+  // Chapters measure translation work volume, not general competency
+  if (type === 'translation' && chaptersCount && chaptersCount > 0) {
+    const current = impacts.get('translation_theory') || 0;
+    let chapterBonus = 0;
+    
+    // Small bonus based on chapters: 1-10 = +0.5, 11-30 = +1, 31-60 = +1.5, 60+ = +2
+    if (chaptersCount >= 60) chapterBonus = 2;
+    else if (chaptersCount >= 31) chapterBonus = 1.5;
+    else if (chaptersCount >= 11) chapterBonus = 1;
+    else chapterBonus = 0.5;
+    
+    impacts.set('translation_theory', current + chapterBonus);
   }
   
   // NO keyword-based boosts from descriptions - rely only on activityType
