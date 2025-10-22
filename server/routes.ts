@@ -3292,6 +3292,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/facilitator/activities/:activityId', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const { activityId } = req.params;
+      const { languageName, chaptersCount, activityDate, notes } = req.body;
+      
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+      
+      const updates: any = {};
+      if (languageName !== undefined) updates.languageName = languageName;
+      if (chaptersCount !== undefined) updates.chaptersCount = chaptersCount;
+      if (activityDate !== undefined) updates.activityDate = activityDate ? new Date(activityDate) : null;
+      if (notes !== undefined) updates.notes = notes;
+      
+      const activity = await storage.updateActivity(activityId, updates);
+      
+      // Recalculate competencies based on updated activity
+      await storage.recalculateCompetencies(facilitator.id);
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("Error updating activity:", error);
+      res.status(500).json({ message: "Failed to update activity" });
+    }
+  });
+
   app.delete('/api/facilitator/activities/:activityId', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
       const { activityId } = req.params;

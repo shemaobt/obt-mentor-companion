@@ -219,6 +219,8 @@ export default function Portfolio() {
   const [newActivityNotes, setNewActivityNotes] = useState("");
   const [newActivityDate, setNewActivityDate] = useState(new Date().toISOString().split('T')[0]);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<MentorshipActivity | null>(null);
+  const [editActivityDialogOpen, setEditActivityDialogOpen] = useState(false);
 
   // Reports state
   const [reportPeriodStart, setReportPeriodStart] = useState("");
@@ -467,6 +469,30 @@ export default function Portfolio() {
       toast({
         title: "Error",
         description: "Failed to register activity",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update activity mutation
+  const updateActivityMutation = useMutation({
+    mutationFn: async (data: { id: string; languageName?: string; chaptersCount?: number; activityDate?: string; notes?: string }) => {
+      const { id, ...updates } = data;
+      await apiRequest("PATCH", `/api/facilitator/activities/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/activities'] });
+      setEditActivityDialogOpen(false);
+      setEditingActivity(null);
+      toast({
+        title: "Success",
+        description: "Activity updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update activity",
         variant: "destructive",
       });
     },
@@ -1503,15 +1529,28 @@ export default function Portfolio() {
                                   </>
                                 )}
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => deleteActivityMutation.mutate(activity.id)}
-                                className="text-destructive hover:text-destructive"
-                                data-testid={`button-delete-activity-${activity.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex space-x-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingActivity(activity);
+                                    setEditActivityDialogOpen(true);
+                                  }}
+                                  data-testid={`button-edit-activity-${activity.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteActivityMutation.mutate(activity.id)}
+                                  className="text-destructive hover:text-destructive"
+                                  data-testid={`button-delete-activity-${activity.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -1520,6 +1559,81 @@ export default function Portfolio() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Edit Activity Dialog */}
+              <Dialog open={editActivityDialogOpen} onOpenChange={setEditActivityDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Activity</DialogTitle>
+                    <DialogDescription>
+                      Update the details of this activity
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-activity-language">Language Name</Label>
+                      <Input
+                        id="edit-activity-language"
+                        value={editingActivity?.languageName || ""}
+                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, languageName: e.target.value } : null)}
+                        placeholder="e.g., Portuguese, Spanish"
+                        data-testid="input-edit-language"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-activity-chapters">Chapters Mentored</Label>
+                      <Input
+                        id="edit-activity-chapters"
+                        type="number"
+                        min="1"
+                        value={editingActivity?.chaptersCount || 1}
+                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, chaptersCount: parseInt(e.target.value) } : null)}
+                        data-testid="input-edit-chapters"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-activity-date">Activity Date</Label>
+                      <Input
+                        id="edit-activity-date"
+                        type="date"
+                        value={editingActivity?.activityDate ? new Date(editingActivity.activityDate).toISOString().split('T')[0] : ""}
+                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, activityDate: new Date(e.target.value) } : null)}
+                        data-testid="input-edit-activity-date"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-activity-notes">Notes</Label>
+                      <Textarea
+                        id="edit-activity-notes"
+                        value={editingActivity?.notes || ""}
+                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                        placeholder="Additional context about the activity..."
+                        rows={4}
+                        data-testid="input-edit-notes"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={() => {
+                        if (editingActivity && editingActivity.activityDate) {
+                          updateActivityMutation.mutate({
+                            id: editingActivity.id,
+                            languageName: editingActivity.languageName || undefined,
+                            chaptersCount: editingActivity.chaptersCount || undefined,
+                            activityDate: new Date(editingActivity.activityDate).toISOString().split('T')[0],
+                            notes: editingActivity.notes || undefined
+                          });
+                        }
+                      }}
+                      disabled={!editingActivity?.languageName || !editingActivity?.activityDate || updateActivityMutation.isPending}
+                      data-testid="button-confirm-edit-activity"
+                    >
+                      {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             {/* Reports Tab */}

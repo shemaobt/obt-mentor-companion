@@ -193,6 +193,7 @@ export interface IStorage {
   // Mentorship activity operations
   getFacilitatorActivities(facilitatorId: string): Promise<MentorshipActivity[]>;
   createActivity(activity: InsertMentorshipActivity): Promise<MentorshipActivity>;
+  updateActivity(activityId: string, updates: Partial<Omit<InsertMentorshipActivity, 'facilitatorId'>>): Promise<MentorshipActivity>;
   deleteActivity(activityId: string): Promise<void>;
   updateFacilitatorTotals(facilitatorId: string): Promise<void>;
   
@@ -1373,6 +1374,15 @@ export class DatabaseStorage implements IStorage {
     }
     
     return created;
+  }
+
+  async updateActivity(activityId: string, updates: Partial<Omit<InsertMentorshipActivity, 'facilitatorId'>>): Promise<MentorshipActivity> {
+    const [updated] = await db
+      .update(mentorshipActivities)
+      .set(updates)
+      .where(eq(mentorshipActivities.id, activityId))
+      .returning();
+    return updated;
   }
 
   async deleteActivity(activityId: string): Promise<void> {
