@@ -611,15 +611,18 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     
 IMPORTANT VERIFICATION PROCESS:
 1. Read the "Content Preview" from the attachment context to see the actual text from the certificate
-2. Compare the certificate content with the qualification details (name, institution, year)
-3. ONLY attach if the certificate clearly matches the qualification
-4. If there's a mismatch or uncertainty, ask the user to confirm before attaching
-5. If the content doesn't match at all, politely explain the mismatch and ask which qualification the certificate is actually for
+2. Find the qualification in the portfolio context - each qualification shows [ID: xxx] at the end
+3. Compare the certificate content with the qualification details (name, institution, year)
+4. ONLY attach if the certificate clearly matches the qualification
+5. If there's a mismatch or uncertainty, ask the user to confirm before attaching
+6. If the content doesn't match at all, politely explain the mismatch and ask which qualification the certificate is actually for
+
+IMPORTANT: Use the qualification ID shown in brackets [ID: xxx] from the portfolio context, NOT a made-up ID.
 
 This verification ensures data integrity and prevents attaching the wrong certificates to qualifications.`,
     schema: z.object({
-      attachmentId: z.string().describe("ID of the uploaded file attachment from the current message"),
-      qualificationId: z.string().describe("ID of the qualification to attach the certificate to"),
+      attachmentId: z.string().describe("ID of the uploaded file attachment from the current message [ATTACHMENTS IN THIS MESSAGE] section"),
+      qualificationId: z.string().describe("ID of the qualification to attach the certificate to (found in [ID: xxx] brackets in the portfolio context)"),
     }),
     func: async ({ attachmentId, qualificationId }) => {
       try {

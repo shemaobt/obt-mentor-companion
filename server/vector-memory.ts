@@ -482,6 +482,8 @@ export async function getComprehensiveContext(params: {
                 const date = new Date(qual.completionDate);
                 context += ` (${date.getFullYear()})`;
               }
+              // CRITICAL: Include qualification ID for certificate attachment
+              context += ` [ID: ${qual.id}]`;
               context += '\n';
             });
             context += '\n';
