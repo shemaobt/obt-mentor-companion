@@ -933,11 +933,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         includeGlobal: true,
       });
 
-      // Wait a bit for attachments to be uploaded (they come in a separate request)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for attachments to be uploaded (they come in a separate request)
+      // Use retry logic to ensure attachments are available
+      let attachments = await storage.getMessageAttachments(userMessage.id);
+      if (attachments.length === 0 && content.trim() === '') {
+        // If message has no content and no attachments yet, wait and retry
+        // This handles the case where a file is uploaded without text
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attachments = await storage.getMessageAttachments(userMessage.id);
+        
+        if (attachments.length === 0) {
+          // One more retry after another second
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attachments = await storage.getMessageAttachments(userMessage.id);
+        }
+      } else if (attachments.length === 0) {
+        // For messages with content, shorter wait
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attachments = await storage.getMessageAttachments(userMessage.id);
+      }
       
       // Get any attachments for vision processing and context
-      const attachments = await storage.getMessageAttachments(userMessage.id);
       const imageAttachments = attachments.filter(att => att.fileType === 'image');
       const imageFilePaths = imageAttachments.map(att => att.storagePath);
       
