@@ -13,6 +13,7 @@ import AdminFeedback from "@/pages/admin-feedback";
 import AdminUsers from "@/pages/admin-users";
 import AdminDocuments from "@/pages/admin-documents";
 import AdminPortfolioView from "@/pages/admin-portfolio-view";
+import AdminCompetencyRecalc from "@/pages/admin-competency-recalc";
 import SupervisorUsers from "@/pages/supervisor-users";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/admin/feedback" component={AdminFeedback} />
           <Route path="/admin/users" component={AdminUsers} />
           <Route path="/admin/documents" component={AdminDocuments} />
+          <Route path="/admin/competency-recalc" component={AdminCompetencyRecalc} />
           <Route path="/admin/portfolio/:userId" component={AdminPortfolioView} />
           <Route path="/supervisor/users" component={SupervisorUsers} />
           <Route path="/supervisor/users/:userId/portfolio" component={AdminPortfolioView} />

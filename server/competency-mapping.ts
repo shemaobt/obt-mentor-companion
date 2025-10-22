@@ -181,19 +181,19 @@ export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
 
 /**
  * Get multiplier based on course level
- * - introduction: 0.5x (basic awareness)
+ * - introduction: 0.8x (basic awareness)
  * - certificate: 1.0x (baseline competency)
- * - bachelor: 1.5x (strong foundation)
- * - master: 2.0x (advanced expertise)
- * - doctoral: 2.5x (expert level)
+ * - bachelor: 1.2x (strong foundation)
+ * - master: 1.5x (advanced expertise)
+ * - doctoral: 1.8x (expert level)
  */
 export function getCourseLevelMultiplier(courseLevel?: string | null): number {
   switch (courseLevel) {
-    case 'introduction': return 0.5;
+    case 'introduction': return 0.8;
     case 'certificate': return 1.0;
-    case 'bachelor': return 1.5;
-    case 'master': return 2.0;
-    case 'doctoral': return 2.5;
+    case 'bachelor': return 1.2;
+    case 'master': return 1.5;
+    case 'doctoral': return 1.8;
     default: return 1.0; // Default to certificate level if not specified
   }
 }
@@ -233,16 +233,16 @@ export function calculateQualificationImpacts(
  * Convert accumulated weight to competency status level
  * Thresholds:
  * - 0: not_started
- * - 1-3: emerging
- * - 4-7: growing  
- * - 8-12: proficient
- * - 13+: advanced
+ * - 1-5: emerging
+ * - 6-12: growing  
+ * - 13-20: proficient
+ * - 21+: advanced
  */
 export function scoreToStatus(score: number): string {
   if (score === 0) return 'not_started';
-  if (score <= 3) return 'emerging';
-  if (score <= 7) return 'growing';
-  if (score <= 12) return 'proficient';
+  if (score <= 5) return 'emerging';
+  if (score <= 12) return 'growing';
+  if (score <= 20) return 'proficient';
   return 'advanced';
 }
 
