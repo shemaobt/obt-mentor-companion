@@ -2993,6 +2993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         competencyId,
         status,
         notes,
+        statusSource: 'manual', // Mark user changes as manual
       });
       
       res.json(competency);
