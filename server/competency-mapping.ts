@@ -156,20 +156,23 @@ export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
 
 /**
  * Get multiplier based on course level
- * - introduction: 0.8x (basic awareness)
- * - certificate: 1.0x (baseline competency)
- * - bachelor: 1.2x (strong foundation)
- * - master: 1.5x (advanced expertise)
- * - doctoral: 1.8x (expert level)
+ * Designed so that:
+ * - 1 Bachelor degree = Proficient (15 points)
+ * - 1 Master degree = Advanced (22 points)
+ * - introduction: 0.5x (2.5 points - basic awareness)
+ * - certificate: 1.2x (6 points - baseline competency)
+ * - bachelor: 3.0x (15 points - proficient level)
+ * - master: 4.4x (22 points - advanced level)
+ * - doctoral: 5.0x (25 points - expert level)
  */
 export function getCourseLevelMultiplier(courseLevel?: string | null): number {
   switch (courseLevel) {
-    case 'introduction': return 0.8;
-    case 'certificate': return 1.0;
-    case 'bachelor': return 1.2;
-    case 'master': return 1.5;
-    case 'doctoral': return 1.8;
-    default: return 1.0; // Default to certificate level if not specified
+    case 'introduction': return 0.5;
+    case 'certificate': return 1.2;
+    case 'bachelor': return 3.0;
+    case 'master': return 4.4;
+    case 'doctoral': return 5.0;
+    default: return 1.2; // Default to certificate level if not specified
   }
 }
 
