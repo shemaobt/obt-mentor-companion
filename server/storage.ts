@@ -1092,6 +1092,7 @@ export class DatabaseStorage implements IStorage {
         set: {
           status: competency.status,
           notes: competency.notes,
+          statusSource: competency.statusSource || 'auto',
           lastUpdated: new Date(),
         },
       })
