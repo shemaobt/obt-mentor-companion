@@ -203,6 +203,7 @@ export default function Portfolio() {
   const [newQualInstitution, setNewQualInstitution] = useState("");
   const [newQualCompletionDate, setNewQualCompletionDate] = useState("");
   const [newQualCredential, setNewQualCredential] = useState("");
+  const [newQualCourseLevel, setNewQualCourseLevel] = useState("");
   const [newQualDescription, setNewQualDescription] = useState("");
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
   const [editingQualification, setEditingQualification] = useState<FacilitatorQualification | null>(null);
@@ -303,7 +304,7 @@ export default function Portfolio() {
 
   // Create qualification mutation
   const createQualificationMutation = useMutation({
-    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; description: string }) => {
+    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: string; description: string }) => {
       await apiRequest("POST", "/api/facilitator/qualifications", data);
     },
     onSuccess: () => {
@@ -313,6 +314,7 @@ export default function Portfolio() {
       setNewQualInstitution("");
       setNewQualCompletionDate("");
       setNewQualCredential("");
+      setNewQualCourseLevel("");
       setNewQualDescription("");
       toast({
         title: "Success",
@@ -330,7 +332,7 @@ export default function Portfolio() {
 
   // Update qualification mutation
   const updateQualificationMutation = useMutation({
-    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; description: string }) => {
+    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: string; description: string }) => {
       const { id, ...updates } = data;
       await apiRequest("PATCH", `/api/facilitator/qualifications/${id}`, updates);
     },
@@ -1094,6 +1096,21 @@ export default function Portfolio() {
                             />
                           </div>
                           <div>
+                            <Label htmlFor="qual-course-level">Course Level *</Label>
+                            <Select value={newQualCourseLevel} onValueChange={setNewQualCourseLevel}>
+                              <SelectTrigger id="qual-course-level" data-testid="select-course-level">
+                                <SelectValue placeholder="Select course level" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="introduction">Introduction</SelectItem>
+                                <SelectItem value="certificate">Certificate</SelectItem>
+                                <SelectItem value="bachelor">Bachelor</SelectItem>
+                                <SelectItem value="master">Master</SelectItem>
+                                <SelectItem value="doctoral">Doctoral</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
                             <Label htmlFor="qual-credential">Credential (optional)</Label>
                             <Input
                               id="qual-credential"
@@ -1123,9 +1140,10 @@ export default function Portfolio() {
                               institution: newQualInstitution,
                               completionDate: newQualCompletionDate,
                               credential: newQualCredential || undefined,
+                              courseLevel: newQualCourseLevel,
                               description: newQualDescription
                             })}
-                            disabled={!newQualCourseTitle.trim() || !newQualInstitution.trim() || !newQualCompletionDate || !newQualDescription.trim() || createQualificationMutation.isPending}
+                            disabled={!newQualCourseTitle.trim() || !newQualInstitution.trim() || !newQualCompletionDate || !newQualCourseLevel || !newQualDescription.trim() || createQualificationMutation.isPending}
                             data-testid="button-confirm-add-qualification"
                           >
                             {createQualificationMutation.isPending ? "Adding..." : "Add Qualification"}
