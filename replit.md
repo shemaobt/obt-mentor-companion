@@ -91,6 +91,7 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - **Conversational System Prompt**: AI acts as trusted friend/mentor that observes naturally, evaluates continuously, and gently corrects using ONLY uploaded documentation
 - **Portfolio Management Rule**: AI NEVER automatically adds experiences/qualifications to portfolio during casual conversation - only when user explicitly requests formal documentation. Portfolio is professional record, not conversation log.
 - **Certificate Attachment System**: Users can upload certificates (PDF, images, DOCX) in chat; AI can attach them to qualifications with facilitator ownership validation
+- **Certificate Verification (October 2025)**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching. Prevents wrong certificates from being attached to qualifications.
 
 ### Shared Infrastructure
 - **Global Memory**: Qdrant Cloud vector database for conversation embeddings
