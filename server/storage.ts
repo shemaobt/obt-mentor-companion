@@ -168,6 +168,7 @@ export interface IStorage {
   
   // Facilitator operations
   getFacilitatorByUserId(userId: string): Promise<Facilitator | undefined>;
+  getAllFacilitators(): Promise<Facilitator[]>;
   createFacilitator(facilitator: InsertFacilitator): Promise<Facilitator>;
   updateFacilitator(facilitatorId: string, updates: Partial<InsertFacilitator>): Promise<Facilitator>;
   
@@ -176,6 +177,7 @@ export interface IStorage {
   upsertCompetency(competency: InsertFacilitatorCompetency): Promise<FacilitatorCompetency>;
   updateCompetencyStatus(competencyId: string, status: string, notes?: string): Promise<FacilitatorCompetency>;
   recalculateCompetencies(facilitatorId: string): Promise<void>;
+  recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}>;
   
   // Qualification operations
   getFacilitatorQualifications(facilitatorId: string): Promise<FacilitatorQualification[]>;
@@ -1064,6 +1066,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async getAllFacilitators(): Promise<Facilitator[]> {
+    return await db
+      .select()
+      .from(facilitators)
+      .orderBy(facilitators.createdAt);
+  }
+
   // Competency operations
   async getFacilitatorCompetencies(facilitatorId: string): Promise<FacilitatorCompetency[]> {
     return await db
@@ -1169,6 +1178,32 @@ export class DatabaseStorage implements IStorage {
           });
       }
     }
+  }
+
+  async recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}> {
+    const facilitators = await this.getAllFacilitators();
+    const total = facilitators.length;
+    let processed = 0;
+    const errors: string[] = [];
+
+    console.log(`[Bulk Recalculation] Starting recalculation for ${total} facilitators`);
+
+    for (const facilitator of facilitators) {
+      try {
+        await this.recalculateCompetencies(facilitator.id);
+        processed++;
+        if (processed % 10 === 0) {
+          console.log(`[Bulk Recalculation] Progress: ${processed}/${total}`);
+        }
+      } catch (error: any) {
+        const errorMsg = `Facilitator ${facilitator.fullName} (${facilitator.id}): ${error.message}`;
+        console.error(`[Bulk Recalculation] Error: ${errorMsg}`);
+        errors.push(errorMsg);
+      }
+    }
+
+    console.log(`[Bulk Recalculation] Complete: ${processed}/${total} successful, ${errors.length} errors`);
+    return { total, processed, errors };
   }
 
   // Qualification operations

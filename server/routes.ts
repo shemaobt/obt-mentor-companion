@@ -113,11 +113,12 @@ const fileUpload = multer({
   fileFilter: (req: any, file: any, cb: any) => {
     const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const allowedAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/m4a', 'audio/ogg', 'audio/webm', 'video/webm'];
+    const allowedDocTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     
-    if (allowedImageTypes.includes(file.mimetype) || allowedAudioTypes.includes(file.mimetype)) {
+    if (allowedImageTypes.includes(file.mimetype) || allowedAudioTypes.includes(file.mimetype) || allowedDocTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image and audio files are allowed'));
+      cb(new Error('Only image, audio, and document files (PDF, DOCX) are allowed'));
     }
   }
 });
@@ -831,7 +832,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const fileType = file.mimetype.startsWith('image/') ? 'image' : 'audio';
+      let fileType: 'image' | 'audio' | 'document';
+      if (file.mimetype.startsWith('image/')) {
+        fileType = 'image';
+      } else if (file.mimetype.startsWith('audio/')) {
+        fileType = 'audio';
+      } else if (file.mimetype === 'application/pdf' || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        fileType = 'document';
+      } else {
+        // Default to document for other allowed types
+        fileType = 'document';
+      }
+      
       let transcription: string | undefined;
 
       if (fileType === 'audio') {
@@ -2574,6 +2586,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  app.post('/api/admin/recalculate-all-competencies', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      console.log('[Admin] Starting bulk competency recalculation');
+      const result = await storage.recalculateAllCompetencies();
+      
+      res.json({
+        success: true,
+        total: result.total,
+        processed: result.processed,
+        failed: result.errors.length,
+        errors: result.errors,
+        message: `Recalculated competencies for ${result.processed}/${result.total} facilitators. ${result.errors.length} errors.`
+      });
+    } catch (error) {
+      console.error("Error during bulk recalculation:", error);
+      res.status(500).json({ message: "Failed to recalculate competencies" });
     }
   });
 

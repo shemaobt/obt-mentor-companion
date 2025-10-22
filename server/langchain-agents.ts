@@ -481,25 +481,6 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  const updateCompetencyTool = new DynamicStructuredTool({
-    name: "update_competency",
-    description: "Update a facilitator's competency status based on their progress and demonstrated skills",
-    schema: z.object({
-      competencyId: z.string().describe("ID of the competency to update"),
-      status: z.enum(['not_started', 'emerging', 'growing', 'proficient', 'advanced']).describe("New status level"),
-      notes: z.string().optional().describe("Notes about the competency progress"),
-    }),
-    func: async ({ competencyId, status, notes }) => {
-      try {
-        await storage.updateCompetency(competencyId, { status, notes });
-        return `Successfully updated competency to ${status}`;
-      } catch (error) {
-        console.error(`[Tool Error] update_competency failed:`, error);
-        return `Error updating competency: ${error.message}`;
-      }
-    },
-  });
-
   const trackCompetencyEvidenceTool = new DynamicStructuredTool({
     name: "track_competency_evidence",
     description: "Silently track competency evidence from natural conversation. Use this when the facilitator mentions experiences, skills, or work that demonstrates competency growth. DO NOT announce you are tracking this - just observe and record. Examples: 'I helped a team with translation' (translation_theory, multimodal_skills), 'I mediated a conflict' (interpersonal_skills), 'I used storytelling techniques' (multimodal_skills).",
@@ -645,7 +626,82 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     },
   });
 
-  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, updateCompetencyTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool, attachCertificateTool];
+  const getPortfolioSummaryTool = new DynamicStructuredTool({
+    name: "get_portfolio_summary",
+    description: "Get an overall summary of the facilitator's portfolio including competency counts, strongest areas, growth areas, and two-pillar analysis (education vs experience). Use this when the user asks about their overall progress, what they need to work on, or how they're doing generally.",
+    schema: z.object({}),
+    func: async () => {
+      try {
+        const { calculateCompetencyScores } = await import('./competency-mapping');
+        
+        // Get all portfolio data
+        const competencies = await storage.getFacilitatorCompetencies(facilitatorId);
+        const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
+        const activities = await storage.getFacilitatorActivities(facilitatorId);
+        
+        // Calculate scores for two-pillar analysis
+        const scores = calculateCompetencyScores(qualifications, activities);
+        
+        // Count competencies by level
+        const byLevel = {
+          advanced: 0,
+          proficient: 0,
+          growing: 0,
+          emerging: 0,
+          not_started: 0,
+        };
+        
+        competencies.forEach(c => {
+          byLevel[c.status as keyof typeof byLevel]++;
+        });
+        
+        // Calculate total education and experience scores
+        let totalEducationScore = 0;
+        let totalExperienceScore = 0;
+        for (const [_, edScore] of scores.education.entries()) {
+          totalEducationScore += edScore;
+        }
+        for (const [_, expScore] of scores.experience.entries()) {
+          totalExperienceScore += expScore;
+        }
+        
+        // Identify strongest and weakest areas
+        const competencyScores = competencies.map(c => ({
+          id: c.competencyId,
+          name: CORE_COMPETENCIES[c.competencyId]?.name || c.competencyId,
+          status: c.status,
+          score: scores.total.get(c.competencyId) || 0,
+        })).sort((a, b) => b.score - a.score);
+        
+        const strongestAreas = competencyScores.slice(0, 3).map(c => c.name);
+        const growthAreas = competencyScores.slice(-3).reverse().filter(c => c.status !== 'advanced').map(c => c.name);
+        
+        // Build summary response
+        const summary = {
+          totalCompetencies: 11,
+          byLevel,
+          qualificationCount: qualifications.length,
+          activityCount: activities.length,
+          educationScore: Math.round(totalEducationScore * 10) / 10,
+          experienceScore: Math.round(totalExperienceScore * 10) / 10,
+          strongestAreas,
+          growthAreas,
+          twoPillarAnalysis: totalEducationScore > totalExperienceScore * 1.5 
+            ? 'Your education is strong, but you need more hands-on experience' 
+            : totalExperienceScore > totalEducationScore * 1.5 
+            ? 'You have great practical experience, but formal training would help'
+            : 'Good balance between education and experience',
+        };
+        
+        return JSON.stringify(summary, null, 2);
+      } catch (error) {
+        console.error(`[Tool Error] get_portfolio_summary failed:`, error);
+        return `Error generating portfolio summary: ${error.message}`;
+      }
+    },
+  });
+
+  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool, attachCertificateTool, getPortfolioSummaryTool];
 }
 
 /**

@@ -513,24 +513,26 @@ export default function ChatInterface({
   const validateFile = (file: File): boolean => {
     const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const audioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg'];
+    const documentTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     
     const isImage = imageTypes.includes(file.type);
     const isAudio = audioTypes.includes(file.type);
+    const isDocument = documentTypes.includes(file.type);
     
-    if (!isImage && !isAudio) {
+    if (!isImage && !isAudio && !isDocument) {
       toast({
         title: "Invalid file type",
-        description: "Please select an image (.jpg, .png, .gif, .webp) or audio file (.mp3, .wav, .m4a, .ogg)",
+        description: "Please select an image (.jpg, .png, .gif, .webp), audio file (.mp3, .wav, .m4a, .ogg), or document (.pdf, .docx)",
         variant: "destructive",
       });
       return false;
     }
     
-    const maxSize = isImage ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
+    const maxSize = isImage ? 10 * 1024 * 1024 : isDocument ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > maxSize) {
       toast({
         title: "File too large",
-        description: `${isImage ? 'Images' : 'Audio files'} must be under ${isImage ? '10MB' : '20MB'}`,
+        description: `${isImage ? 'Images' : isDocument ? 'Documents' : 'Audio files'} must be under ${isImage || isDocument ? '10MB' : '20MB'}`,
         variant: "destructive",
       });
       return false;
