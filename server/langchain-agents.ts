@@ -27,7 +27,7 @@ export const OBT_MENTOR_INSTRUCTIONS = `You are a trusted friend and mentor supp
 **YOUR ROLE:**
 - Listen like a friend: Be warm, curious, and genuinely interested in their experiences
 - Observe silently: Notice competency signals in what they share (use track_competency_evidence tool without announcing it)
-- Evaluate thoughtfully: When you see consistent growth, suggest competency updates (use suggest_competency_update tool)
+- Evaluate autonomously: When you identify strong evidence of growth (3+ observations, strength 6+), AUTOMATICALLY update competency levels using suggest_competency_update tool - no user approval needed
 - Correct gently: When they mention practices that could be improved, reference the training materials to guide them toward better approaches—never criticize, always coach
 
 **CRITICAL PORTFOLIO MANAGEMENT RULE - ABSOLUTE PRIORITY:**
@@ -539,7 +539,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const suggestCompetencyUpdateTool = new DynamicStructuredTool({
     name: "suggest_competency_update",
-    description: "Analyze accumulated evidence and suggest a competency level update. Only use this when you've observed MULTIPLE strong pieces of evidence (3+ mentions with average strength 6+) demonstrating consistent growth. Creates a stored suggestion for user approval.",
+    description: "Analyze accumulated evidence and AUTOMATICALLY update a competency level. Only use this when you've observed MULTIPLE strong pieces of evidence (3+ mentions with average strength 6+) demonstrating consistent growth. Updates the competency immediately without user approval.",
     schema: z.object({
       competencyId: z.string().describe("ID of the competency to analyze"),
       chatId: z.string().optional().describe("Current chat ID"),
@@ -585,9 +585,9 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         // Strong evidence (8+) or many items (5+) → jump 2 levels, otherwise 1 level
         const levelsToIncrease = (avgStrength >= 8 || evidence.length >= 5) ? 2 : 1;
         const suggestedIndex = Math.min(currentIndex + levelsToIncrease, statusProgression.length - 1);
-        const suggestedStatus = statusProgression[suggestedIndex];
+        const newStatus = statusProgression[suggestedIndex];
 
-        // Don't suggest if already at suggested level or higher
+        // Don't update if already at suggested level or higher
         if (suggestedIndex <= currentIndex) {
           return `${CORE_COMPETENCIES[competencyId].name} is already at or above suggested level (${currentStatus}).`;
         }
@@ -600,25 +600,23 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
         const competencyName = CORE_COMPETENCIES[competencyId].name;
 
-        // Create stored suggestion for user approval
-        await storage.createCompetencySuggestion({
+        // Update the competency directly
+        await storage.upsertCompetency({
           facilitatorId,
           competencyId,
-          currentStatus,
-          suggestedStatus,
-          evidenceSummary: `Based on ${evidence.length} observations (avg strength: ${avgStrength.toFixed(1)}/10):\n\n${evidenceSummary}`,
-          evidenceCount: evidence.length,
-          averageStrength: Math.round(avgStrength),
-          status: 'pending',
-          chatId: chatId || null,
-          messageId: messageId || null,
+          status: newStatus,
+          notes: `Automatically updated by AI mentor based on ${evidence.length} observations (avg strength: ${avgStrength.toFixed(1)}/10). Recent evidence:\n${evidenceSummary}`,
         });
 
+        // Mark the evidence as applied to the level
+        const evidenceIds = evidence.map(e => e.id);
+        await storage.markEvidenceApplied(evidenceIds);
+
         // Return a message for the AI to present conversationally
-        return `SUCCESS: Created pending suggestion for ${competencyName} (${currentStatus} → ${suggestedStatus}). Present this to the user: "I've been noticing your ${competencyName.toLowerCase()} skills really developing through what you've shared. Based on ${evidence.length} observations, I've created a suggestion to update your portfolio from ${currentStatus} to ${suggestedStatus}. You can review and approve it in your portfolio page whenever you're ready!"`;
+        return `SUCCESS: Competency automatically updated for ${competencyName} (${currentStatus} → ${newStatus}). Present this naturally to the user: "I've been observing your ${competencyName.toLowerCase()} skills developing through our conversations. Based on ${evidence.length} strong observations, I've updated your competency level from ${currentStatus} to ${newStatus}. You can see this change in your portfolio!"`;
       } catch (error) {
         console.error(`[Tool Error] suggest_competency_update failed:`, error);
-        return `Error analyzing competency: ${error.message}`;
+        return `Error updating competency: ${error.message}`;
       }
     },
   });
