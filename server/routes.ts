@@ -2471,6 +2471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         competencyId,
         status,
         notes,
+        statusSource: 'manual', // Mark as manually set by admin
       });
       
       res.json(competency);
