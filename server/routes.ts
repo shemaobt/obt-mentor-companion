@@ -1021,11 +1021,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId;
       const { chatId } = req.params;
-      const { content } = req.body;
+      const { content = '' } = req.body;
 
-      // Validate input
-      if (!content || typeof content !== 'string') {
-        return res.status(400).json({ message: "Content is required" });
+      // Validate input - content can be empty if uploading files only
+      if (typeof content !== 'string') {
+        return res.status(400).json({ message: "Content must be a string" });
       }
 
       // Verify chat belongs to user
