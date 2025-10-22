@@ -584,9 +584,11 @@ export default function ChatInterface({
     if ((!message.trim() && !selectedFile) || isTyping) return;
     
     // Save message content before clearing
-    // Don't add placeholder text for document attachments (they render nicely on their own)
+    // Don't add placeholder text for documents and images (they render nicely on their own)
     const isDocument = selectedFile && (selectedFile.type === 'application/pdf' || selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    const messageContent = message.trim() || (selectedFile && !isDocument ? `[Attachment: ${selectedFile.name}]` : '');
+    const isImage = selectedFile && selectedFile.type.startsWith('image/');
+    const shouldSkipPlaceholder = isDocument || isImage;
+    const messageContent = message.trim() || (selectedFile && !shouldSkipPlaceholder ? `[Attachment: ${selectedFile.name}]` : '');
     const fileToUpload = selectedFile;
     
     // If no chat exists, create one and store the message for sending after navigation
