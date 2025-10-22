@@ -1171,21 +1171,6 @@ export default function Portfolio() {
                                       {new Date(qualification.completionDate).toLocaleDateString('en-US')}
                                     </span>
                                   )}
-                                  <Badge 
-                                    variant="outline" 
-                                    className="text-xs font-mono cursor-pointer hover:bg-accent" 
-                                    data-testid={`text-qualification-id-${qualification.id}`}
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(qualification.id);
-                                      toast({
-                                        title: "ID Copied",
-                                        description: "Qualification ID copied to clipboard",
-                                      });
-                                    }}
-                                    title="Click to copy full ID"
-                                  >
-                                    ID: {qualification.id.substring(0, 8)}...
-                                  </Badge>
                                 </div>
                                 {qualification.description && (
                                   <p className="text-sm text-muted-foreground mb-3" data-testid={`text-description-${qualification.id}`}>
