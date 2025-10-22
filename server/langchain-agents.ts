@@ -607,7 +607,16 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const attachCertificateTool = new DynamicStructuredTool({
     name: "attach_certificate_to_qualification",
-    description: "Attach a certificate or document file that was uploaded in this conversation to a specific qualification. Use this when the user uploads a file (PDF, image, etc.) and tells you it's a certificate for one of their qualifications. You'll need the attachment ID from the message context and the qualification ID from their portfolio.",
+    description: `Attach a certificate or document file that was uploaded in this conversation to a specific qualification. 
+    
+IMPORTANT VERIFICATION PROCESS:
+1. Read the "Content Preview" from the attachment context to see the actual text from the certificate
+2. Compare the certificate content with the qualification details (name, institution, year)
+3. ONLY attach if the certificate clearly matches the qualification
+4. If there's a mismatch or uncertainty, ask the user to confirm before attaching
+5. If the content doesn't match at all, politely explain the mismatch and ask which qualification the certificate is actually for
+
+This verification ensures data integrity and prevents attaching the wrong certificates to qualifications.`,
     schema: z.object({
       attachmentId: z.string().describe("ID of the uploaded file attachment from the current message"),
       qualificationId: z.string().describe("ID of the qualification to attach the certificate to"),

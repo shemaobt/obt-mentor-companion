@@ -21,6 +21,32 @@ import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStat
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
 
+/**
+ * Extract text from certificate files (PDF, DOCX) for AI verification
+ */
+async function extractCertificateText(storagePath: string, mimeType: string): Promise<string | null> {
+  try {
+    let fileType: string | null = null;
+    
+    if (mimeType === 'application/pdf') {
+      fileType = 'pdf';
+    } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      fileType = 'docx';
+    }
+    
+    if (!fileType) {
+      return null; // Not a text-extractable document
+    }
+    
+    const text = await parseDocument(storagePath, fileType);
+    // Limit text length to avoid overwhelming the context
+    return text.slice(0, 2000);
+  } catch (error) {
+    console.error('[Certificate Text Extraction] Error:', error);
+    return null;
+  }
+}
+
 // Server-side audio cache for faster TTS responses
 interface CachedAudio {
   buffer: Buffer;
@@ -958,12 +984,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageFilePaths = imageAttachments.map(att => att.storagePath);
       
       // Include all attachment metadata in context for AI awareness
+      // Extract text from certificates for verification
       let attachmentContext = "";
       if (attachments.length > 0) {
-        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachments.map(att => 
-          `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`
-        ).join("\n") + "\n";
-        console.log('[Attachment Context]', attachmentContext);
+        const attachmentDetails = await Promise.all(attachments.map(async (att) => {
+          let details = `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`;
+          
+          // Extract text from certificates for verification
+          const extractedText = await extractCertificateText(att.storagePath, att.mimeType);
+          if (extractedText) {
+            details += `\n  Content Preview: ${extractedText}`;
+          }
+          
+          return details;
+        }));
+        
+        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachmentDetails.join("\n") + "\n";
+        console.log('[Attachment Context] Processed', attachments.length, 'attachments with text extraction');
       }
 
       // Combine relevant context with attachment metadata
@@ -1145,12 +1182,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Include all attachment metadata in context for AI awareness
+      // Extract text from certificates for verification
       let attachmentContext = "";
       if (attachments.length > 0) {
-        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachments.map(att => 
-          `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`
-        ).join("\n") + "\n";
-        console.log('[Attachment Context]', attachmentContext);
+        const attachmentDetails = await Promise.all(attachments.map(async (att) => {
+          let details = `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`;
+          
+          // Extract text from certificates for verification
+          const extractedText = await extractCertificateText(att.storagePath, att.mimeType);
+          if (extractedText) {
+            details += `\n  Content Preview: ${extractedText}`;
+          }
+          
+          return details;
+        }));
+        
+        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachmentDetails.join("\n") + "\n";
+        console.log('[Attachment Context] Processed', attachments.length, 'attachments with text extraction');
       }
 
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
