@@ -56,6 +56,8 @@ import {
 } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
+type CourseLevel = "introduction" | "certificate" | "bachelor" | "master" | "doctoral";
+
 interface Supervisor {
   id: string;
   firstName: string;
@@ -203,7 +205,7 @@ export default function Portfolio() {
   const [newQualInstitution, setNewQualInstitution] = useState("");
   const [newQualCompletionDate, setNewQualCompletionDate] = useState("");
   const [newQualCredential, setNewQualCredential] = useState("");
-  const [newQualCourseLevel, setNewQualCourseLevel] = useState("");
+  const [newQualCourseLevel, setNewQualCourseLevel] = useState<CourseLevel | "">("");
   const [newQualDescription, setNewQualDescription] = useState("");
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
   const [editingQualification, setEditingQualification] = useState<FacilitatorQualification | null>(null);
@@ -304,7 +306,7 @@ export default function Portfolio() {
 
   // Create qualification mutation
   const createQualificationMutation = useMutation({
-    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: string; description: string }) => {
+    mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: CourseLevel; description: string }) => {
       await apiRequest("POST", "/api/facilitator/qualifications", data);
     },
     onSuccess: () => {
@@ -332,7 +334,7 @@ export default function Portfolio() {
 
   // Update qualification mutation
   const updateQualificationMutation = useMutation({
-    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: string; description: string }) => {
+    mutationFn: async (data: { id: string; courseTitle: string; institution: string; completionDate: string; credential?: string; courseLevel: CourseLevel; description: string }) => {
       const { id, ...updates } = data;
       await apiRequest("PATCH", `/api/facilitator/qualifications/${id}`, updates);
     },
@@ -1097,7 +1099,7 @@ export default function Portfolio() {
                           </div>
                           <div>
                             <Label htmlFor="qual-course-level">Course Level *</Label>
-                            <Select value={newQualCourseLevel} onValueChange={setNewQualCourseLevel}>
+                            <Select value={newQualCourseLevel} onValueChange={(value) => setNewQualCourseLevel(value as CourseLevel)}>
                               <SelectTrigger id="qual-course-level" data-testid="select-course-level">
                                 <SelectValue placeholder="Select course level" />
                               </SelectTrigger>
@@ -1135,14 +1137,18 @@ export default function Portfolio() {
                         </div>
                         <DialogFooter>
                           <Button
-                            onClick={() => createQualificationMutation.mutate({
-                              courseTitle: newQualCourseTitle,
-                              institution: newQualInstitution,
-                              completionDate: newQualCompletionDate,
-                              credential: newQualCredential || undefined,
-                              courseLevel: newQualCourseLevel,
-                              description: newQualDescription
-                            })}
+                            onClick={() => {
+                              if (newQualCourseLevel) {
+                                createQualificationMutation.mutate({
+                                  courseTitle: newQualCourseTitle,
+                                  institution: newQualInstitution,
+                                  completionDate: newQualCompletionDate,
+                                  credential: newQualCredential || undefined,
+                                  courseLevel: newQualCourseLevel,
+                                  description: newQualDescription
+                                });
+                              }
+                            }}
                             disabled={!newQualCourseTitle.trim() || !newQualInstitution.trim() || !newQualCompletionDate || !newQualCourseLevel || !newQualDescription.trim() || createQualificationMutation.isPending}
                             data-testid="button-confirm-add-qualification"
                           >
@@ -1283,7 +1289,7 @@ export default function Portfolio() {
                       <Label htmlFor="edit-qual-course-level">Course Level *</Label>
                       <Select 
                         value={editingQualification?.courseLevel || ""} 
-                        onValueChange={(value) => setEditingQualification(prev => prev ? { ...prev, courseLevel: value as "introduction" | "certificate" | "bachelor" | "master" | "doctoral" } : null)}
+                        onValueChange={(value) => setEditingQualification(prev => prev ? { ...prev, courseLevel: value as CourseLevel } : null)}
                       >
                         <SelectTrigger id="edit-qual-course-level" data-testid="select-edit-course-level">
                           <SelectValue placeholder="Select course level" />
@@ -1323,14 +1329,14 @@ export default function Portfolio() {
                   <DialogFooter>
                     <Button
                       onClick={() => {
-                        if (editingQualification && editingQualification.completionDate) {
+                        if (editingQualification && editingQualification.completionDate && editingQualification.courseLevel) {
                           updateQualificationMutation.mutate({
                             id: editingQualification.id,
                             courseTitle: editingQualification.courseTitle,
                             institution: editingQualification.institution,
                             completionDate: new Date(editingQualification.completionDate).toISOString().split('T')[0],
                             credential: editingQualification.credential || undefined,
-                            courseLevel: editingQualification.courseLevel || "",
+                            courseLevel: editingQualification.courseLevel,
                             description: editingQualification.description
                           });
                         }
