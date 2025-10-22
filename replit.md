@@ -1,16 +1,6 @@
 # Overview
 
-The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, utilizing OpenAI's Assistant API. Key features include user authentication with admin approval, comprehensive facilitator portfolio management (competencies, qualifications, activities), quarterly report generation with English UI, and global memory search using Qdrant Cloud for semantic search across all facilitator conversations. The project aims to enhance mentorship effectiveness and facilitate cross-learning among facilitators.
-
-## Design System
-- **Brand Color**: #86884C (olive-green tone) - RGB(134, 136, 76) - HSL(62, 28%, 42%)
-- **UI Framework**: Consistent olive-green palette throughout light and dark modes
-- **Typography**: Inter font family with English UI labels
-- **Logo System**: Unified white logo icon with theme-colored backgrounds across all 6 themes
-  - Single white logo file (`/logo-white.png`) used universally
-  - LogoWithBackground component dynamically applies theme colors
-  - Favicon automatically updates with theme changes using canvas generation
-  - Theme switcher shows white logos on colored backgrounds for all theme previews
+The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, utilizing OpenAI's Assistant API. Key features include user authentication with admin approval, comprehensive facilitator portfolio management (competencies, qualifications, activities), quarterly report generation, and global memory search using Qdrant Cloud for semantic search across all facilitator conversations. The project aims to enhance mentorship effectiveness and facilitate cross-learning among facilitators.
 
 # User Preferences
 
@@ -18,178 +8,33 @@ Preferred communication style: Simple, everyday language.
 
 # System Architecture
 
-## Frontend
-- **Framework**: React with TypeScript (Vite)
-- **UI**: Radix UI primitives with shadcn/ui and Tailwind CSS (light/dark modes)
-- **State Management**: TanStack Query
-- **Routing**: Wouter
+## UI/UX Design
+- **Brand Color**: #86884C (olive-green tone)
+- **UI Framework**: Consistent olive-green palette across light and dark modes, using Radix UI primitives with shadcn/ui and Tailwind CSS.
+- **Typography**: Inter font family with English UI labels.
+- **Logo System**: Unified white logo icon with theme-colored backgrounds, dynamic favicon updates.
 
-## Backend
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript (ESM modules)
-- **Development**: tsx
-- **Production**: esbuild
-
-## Authentication
-- **Provider**: Replit Auth (OpenID Connect)
-- **Session Management**: Express sessions with PostgreSQL store, Passport.js
-- **Security**: HTTP-only cookies, admin approval for new users.
-
-## Database
-- **Database**: PostgreSQL (Neon serverless driver)
-- **ORM**: Drizzle ORM
-- **Schema Management**: Drizzle Kit
-
-## Data Models
-- **Core Entities**: Users, Facilitators, Facilitator Competencies, Facilitator Qualifications, Qualification Attachments, Mentorship Activities, Quarterly Reports, Chats, Messages, Message Attachments.
-- **Competencies**: Tracks 11 OBT core competencies with bilingual names and status levels (not_started, emerging, growing, proficient, advanced).
-- **Qualification Attachments**: Stores certificate files (PDF, JPEG, PNG, DOCX) linked to qualifications with duplicate detection and facilitator-scoped authorization.
-
-### 11 Core Competencies (Bilingual Framework)
-1. **Habilidades Interpessoais / Interpersonal Skills** - Lead team with active listening, empathy, facilitation
-2. **Comunicação Intercultural / Intercultural Communication** - Honor cultural codes, adjust communication naturally
-3. **Habilidades Multimodais / Multimodal Skills** - Lead oral, embodied process with stories, gestures, objects
-4. **Teorias e Processos de Tradução / Translation Theory & Process** - Understand translation methods, prioritize meaning in oral contexts
-5. **Línguas e Comunicação / Languages & Communication** - Understand language mechanics, semantics, metaphor, discourse
-6. **Línguas Bíblicas / Biblical Languages** - Consult Hebrew/Greek using exegetical tools when needed
-7. **Estudos Bíblicos e Teologia / Biblical Studies & Theology** - Bring historical-cultural background and hermeneutics
-8. **Planejamento e Garantia de Qualidade / Planning & Quality Assurance** - Transform vision into simple plans with ongoing QA
-9. **Consultoria e Mentoria / Consulting & Mentoring** - Serve as servant-leader who teaches by doing
-10. **Tecnologia Aplicada / Applied Technology** - Choose and operate tools for orality (recording, AI, collaboration)
-11. **Prática Reflexiva / Reflective Practice** - Exercise self-awareness, align actions with values, welcome feedback
-
-## AI Integration
-
-### LangChain Multi-Agent System (Active)
-
-The application uses LangChain/LangGraph for AI-powered mentorship guidance with intelligent competency evaluation:
-
-#### Core System (USE_LANGCHAIN=true)
-- **Framework**: LangChain/LangGraph with React Agent pattern
-- **Provider**: OpenAI GPT-4o for all agents
-- **Agent**: LangGraph `createReactAgent` (modern 2025 approach)
-- **Tools**: DynamicStructuredTool with Zod validation (add_qualification, add_activity, update_competency, create_general_experience, track_competency_evidence, suggest_competency_update, attach_certificate_to_qualification)
-- **Duplicate Detection**: Robust text normalization with Unicode handling, diacritic removal, whitespace collapsing, preserving significant symbols (+, #, .) for technical terms. Returns idempotent success responses to prevent AI retries.
-- **Thread Management**: Message history managed by LangGraph
-- **Context System**: Enhanced four-layer injection with conversation analysis:
-    1. **Portfolio Data**: Facilitator profile, competencies, qualifications, activities with two-pillar gap analysis
-    2. **Recent Message History**: Last 20 messages with role-based formatting
-    3. **Semantic Vector Search**: Qdrant-powered facilitator-specific + global search with competency-aware filtering
-    4. **Conversation Analysis**: Automatic detection of competencies being discussed with targeted best practices retrieval
-    5. **Attachment Awareness**: Message attachments (files uploaded) are surfaced with ID, filename, type, size for AI context
-- **Vision**: GPT-4o vision for images
-- **Audio**: Whisper API for transcription
-- **Validation**: Requires facilitator profile
-- **Intelligent Competency Evaluation**: Automatic scoring based on education (qualifications) and experience (activities) with course-level multipliers and duration weighting
-- **Competency Observation System**: Silent evidence tracking with proactive suggestions
-    - **track_competency_evidence**: AI silently logs competency signals during natural conversation
-    - **suggest_competency_update**: AI proactively suggests level changes when strong evidence accumulates (3+ observations, avg strength 6+)
-    - **Evidence-Based Thresholds**: Requires minimum evidence count and quality before suggesting updates
-    - **Suggestion Approval Workflow**: Backend creates suggestions with evidence summaries; facilitators accept/reject via API endpoints
-    - **Security**: Facilitator-scoped authorization prevents cross-facilitator tampering
-    - **attach_certificate_to_qualification**: AI can attach uploaded files (certificates) from chat to qualifications with ownership validation
-- **Conversational System Prompt**: AI acts as trusted friend/mentor that observes naturally, evaluates continuously, and gently corrects using ONLY uploaded documentation
-- **Portfolio Management Rule**: AI NEVER automatically adds experiences/qualifications to portfolio during casual conversation - only when user explicitly requests formal documentation. Portfolio is professional record, not conversation log.
-- **Certificate Attachment System**: Users can upload certificates (PDF, images, DOCX) in chat; AI can attach them to qualifications with facilitator ownership validation
-- **Certificate Verification (October 2025)**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching. Prevents wrong certificates from being attached to qualifications.
-
-### Shared Infrastructure
-- **Global Memory**: Qdrant Cloud vector database for conversation embeddings
-- **Semantic Search**: Retrieves relevant past conversations for contextual AI responses
-- **Multimodal**: Audio transcription via Whisper API (both systems)
-- **Embeddings**: text-embedding-3-small for vector storage (both systems)
-
-## Vector Memory System
-- **Provider**: Qdrant Cloud
-- **Collection**: obt_global_memory
-- **Embeddings**: text-embedding-3-small (1536 dimensions)
-- **Search**: Facilitator-specific and global searches for contextual relevance
-
-### Enhanced RAG Document Chunking (October 2025)
-- **Semantic Chunking**: Paragraph-respecting boundaries with ~100-word chunks (down from 225 words)
-  - Splits at natural paragraph breaks (double newlines)
-  - Falls back to sentence splitting for large paragraphs
-  - Maintains 20-word overlap for context continuity
-- **Automatic Competency Tagging**: Each chunk automatically tagged with relevant competencies
-  - Detects up to 5 competencies per chunk using keyword analysis
-  - 100% competency coverage validated in testing
-  - Average 4.3 competencies per chunk
-- **Rich Metadata Storage**: Enhanced chunk payloads include:
-  - `competencyTags`: Array of relevant competency IDs
-  - `sectionHeader`: Extracted section/chapter titles
-  - `wordCount`: Chunk size for quality control
-  - `documentName`, `chunkText`: Consistent field names
-- **Backward Compatibility**: Gracefully handles legacy chunks (filename/content) and new chunks (documentName/chunkText)
-- **Validated Performance**: End-to-end testing shows 100% competency matching precision
-- **Note**: Existing documents uploaded before October 2025 lack enhanced metadata; re-uploading documents will apply new chunking benefits
-
-## API Design
-- **Style**: RESTful
-- **Security**: Session-based authentication, CSRF protection, authorization checks (ownership validation).
-
-## Portfolio Management
-- **Competencies**: Track progress and update status.
-- **Qualifications**: Record formal courses and credentials with MANDATORY descriptions and OPTIONAL certificate attachments.
-  - Descriptions are enforced at all layers (DB schema .notNull(), backend validation, TypeScript types, UI validation)
-  - Certificate uploads support PDF, JPEG, PNG, DOCX up to 10MB
-  - Multiple certificates per qualification with download, preview, and delete capabilities
-  - Facilitator-scoped authorization prevents cross-user access
-  - AI can attach uploaded chat files to qualifications via attach_certificate_to_qualification tool
-- **Activities**: Log language translation mentorship work.
-- **Reports**: Generate, view, and delete quarterly reports. All portfolio sections include English labels.
-
-## User Roles and Permissions
-
-### Three-Tier User System
-1. **Admin** - Full system access
-   - Access all users (supervised and unsupervised)
-   - Manage system prompt and RAG documents
-   - Promote users to supervisor status
-   - Assign supervisors to users
-   - Approve/reject any user
-   - View and modify any facilitator profile
-
-2. **Supervisor** - Limited management access
-   - View only supervised users (assigned via supervisorId)
-   - Approve/reject supervised users pending approval
-   - View supervised users' facilitator profiles (competencies, qualifications, activities)
-   - Update supervised users' competency levels
-   - Download supervised users' quarterly reports
-   - Cannot access system prompt or RAG documents
-   - Cannot see users they don't supervise
-
-3. **Regular User** - Personal access only
-   - Manage own facilitator profile
-   - Chat with AI mentor
-   - Generate own quarterly reports
-   - Can select supervisor during registration
-
-### Supervisor Assignment Flow
-- New users can select a supervisor during signup (optional)
-- If supervisor is assigned, approval requests go to that supervisor
-- Admin can assign/reassign supervisors to existing users
-- Admin can promote/demote users to/from supervisor status
-
-## Security Features
-- Session-based authentication with HTTP-only cookies.
-- Authorization with ownership validation for sensitive operations.
-- Hierarchical access control (Admin > Supervisor > User).
-- CSRF protection for state-changing endpoints.
-- Admin and supervisor-controlled user approval workflow.
-- Secure report access (only to owning facilitator or their supervisor/admin).
-- One-way database synchronization (production → development) with password security.
-
-## Database Synchronization (Admin Feature)
-- **Purpose**: Sync production user data to development environment for testing and development.
-- **Direction**: One-way only (production → development), never writes back to production.
-- **Scope**: Syncs `users` and `facilitators` tables only. Does NOT sync chats, messages, documents, or vector memory.
-- **Security**: 
-  - Production passwords are NEVER copied to development
-  - New synced users receive random unusable password hashes
-  - Existing users with production hashes are automatically remediated on sync
-  - Admin-only access with CSRF protection
-- **Access**: Admin UI at `/admin/db-sync` with status display and manual sync trigger.
-- **Files**: `server/db-sync.ts`, `server/routes-db-sync.ts`, `client/src/pages/admin-db-sync.tsx`
+## Technical Implementation
+- **Frontend**: React with TypeScript (Vite), TanStack Query for state management, Wouter for routing.
+- **Backend**: Node.js with Express.js, TypeScript (ESM modules).
+- **Authentication**: Replit Auth (OpenID Connect), Express sessions with PostgreSQL store, Passport.js, HTTP-only cookies, admin approval for new users.
+- **Database**: PostgreSQL (Neon serverless driver), Drizzle ORM for schema management.
+- **Data Models**: Users, Facilitators, Competencies (11 OBT core competencies with bilingual names and status levels), Qualifications (with mandatory descriptions and optional certificate attachments supporting PDF, JPEG, PNG, DOCX), Activities, Quarterly Reports, Chats, Messages.
+- **AI Integration (LangChain Multi-Agent System)**:
+    - **Framework**: LangChain/LangGraph with React Agent pattern, OpenAI GPT-4o for all agents.
+    - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
+    - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
+    - **Intelligent Competency Evaluation**: Automatic scoring based on qualifications and activities with strict scoring rules, ensuring credit for actual study/work.
+    - **Competency Observation System**: AI silently tracks competency signals (`track_competency_evidence`) and proactively suggests level changes (`suggest_competency_update`) based on accumulated evidence, requiring user approval.
+    - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching.
+    - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on uploaded documentation. It does not automatically add experiences/qualifications; explicit user request is needed.
+- **Vector Memory System**: Qdrant Cloud for global memory, using `text-embedding-3-small` for embeddings.
+    - **Enhanced RAG Document Chunking**: Semantic chunking (~100-word chunks) with automatic competency tagging, rich metadata storage, and backward compatibility.
+- **API Design**: RESTful, secured with session-based authentication, CSRF protection, and authorization checks.
+- **Portfolio Management**: Comprehensive tracking of competencies, qualifications (with multiple certificate uploads, download, preview, delete), activities, and quarterly reports.
+- **User Roles and Permissions**: Three-tier system (Admin, Supervisor, Regular User) with granular access control, including supervisor assignment and approval workflows.
+- **Security Features**: Session-based auth, HTTP-only cookies, authorization, hierarchical access control, CSRF protection, admin/supervisor-controlled user approval.
+- **Database Synchronization**: One-way (production → development) syncing of `users` and `facilitators` tables for testing, with password security.
 
 # External Dependencies
 
@@ -215,7 +60,7 @@ The application uses LangChain/LangGraph for AI-powered mentorship guidance with
 - **Password Hashing**: bcryptjs
 - **Vector Database Client**: @qdrant/js-client-rest
 - **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/langgraph)
-- **Agent Orchestration**: LangGraph with React Agent pattern
+- **Agent Orchestration**: LangGraph
 
 ## Development Tools
 - **Build Tools**: Vite (frontend), esbuild (backend)

@@ -24,157 +24,132 @@ export interface QualificationPattern {
 
 /**
  * Qualification patterns that affect the new 11-competency framework
- * When a qualification matches multiple patterns, weights are summed
+ * STRICT MATCHING: Each pattern focuses on PRIMARY competency only
+ * Secondary impacts removed to prevent over-crediting
  */
 export const QUALIFICATION_PATTERNS: QualificationPattern[] = [
-  // Interpersonal & Team Leadership Skills
+  // Interpersonal & Team Leadership Skills - STRICT
   {
-    keywords: ['leadership', 'team building', 'conflict resolution', 'active listening', 'empathy', 'facilitation', 'group dynamics'],
+    keywords: ['leadership', 'team building', 'conflict resolution', 'active listening', 'group dynamics', 'team leadership'],
     impacts: [
       { competencyId: 'interpersonal_skills', weight: 5 },
-      { competencyId: 'consulting_mentoring', weight: 3 },
     ]
   },
   
-  // Cross-cultural & Intercultural Communication
+  // Cross-cultural & Intercultural Communication - STRICT
   {
     keywords: ['cross-cultural', 'intercultural', 'cultural sensitivity', 'anthropology', 'ethnography', 'cultural adaptation'],
     impacts: [
       { competencyId: 'intercultural_communication', weight: 5 },
-      { competencyId: 'interpersonal_skills', weight: 2 },
     ]
   },
   
-  // Oral Communication & Multimodal Methods
+  // Oral Communication & Multimodal Methods - STRICT (must have "oral" or "multimodal")
   {
-    keywords: ['oral', 'obt', 'oral bible translation', 'storytelling', 'narrative', 'multimodal', 'embodied learning', 'gestures', 'visual communication'],
+    keywords: ['oral bible translation', 'obt training', 'storytelling methods', 'multimodal', 'embodied learning', 'oral communication methods'],
     impacts: [
       { competencyId: 'multimodal_skills', weight: 5 },
-      { competencyId: 'translation_theory', weight: 3 },
     ]
   },
   
-  // Translation Theory & Linguistics
+  // Translation Theory - STRICT (translation-specific courses only)
   {
-    keywords: ['translation', 'linguistics', 'translation theory', 'phonetics', 'phonology', 'morphology', 'syntax', 'semantics', 'discourse analysis'],
+    keywords: ['translation theory', 'translation principles', 'translation methods', 'bible translation', 'translation studies'],
     impacts: [
       { competencyId: 'translation_theory', weight: 5 },
-      { competencyId: 'languages_communication', weight: 4 },
     ]
   },
   
-  // Languages & Communication (Semantics, Pragmatics, Metaphor)
+  // Languages & Communication - STRICT (linguistics focus)
   {
-    keywords: ['semantics', 'pragmatics', 'metaphor', 'discourse', 'communication theory', 'linguistic analysis', 'language structure'],
+    keywords: ['linguistics', 'applied linguistics', 'semantics', 'pragmatics', 'discourse analysis', 'language structure', 'phonetics', 'phonology', 'morphology', 'syntax'],
     impacts: [
       { competencyId: 'languages_communication', weight: 5 },
-      { competencyId: 'translation_theory', weight: 3 },
     ]
   },
   
-  // Biblical Languages (Hebrew, Greek, Aramaic)
+  // Biblical Languages - VERY STRICT (original languages only)
   {
-    keywords: ['hebrew', 'greek', 'aramaic', 'biblical language', 'exegesis', 'original languages'],
+    keywords: ['biblical hebrew', 'biblical greek', 'koine greek', 'aramaic', 'original languages', 'hebrew exegesis', 'greek exegesis'],
     impacts: [
       { competencyId: 'biblical_languages', weight: 5 },
-      { competencyId: 'biblical_studies', weight: 3 },
     ]
   },
   
-  // Biblical Studies & Theology
+  // Biblical Studies & Theology - STRICTER (require theology/biblical study focus)
   {
-    keywords: ['bible', 'biblical', 'theology', 'theological', 'scripture', 'hermeneutics', 'biblical interpretation'],
+    keywords: ['theology', 'theological studies', 'biblical studies', 'hermeneutics', 'biblical interpretation', 'biblical theology', 'systematic theology'],
     impacts: [
       { competencyId: 'biblical_studies', weight: 5 },
-      { competencyId: 'biblical_languages', weight: 2 },
     ]
   },
   
-  // Planning & Quality Assurance
+  // Planning & Quality Assurance - STRICT
   {
-    keywords: ['project management', 'planning', 'quality assurance', 'qa', 'quality control', 'project planning', 'scheduling', 'budgeting'],
+    keywords: ['project management', 'quality assurance', 'qa training', 'quality control', 'project planning', 'translation consultant'],
     impacts: [
       { competencyId: 'planning_quality', weight: 5 },
-      { competencyId: 'consulting_mentoring', weight: 2 },
     ]
   },
   
-  // Consulting & Mentoring
+  // Consulting & Mentoring - STRICT
   {
-    keywords: ['mentor', 'mentoring', 'mentorship', 'coaching', 'consulting', 'training', 'teaching', 'discipleship', 'servant leadership'],
+    keywords: ['mentoring', 'mentorship training', 'coaching', 'consulting', 'translation consultant', 'mentor training', 'discipleship training'],
     impacts: [
       { competencyId: 'consulting_mentoring', weight: 5 },
-      { competencyId: 'interpersonal_skills', weight: 3 },
     ]
   },
   
-  // Applied Technology
+  // Applied Technology - STRICT
   {
-    keywords: ['technology', 'audio recording', 'editing', 'digital tools', 'software', 'ai', 'artificial intelligence', 'remote collaboration', 'digital literacy'],
+    keywords: ['audio technology', 'recording technology', 'digital tools', 'software training', 'technology for translation', 'digital literacy', 'computer science'],
     impacts: [
       { competencyId: 'applied_technology', weight: 5 },
-      { competencyId: 'multimodal_skills', weight: 2 },
     ]
   },
   
-  // Reflective Practice & Self-awareness
+  // Reflective Practice - STRICT
   {
-    keywords: ['reflective practice', 'self-awareness', 'emotional intelligence', 'self-regulation', 'personal growth', 'feedback', 'introspection'],
+    keywords: ['reflective practice', 'self-awareness training', 'emotional intelligence', 'personal development', 'leadership development'],
     impacts: [
       { competencyId: 'reflective_practice', weight: 5 },
-      { competencyId: 'interpersonal_skills', weight: 3 },
     ]
   },
   
-  // YWAM Specific Courses
+  // YWAM DTS - Special case (genuinely multi-competency)
   {
-    keywords: ['dts', 'discipleship training school', 'ywam', 'youth with a mission'],
+    keywords: ['dts', 'discipleship training school'],
     impacts: [
-      { competencyId: 'biblical_studies', weight: 4 },
-      { competencyId: 'intercultural_communication', weight: 3 },
-      { competencyId: 'consulting_mentoring', weight: 3 },
+      { competencyId: 'biblical_studies', weight: 3 },
+      { competencyId: 'intercultural_communication', weight: 2 },
     ]
   },
 ];
 
 /**
  * Activity type mappings to competencies
- * Maps different work experience types to relevant competencies
+ * STRICT FOCUS: Each activity type impacts only 1-2 primary competencies
+ * Removed secondary impacts to prevent over-crediting
  */
 export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
   'translation': [
-    { competencyId: 'translation_theory', weight: 3 },
-    { competencyId: 'languages_communication', weight: 3 },
+    { competencyId: 'translation_theory', weight: 4 },
     { competencyId: 'multimodal_skills', weight: 2 },
-    { competencyId: 'consulting_mentoring', weight: 2 },
-    { competencyId: 'planning_quality', weight: 1 },
   ],
   'facilitation': [
     { competencyId: 'interpersonal_skills', weight: 4 },
-    { competencyId: 'consulting_mentoring', weight: 4 },
-    { competencyId: 'planning_quality', weight: 3 },
-    { competencyId: 'intercultural_communication', weight: 2 },
-    { competencyId: 'reflective_practice', weight: 2 },
+    { competencyId: 'consulting_mentoring', weight: 3 },
   ],
   'teaching': [
     { competencyId: 'consulting_mentoring', weight: 4 },
-    { competencyId: 'interpersonal_skills', weight: 3 },
-    { competencyId: 'planning_quality', weight: 2 },
-    { competencyId: 'reflective_practice', weight: 2 },
   ],
   'indigenous_work': [
     { competencyId: 'intercultural_communication', weight: 5 },
-    { competencyId: 'interpersonal_skills', weight: 3 },
-    { competencyId: 'languages_communication', weight: 2 },
-    { competencyId: 'reflective_practice', weight: 2 },
   ],
   'school_work': [
     { competencyId: 'interpersonal_skills', weight: 2 },
-    { competencyId: 'planning_quality', weight: 2 },
-    { competencyId: 'reflective_practice', weight: 1 },
   ],
   'general_experience': [
-    { competencyId: 'interpersonal_skills', weight: 1 },
     { competencyId: 'reflective_practice', weight: 1 },
   ],
 };
@@ -283,26 +258,8 @@ export function calculateActivityImpacts(
     impacts.set(impact.competencyId, impact.weight * multiplier);
   }
   
-  // Additional keyword-based impacts from description
-  if (description) {
-    const descLower = description.toLowerCase();
-    
-    // Check for additional skill indicators in description
-    const keywordBoosts: Array<{ keywords: string[]; competencyId: string; boost: number }> = [
-      { keywords: ['lead', 'leader', 'leadership'], competencyId: 'interpersonal_skills', boost: 1 },
-      { keywords: ['mentor', 'coach', 'train'], competencyId: 'consulting_mentoring', boost: 1 },
-      { keywords: ['translation', 'translate'], competencyId: 'translation_theory', boost: 1 },
-      { keywords: ['culture', 'cultural', 'cross-cultural'], competencyId: 'intercultural_communication', boost: 1 },
-      { keywords: ['technology', 'software', 'digital'], competencyId: 'applied_technology', boost: 1 },
-    ];
-    
-    for (const { keywords, competencyId, boost } of keywordBoosts) {
-      if (keywords.some(kw => descLower.includes(kw))) {
-        const current = impacts.get(competencyId) || 0;
-        impacts.set(competencyId, current + boost);
-      }
-    }
-  }
+  // NO keyword-based boosts from descriptions - rely only on activityType
+  // This prevents over-crediting and ensures users must choose correct activity type
   
   return impacts;
 }
