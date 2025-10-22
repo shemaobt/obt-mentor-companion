@@ -829,7 +829,7 @@ export default function ChatInterface({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/ogg"
+              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/ogg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileSelect}
               className="hidden"
               data-testid="input-file"
@@ -1106,7 +1106,7 @@ export default function ChatInterface({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/ogg"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/ogg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFileSelect}
             className="hidden"
             data-testid="input-file"

@@ -41,7 +41,10 @@ import {
   ChevronsUpDown,
   Bell,
   X,
-  TrendingUp
+  TrendingUp,
+  Upload,
+  File,
+  Eye
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -51,7 +54,8 @@ import {
   type FacilitatorQualification, 
   type MentorshipActivity,
   type QuarterlyReport,
-  type CompetencySuggestion
+  type CompetencySuggestion,
+  type QualificationAttachment
 } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +65,102 @@ interface Supervisor {
   lastName: string;
   email: string;
   fullName: string;
+}
+
+// Component to manage certificates for a single qualification
+function QualificationCertificates({ 
+  qualificationId,
+  uploadCertificateMutation,
+  deleteCertificateMutation,
+  uploadingCertificateFor 
+}: {
+  qualificationId: string;
+  uploadCertificateMutation: any;
+  deleteCertificateMutation: any;
+  uploadingCertificateFor: string | null;
+}) {
+  const { data: certificates = [], isLoading } = useQuery<QualificationAttachment[]>({
+    queryKey: ['/api/facilitator/qualifications', qualificationId, 'certificates']
+  });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <div className="flex items-center justify-between mb-2">
+        <Label className="text-xs font-medium">Certificates</Label>
+        <input
+          type="file"
+          id={`cert-upload-${qualificationId}`}
+          accept="application/pdf,image/jpeg,image/jpg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              uploadCertificateMutation.mutate({
+                qualificationId,
+                file
+              });
+            }
+          }}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => document.getElementById(`cert-upload-${qualificationId}`)?.click()}
+          disabled={uploadCertificateMutation.isPending && uploadingCertificateFor === qualificationId}
+          data-testid={`button-upload-certificate-${qualificationId}`}
+        >
+          <Upload className="h-3 w-3 mr-1" />
+          {uploadCertificateMutation.isPending && uploadingCertificateFor === qualificationId ? 'Uploading...' : 'Upload'}
+        </Button>
+      </div>
+      {isLoading ? (
+        <div className="text-center py-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
+        </div>
+      ) : certificates.length > 0 ? (
+        <div className="space-y-1">
+          {certificates.map((cert) => (
+            <div key={cert.id} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <File className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="truncate" title={cert.originalName} data-testid={`text-cert-name-${cert.id}`}>
+                  {cert.originalName}
+                </span>
+                <span className="text-muted-foreground flex-shrink-0">
+                  ({(cert.fileSize / 1024).toFixed(0)} KB)
+                </span>
+              </div>
+              <div className="flex space-x-1 flex-shrink-0 ml-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  onClick={() => window.open(`/api/facilitator/qualifications/${qualificationId}/certificates/${cert.id}`, '_blank')}
+                  data-testid={`button-download-cert-${cert.id}`}
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                  onClick={() => deleteCertificateMutation.mutate({
+                    qualificationId,
+                    attachmentId: cert.id
+                  })}
+                  data-testid={`button-delete-cert-${cert.id}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center py-2">No certificates uploaded</p>
+      )}
+    </div>
+  );
 }
 
 const competencyStatusOptions = ['not_started', 'emerging', 'growing', 'proficient', 'advanced'] as const;
@@ -110,6 +210,9 @@ export default function Portfolio() {
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
   const [editingQualification, setEditingQualification] = useState<FacilitatorQualification | null>(null);
   const [editQualificationDialogOpen, setEditQualificationDialogOpen] = useState(false);
+  
+  // Certificate upload state
+  const [uploadingCertificateFor, setUploadingCertificateFor] = useState<string | null>(null);
 
   // Activities state
   const [newActivityLanguage, setNewActivityLanguage] = useState("");
@@ -268,6 +371,77 @@ export default function Portfolio() {
       toast({
         title: "Error",
         description: "Failed to remove qualification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Upload certificate mutation
+  const uploadCertificateMutation = useMutation({
+    mutationFn: async ({ qualificationId, file }: { qualificationId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('certificate', file);
+      
+      // Use native fetch for FormData (apiRequest doesn't support FormData)
+      const response = await fetch(`/api/facilitator/qualifications/${qualificationId}/certificates`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest', // CSRF protection header
+        },
+        credentials: 'include', // Important: include session cookies
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+      
+      return response.json();
+    },
+    onMutate: ({ qualificationId }) => {
+      setUploadingCertificateFor(qualificationId);
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate certificates cache for this qualification
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/facilitator/qualifications', variables.qualificationId, 'certificates'] 
+      });
+      setUploadingCertificateFor(null);
+      toast({
+        title: "Success",
+        description: "Certificate uploaded",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload certificate",
+        variant: "destructive",
+      });
+      setUploadingCertificateFor(null);
+    },
+  });
+
+  // Delete certificate mutation
+  const deleteCertificateMutation = useMutation({
+    mutationFn: async ({ qualificationId, attachmentId }: { qualificationId: string; attachmentId: string }) => {
+      await apiRequest("DELETE", `/api/facilitator/qualifications/${qualificationId}/certificates/${attachmentId}`);
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate certificates cache for this qualification
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/facilitator/qualifications', variables.qualificationId, 'certificates'] 
+      });
+      toast({
+        title: "Success",
+        description: "Certificate deleted",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete certificate",
         variant: "destructive",
       });
     },
@@ -1150,10 +1324,17 @@ export default function Portfolio() {
                                   )}
                                 </div>
                                 {qualification.description && (
-                                  <p className="text-sm text-muted-foreground" data-testid={`text-description-${qualification.id}`}>
+                                  <p className="text-sm text-muted-foreground mb-3" data-testid={`text-description-${qualification.id}`}>
                                     {qualification.description}
                                   </p>
                                 )}
+                                
+                                <QualificationCertificates
+                                  qualificationId={qualification.id}
+                                  uploadCertificateMutation={uploadCertificateMutation}
+                                  deleteCertificateMutation={deleteCertificateMutation}
+                                  uploadingCertificateFor={uploadingCertificateFor}
+                                />
                               </div>
                               <div className="flex space-x-1">
                                 <Button
