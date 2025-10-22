@@ -607,22 +607,28 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const attachCertificateTool = new DynamicStructuredTool({
     name: "attach_certificate_to_qualification",
-    description: `Attach a certificate or document file that was uploaded in this conversation to a specific qualification. 
-    
-IMPORTANT VERIFICATION PROCESS:
-1. Read the "Content Preview" from the attachment context to see the actual text from the certificate
-2. Find the qualification in the portfolio context - each qualification shows [ID: xxx] at the end
-3. Compare the certificate content with the qualification details (name, institution, year)
-4. ONLY attach if the certificate clearly matches the qualification
-5. If there's a mismatch or uncertainty, ask the user to confirm before attaching
-6. If the content doesn't match at all, politely explain the mismatch and ask which qualification the certificate is actually for
+    description: `AUTOMATICALLY attach a certificate to the correct qualification by reading and matching content.
 
-IMPORTANT: Use the qualification ID shown in brackets [ID: xxx] from the portfolio context, NOT a made-up ID.
+SMART MATCHING PROCESS:
+1. Read the "Content Preview" from the attachment to see the certificate text
+2. Look at ALL qualifications in the portfolio context - each shows [ID: xxx]
+3. Find the BEST MATCH by comparing:
+   - Course/program name in certificate vs courseTitle
+   - Institution/university name in certificate vs institution field
+   - Completion date/year in certificate vs completionDate
+4. Use the ID from the matching qualification automatically
+5. ONLY if multiple qualifications could match (e.g., same institution), ask the user which one
 
-This verification ensures data integrity and prevents attaching the wrong certificates to qualifications.`,
+CONVERSATIONAL APPROACH:
+- Don't ask users for IDs or technical details
+- If certificate clearly matches one qualification, attach it automatically and confirm
+- If unsure, describe what you found and ask: "I see this is from [institution] for [course name]. Is this for your [qualification name]?"
+- If no match found, list the available qualifications and ask which one
+
+Example: "I can see this certificate is for 'Applied Linguistics' from 'SIL International' completed in 2020. I found your qualification 'Applied Linguistics and Translation' from the same institution - I'll attach it there!"`,
     schema: z.object({
-      attachmentId: z.string().describe("ID of the uploaded file attachment from the current message [ATTACHMENTS IN THIS MESSAGE] section"),
-      qualificationId: z.string().describe("ID of the qualification to attach the certificate to (found in [ID: xxx] brackets in the portfolio context)"),
+      attachmentId: z.string().describe("ID of the uploaded file from [ATTACHMENTS IN THIS MESSAGE]"),
+      qualificationId: z.string().describe("ID from [ID: xxx] of the qualification that BEST MATCHES the certificate content"),
     }),
     func: async ({ attachmentId, qualificationId }) => {
       try {
