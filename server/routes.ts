@@ -963,12 +963,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachments.map(att => 
           `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`
         ).join("\n") + "\n";
+        console.log('[Attachment Context]', attachmentContext);
       }
 
-      // Prepare user message with context if available
-      const messageWithContext = relevantContext 
-        ? `${relevantContext}${attachmentContext}\n\n---\n\nUser Question:\n${content}`
-        : `${attachmentContext}${content}`;
+      // Combine relevant context with attachment metadata
+      const fullContext = relevantContext + attachmentContext;
 
       // Verify facilitator exists for LangChain (required for portfolio tools)
       if (!facilitatorId) {
@@ -989,7 +988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         facilitatorId,
         content,
         chatHistory,
-        relevantContext,
+        fullContext,
         imageFilePaths.length > 0 ? imageFilePaths : undefined
       );
       
@@ -1144,6 +1143,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (imageFilePaths.length > 0) {
         console.log('[Image File Paths]', imageFilePaths);
       }
+      
+      // Include all attachment metadata in context for AI awareness
+      let attachmentContext = "";
+      if (attachments.length > 0) {
+        attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachments.map(att => 
+          `- ${att.originalName} (ID: ${att.id}, Type: ${att.mimeType}, Size: ${(att.fileSize / 1024).toFixed(1)}KB)`
+        ).join("\n") + "\n";
+        console.log('[Attachment Context]', attachmentContext);
+      }
 
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
       const relevantContext = await getComprehensiveContext({
@@ -1153,6 +1161,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         includeGlobal: true,
       });
+      
+      // Combine relevant context with attachment metadata
+      const fullContext = relevantContext + attachmentContext;
 
       // Set up Server-Sent Events
       res.setHeader('Content-Type', 'text/event-stream');
@@ -1192,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           facilitatorId,
           content,
           chatHistory,
-          relevantContext,
+          fullContext,
           imageFilePaths.length > 0 ? imageFilePaths : undefined
         );
         
