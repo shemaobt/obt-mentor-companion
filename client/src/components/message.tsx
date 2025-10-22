@@ -1,4 +1,4 @@
-import { User, Volume2, VolumeX, Pause, Loader2, Music, FileAudio, Maximize2 } from "lucide-react";
+import { User, Volume2, VolumeX, Pause, Loader2, Music, FileAudio, Maximize2, FileText, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -102,7 +102,7 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                           />
                         </DialogContent>
                       </Dialog>
-                    ) : (
+                    ) : attachment.fileType === 'audio' ? (
                       <div className="bg-primary-foreground/10 rounded p-2">
                         <div className="flex items-center space-x-2 mb-2">
                           <FileAudio className="h-4 w-4" />
@@ -127,7 +127,22 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                           </div>
                         )}
                       </div>
-                    )}
+                    ) : attachment.fileType === 'document' ? (
+                      <a 
+                        href={`/${attachment.storagePath}`} 
+                        download={attachment.originalName}
+                        className="block bg-primary-foreground/10 rounded p-2 hover:bg-primary-foreground/20 transition-colors"
+                        data-testid={`link-document-${attachment.id}`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm flex-1" data-testid={`text-attachment-name-${attachment.id}`}>
+                            {attachment.originalName}
+                          </span>
+                          <Download className="h-4 w-4" />
+                        </div>
+                      </a>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -203,7 +218,7 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                           />
                         </DialogContent>
                       </Dialog>
-                    ) : (
+                    ) : attachment.fileType === 'audio' ? (
                       <div className="bg-muted rounded p-2">
                         <div className="flex items-center space-x-2 mb-2">
                           <FileAudio className="h-4 w-4 text-primary" />
@@ -228,7 +243,22 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                           </div>
                         )}
                       </div>
-                    )}
+                    ) : attachment.fileType === 'document' ? (
+                      <a 
+                        href={`/${attachment.storagePath}`} 
+                        download={attachment.originalName}
+                        className="block bg-muted rounded p-2 hover:bg-muted/80 transition-colors"
+                        data-testid={`link-document-${attachment.id}`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-primary" />
+                          <span className="text-sm flex-1" data-testid={`text-attachment-name-${attachment.id}`}>
+                            {attachment.originalName}
+                          </span>
+                          <Download className="h-4 w-4 text-primary" />
+                        </div>
+                      </a>
+                    ) : null}
                   </div>
                 ))}
               </div>

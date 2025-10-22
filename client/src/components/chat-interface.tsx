@@ -10,7 +10,7 @@ import MessageComponent from "./message";
 import LogoWithBackground from "./LogoWithBackground";
 import FeedbackForm from "./feedback-form";
 import ApiQuotaErrorDialog from "./api-quota-error-dialog";
-import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music } from "lucide-react";
+import { Trash2, Send, Menu, ChevronDown, Mic, MicOff, Square, Languages, Volume2, Loader2, MessageSquare, Paperclip, X, Image, Music, FileText } from "lucide-react";
 import { useOpenAISpeechRecognition } from "@/hooks/useOpenAISpeechRecognition";
 import { useOpenAISpeechSynthesis } from "@/hooks/useOpenAISpeechSynthesis";
 import {
@@ -801,8 +801,10 @@ export default function ChatInterface({
                         data-testid="img-file-preview"
                       />
                     </>
-                  ) : (
+                  ) : selectedFile.type.startsWith('audio/') ? (
                     <Music className="h-5 w-5 text-primary flex-shrink-0" />
+                  ) : (
+                    <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" data-testid="text-file-name">
@@ -1069,8 +1071,10 @@ export default function ChatInterface({
                       data-testid="img-file-preview"
                     />
                   </>
-                ) : (
+                ) : selectedFile.type.startsWith('audio/') ? (
                   <Music className="h-5 w-5 text-primary flex-shrink-0" />
+                ) : (
+                  <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" data-testid="text-file-name">
