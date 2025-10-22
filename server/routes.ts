@@ -3041,12 +3041,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/facilitator/qualifications', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
-      const { courseTitle, institution, completionDate, credential, description } = req.body;
+      const { courseTitle, institution, completionDate, courseLevel, description } = req.body;
       
       // Validate required fields
-      if (!courseTitle || !institution || !description) {
+      if (!courseTitle || !institution || !courseLevel || !description) {
         return res.status(400).json({ 
-          message: "Course title, institution, and description are required" 
+          message: "Course title, institution, course level, and description are required" 
         });
       }
       
@@ -3061,7 +3061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         courseTitle,
         institution,
         completionDate: completionDate ? new Date(completionDate) : null,
-        credential,
+        courseLevel,
         description,
       });
       
@@ -3078,12 +3078,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/facilitator/qualifications/:qualificationId', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
       const { qualificationId } = req.params;
-      const { courseTitle, institution, completionDate, credential, description } = req.body;
+      const { courseTitle, institution, completionDate, courseLevel, description } = req.body;
       
       // Validate that description is not empty if provided
       if (description !== undefined && (!description || !description.trim())) {
         return res.status(400).json({ 
           message: "Description cannot be empty" 
+        });
+      }
+      
+      // Validate that courseLevel is not empty if provided
+      if (courseLevel !== undefined && !courseLevel) {
+        return res.status(400).json({ 
+          message: "Course level cannot be empty" 
         });
       }
       
@@ -3097,7 +3104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (courseTitle !== undefined) updates.courseTitle = courseTitle;
       if (institution !== undefined) updates.institution = institution;
       if (completionDate !== undefined) updates.completionDate = completionDate ? new Date(completionDate) : null;
-      if (credential !== undefined) updates.credential = credential;
+      if (courseLevel !== undefined) updates.courseLevel = courseLevel;
       if (description !== undefined) updates.description = description;
       
       const qualification = await storage.updateQualification(qualificationId, updates);

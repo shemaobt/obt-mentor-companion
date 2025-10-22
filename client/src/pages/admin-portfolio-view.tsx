@@ -455,13 +455,15 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
                             <h3 className="font-medium text-foreground">{qualification.courseTitle}</h3>
                             <p className="text-sm text-muted-foreground">{qualification.institution}</p>
                             <div className="flex items-center space-x-2 mt-2">
+                              {qualification.courseLevel && (
+                                <Badge variant="secondary">
+                                  {qualification.courseLevel.charAt(0).toUpperCase() + qualification.courseLevel.slice(1)}
+                                </Badge>
+                              )}
                               {qualification.completionDate && (
                                 <Badge variant="outline">
                                   {new Date(qualification.completionDate).toLocaleDateString()}
                                 </Badge>
-                              )}
-                              {qualification.credential && (
-                                <Badge>{qualification.credential}</Badge>
                               )}
                             </div>
                             {qualification.description && (

@@ -1179,9 +1179,6 @@ export default function Portfolio() {
                                       {qualification.courseLevel.charAt(0).toUpperCase() + qualification.courseLevel.slice(1)}
                                     </Badge>
                                   )}
-                                  {qualification.credential && (
-                                    <Badge>{qualification.credential}</Badge>
-                                  )}
                                   {qualification.completionDate && (
                                     <span className="text-muted-foreground" data-testid={`text-completion-date-${qualification.id}`}>
                                       {new Date(qualification.completionDate).toLocaleDateString('en-US')}
