@@ -1162,7 +1162,7 @@ export default function Portfolio() {
                                 <p className="text-sm text-muted-foreground mb-2" data-testid={`text-institution-${qualification.id}`}>
                                   {qualification.institution}
                                 </p>
-                                <div className="flex items-center space-x-3 text-sm mb-2">
+                                <div className="flex items-center space-x-3 text-sm mb-2 flex-wrap">
                                   {qualification.credential && (
                                     <Badge>{qualification.credential}</Badge>
                                   )}
@@ -1171,6 +1171,21 @@ export default function Portfolio() {
                                       {new Date(qualification.completionDate).toLocaleDateString('en-US')}
                                     </span>
                                   )}
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs font-mono cursor-pointer hover:bg-accent" 
+                                    data-testid={`text-qualification-id-${qualification.id}`}
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(qualification.id);
+                                      toast({
+                                        title: "ID Copied",
+                                        description: "Qualification ID copied to clipboard",
+                                      });
+                                    }}
+                                    title="Click to copy full ID"
+                                  >
+                                    ID: {qualification.id.substring(0, 8)}...
+                                  </Badge>
                                 </div>
                                 {qualification.description && (
                                   <p className="text-sm text-muted-foreground mb-3" data-testid={`text-description-${qualification.id}`}>
