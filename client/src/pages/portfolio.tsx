@@ -83,7 +83,7 @@ const statusColors: Record<CompetencyStatus, string> = {
 };
 
 export default function Portfolio() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("profile");
@@ -875,7 +875,7 @@ export default function Portfolio() {
                                       </div>
                                     </div>
                                   )}
-                                  {!isEditing && (
+                                  {!isEditing && user?.isAdmin && (
                                     <Button
                                       size="sm"
                                       variant="default"
