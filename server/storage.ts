@@ -14,7 +14,6 @@ import {
   mentorshipActivities,
   quarterlyReports,
   competencyEvidence,
-  competencySuggestions,
   systemSettings,
   documents,
   type User,
@@ -48,8 +47,6 @@ import {
   type InsertQuarterlyReport,
   type CompetencyEvidence,
   type InsertCompetencyEvidence,
-  type CompetencySuggestion,
-  type InsertCompetencySuggestion,
   type Document,
   type InsertDocument,
 } from "@shared/schema";
@@ -210,11 +207,6 @@ export interface IStorage {
   createCompetencyEvidence(evidence: InsertCompetencyEvidence): Promise<CompetencyEvidence>;
   getRecentEvidence(facilitatorId: string, limit: number): Promise<CompetencyEvidence[]>;
   markEvidenceApplied(evidenceIds: string[]): Promise<void>;
-  
-  // Competency suggestions operations
-  getPendingSuggestions(facilitatorId: string): Promise<CompetencySuggestion[]>;
-  createCompetencySuggestion(suggestion: InsertCompetencySuggestion): Promise<CompetencySuggestion>;
-  respondToSuggestion(suggestionId: string, facilitatorId: string, status: "accepted" | "rejected"): Promise<CompetencySuggestion | undefined>;
   
   // Document operations
   getAllDocuments(): Promise<Document[]>;
@@ -1466,46 +1458,6 @@ export class DatabaseStorage implements IStorage {
       .update(competencyEvidence)
       .set({ isAppliedToLevel: true })
       .where(inArray(competencyEvidence.id, evidenceIds));
-  }
-
-  // Competency suggestions operations
-  async getPendingSuggestions(facilitatorId: string): Promise<CompetencySuggestion[]> {
-    return await db
-      .select()
-      .from(competencySuggestions)
-      .where(
-        and(
-          eq(competencySuggestions.facilitatorId, facilitatorId),
-          eq(competencySuggestions.status, 'pending')
-        )
-      )
-      .orderBy(desc(competencySuggestions.createdAt));
-  }
-
-  async createCompetencySuggestion(suggestion: InsertCompetencySuggestion): Promise<CompetencySuggestion> {
-    const [created] = await db
-      .insert(competencySuggestions)
-      .values(suggestion)
-      .returning();
-    return created;
-  }
-
-  async respondToSuggestion(suggestionId: string, facilitatorId: string, status: "accepted" | "rejected"): Promise<CompetencySuggestion | undefined> {
-    const [updated] = await db
-      .update(competencySuggestions)
-      .set({ 
-        status, 
-        respondedAt: sql`now()` 
-      })
-      .where(
-        and(
-          eq(competencySuggestions.id, suggestionId),
-          eq(competencySuggestions.facilitatorId, facilitatorId), // Ownership check
-          eq(competencySuggestions.status, 'pending') // Only update if still pending
-        )
-      )
-      .returning();
-    return updated;
   }
 
   // Document operations

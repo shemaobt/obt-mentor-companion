@@ -39,9 +39,7 @@ import {
   RefreshCw,
   Check,
   ChevronsUpDown,
-  Bell,
   X,
-  TrendingUp,
   Upload,
   File,
   Eye
@@ -54,7 +52,6 @@ import {
   type FacilitatorQualification, 
   type MentorshipActivity,
   type QuarterlyReport,
-  type CompetencySuggestion,
   type QualificationAttachment
 } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -568,34 +565,6 @@ export default function Portfolio() {
     },
   });
 
-  // Fetch competency suggestions
-  const { data: suggestions = [], isLoading: loadingSuggestions } = useQuery<CompetencySuggestion[]>({
-    queryKey: ['/api/facilitator/competency-suggestions'],
-    enabled: isAuthenticated
-  });
-
-  // Respond to competency suggestion mutation
-  const respondToSuggestionMutation = useMutation({
-    mutationFn: async (data: { id: string; action: 'accepted' | 'rejected' }) => {
-      await apiRequest("POST", `/api/facilitator/competency-suggestions/${data.id}/respond`, { action: data.action });
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competency-suggestions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competencies'] });
-      toast({
-        title: "Success",
-        description: variables.action === 'accepted' ? "Competency updated successfully" : "Suggestion rejected",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to respond to suggestion",
-        variant: "destructive",
-      });
-    },
-  });
-
 
   // Populate profile form when profile data loads
   useEffect(() => {
@@ -725,15 +694,6 @@ export default function Portfolio() {
               <TabsTrigger value="competencies" data-testid="tab-competencies">
                 <Target className="h-4 w-4 mr-2" />
                 {!isMobile && "Competencies"}
-              </TabsTrigger>
-              <TabsTrigger value="suggestions" data-testid="tab-suggestions" className="relative">
-                <Bell className="h-4 w-4 mr-2" />
-                {!isMobile && "Suggestions"}
-                {suggestions.length > 0 && (
-                  <Badge className="ml-2 h-5 w-5 flex items-center justify-center p-0 bg-primary" data-testid="badge-suggestions-count">
-                    {suggestions.length}
-                  </Badge>
-                )}
               </TabsTrigger>
               <TabsTrigger value="qualifications" data-testid="tab-qualifications">
                 <GraduationCap className="h-4 w-4 mr-2" />
@@ -1068,117 +1028,6 @@ export default function Portfolio() {
                           </Card>
                         );
                       })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Suggestions Tab */}
-            <TabsContent value="suggestions" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Bell className="h-5 w-5" />
-                        AI Competency Suggestions
-                      </CardTitle>
-                      <CardDescription>
-                        Review and respond to AI-suggested competency level updates based on your conversations
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {loadingSuggestions ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : suggestions.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No pending suggestions</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Continue chatting with your AI mentor to receive competency suggestions based on your conversations
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {suggestions.map((suggestion) => (
-                        <Card key={suggestion.id} className="border-2 border-primary/20" data-testid={`card-suggestion-${suggestion.id}`}>
-                          <CardContent className="p-6">
-                            <div className="space-y-4">
-                              {/* Header */}
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <TrendingUp className="h-5 w-5 text-primary" />
-                                    <h3 className="font-semibold text-lg" data-testid={`text-suggestion-competency-${suggestion.id}`}>
-                                      {getCompetencyName(suggestion.competencyId)}
-                                    </h3>
-                                  </div>
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    <Badge variant="outline" className="text-xs" data-testid={`badge-current-status-${suggestion.id}`}>
-                                      Current: {statusLabels[suggestion.currentStatus as CompetencyStatus] || suggestion.currentStatus}
-                                    </Badge>
-                                    <span className="text-muted-foreground">→</span>
-                                    <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" data-testid={`badge-suggested-status-${suggestion.id}`}>
-                                      Suggested: {statusLabels[suggestion.suggestedStatus as CompetencyStatus] || suggestion.suggestedStatus}
-                                    </Badge>
-                                    <Badge variant="secondary" className="text-xs" data-testid={`badge-evidence-count-${suggestion.id}`}>
-                                      {suggestion.evidenceCount} observation{suggestion.evidenceCount !== 1 ? 's' : ''}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Reasoning */}
-                              {suggestion.reasoning && (
-                                <div className="bg-muted/50 rounded-lg p-4">
-                                  <p className="text-sm font-medium mb-1">AI Reasoning:</p>
-                                  <p className="text-sm text-muted-foreground" data-testid={`text-reasoning-${suggestion.id}`}>
-                                    {suggestion.reasoning}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Evidence Summary */}
-                              {suggestion.evidenceSummary && (
-                                <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
-                                  <p className="text-sm font-medium mb-2">Evidence Summary:</p>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid={`text-evidence-${suggestion.id}`}>
-                                    {suggestion.evidenceSummary}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex gap-2 pt-2">
-                                <Button
-                                  onClick={() => respondToSuggestionMutation.mutate({ id: suggestion.id, action: 'accepted' })}
-                                  disabled={respondToSuggestionMutation.isPending}
-                                  className="flex-1"
-                                  data-testid={`button-accept-${suggestion.id}`}
-                                >
-                                  <Check className="h-4 w-4 mr-2" />
-                                  Accept & Update
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => respondToSuggestionMutation.mutate({ id: suggestion.id, action: 'rejected' })}
-                                  disabled={respondToSuggestionMutation.isPending}
-                                  className="flex-1"
-                                  data-testid={`button-reject-${suggestion.id}`}
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
                     </div>
                   )}
                 </CardContent>
