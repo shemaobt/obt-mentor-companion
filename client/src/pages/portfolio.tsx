@@ -1181,6 +1181,11 @@ export default function Portfolio() {
                                   {qualification.institution}
                                 </p>
                                 <div className="flex items-center space-x-3 text-sm mb-2 flex-wrap">
+                                  {qualification.courseLevel && (
+                                    <Badge variant="secondary" data-testid={`badge-course-level-${qualification.id}`}>
+                                      {qualification.courseLevel.charAt(0).toUpperCase() + qualification.courseLevel.slice(1)}
+                                    </Badge>
+                                  )}
                                   {qualification.credential && (
                                     <Badge>{qualification.credential}</Badge>
                                   )}
@@ -1275,6 +1280,24 @@ export default function Portfolio() {
                       />
                     </div>
                     <div>
+                      <Label htmlFor="edit-qual-course-level">Course Level *</Label>
+                      <Select 
+                        value={editingQualification?.courseLevel || ""} 
+                        onValueChange={(value) => setEditingQualification(prev => prev ? { ...prev, courseLevel: value as "introduction" | "certificate" | "bachelor" | "master" | "doctoral" } : null)}
+                      >
+                        <SelectTrigger id="edit-qual-course-level" data-testid="select-edit-course-level">
+                          <SelectValue placeholder="Select course level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="introduction">Introduction</SelectItem>
+                          <SelectItem value="certificate">Certificate</SelectItem>
+                          <SelectItem value="bachelor">Bachelor</SelectItem>
+                          <SelectItem value="master">Master</SelectItem>
+                          <SelectItem value="doctoral">Doctoral</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label htmlFor="edit-qual-credential">Credential (optional)</Label>
                       <Input
                         id="edit-qual-credential"
@@ -1300,18 +1323,19 @@ export default function Portfolio() {
                   <DialogFooter>
                     <Button
                       onClick={() => {
-                        if (editingQualification) {
+                        if (editingQualification && editingQualification.completionDate) {
                           updateQualificationMutation.mutate({
                             id: editingQualification.id,
                             courseTitle: editingQualification.courseTitle,
                             institution: editingQualification.institution,
                             completionDate: new Date(editingQualification.completionDate).toISOString().split('T')[0],
                             credential: editingQualification.credential || undefined,
+                            courseLevel: editingQualification.courseLevel || "",
                             description: editingQualification.description
                           });
                         }
                       }}
-                      disabled={!editingQualification?.courseTitle?.trim() || !editingQualification?.institution?.trim() || !editingQualification?.completionDate || !editingQualification?.description?.trim() || updateQualificationMutation.isPending}
+                      disabled={!editingQualification?.courseTitle?.trim() || !editingQualification?.institution?.trim() || !editingQualification?.completionDate || !editingQualification?.courseLevel || !editingQualification?.description?.trim() || updateQualificationMutation.isPending}
                       data-testid="button-confirm-edit-qualification"
                     >
                       {updateQualificationMutation.isPending ? "Updating..." : "Update Qualification"}
