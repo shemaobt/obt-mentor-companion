@@ -1153,18 +1153,34 @@ export class DatabaseStorage implements IStorage {
       const notes = `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${totalScore.toFixed(1)}`;
       
       if (existing) {
-        // Update existing competency - always in auto mode
-        await db
-          .update(facilitatorCompetencies)
-          .set({
-            status: suggestedStatus as any,
-            autoScore: Math.round(totalScore),
-            statusSource: 'auto',
-            suggestedStatus: suggestedStatus as any,
-            notes,
-            lastUpdated: new Date(),
-          })
-          .where(eq(facilitatorCompetencies.id, existing.id));
+        // Check if competency is manually set
+        const isManual = existing.statusSource === 'manual';
+        
+        if (isManual) {
+          // For manual competencies, update only autoScore and suggestedStatus
+          // Preserve the manually-set status and notes
+          await db
+            .update(facilitatorCompetencies)
+            .set({
+              autoScore: Math.round(totalScore),
+              suggestedStatus: suggestedStatus as any,
+              lastUpdated: new Date(),
+            })
+            .where(eq(facilitatorCompetencies.id, existing.id));
+        } else {
+          // For auto competencies, update everything including status
+          await db
+            .update(facilitatorCompetencies)
+            .set({
+              status: suggestedStatus as any,
+              autoScore: Math.round(totalScore),
+              statusSource: 'auto',
+              suggestedStatus: suggestedStatus as any,
+              notes,
+              lastUpdated: new Date(),
+            })
+            .where(eq(facilitatorCompetencies.id, existing.id));
+        }
       } else {
         // Create new competency in auto mode
         await db
