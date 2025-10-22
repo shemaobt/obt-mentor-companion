@@ -10,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -35,7 +45,8 @@ import {
   Shield,
   Link2,
   Play,
-  FileText
+  FileText,
+  Pencil
 } from "lucide-react";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
@@ -58,6 +69,8 @@ export default function Sidebar({
   const [location, setLocation] = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [chainsExpanded, setChainsExpanded] = useState(true);
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [newChatTitle, setNewChatTitle] = useState("");
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -196,6 +209,40 @@ export default function Sidebar({
       toast({
         title: "Error",
         description: "Failed to delete chat",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const renameChatMutation = useMutation({
+    mutationFn: async ({ chatId, title }: { chatId: string; title: string }) => {
+      const response = await apiRequest("PATCH", `/api/chats/${chatId}`, { title });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+      toast({
+        title: "Success",
+        description: "Chat renamed successfully",
+      });
+      setRenamingChatId(null);
+      setNewChatTitle("");
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to rename chat",
         variant: "destructive",
       });
     },
@@ -466,6 +513,17 @@ export default function Sidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setRenamingChatId(chat.id);
+                      setNewChatTitle(chat.title);
+                    }}
+                    data-testid={`button-rename-chat-${chat.id}`}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={(e) => {
                       e.preventDefault();
@@ -672,6 +730,63 @@ export default function Sidebar({
           </div>
         )}
       </div>
+
+      {/* Rename Chat Dialog */}
+      <Dialog open={renamingChatId !== null} onOpenChange={(open) => {
+        if (!open) {
+          setRenamingChatId(null);
+          setNewChatTitle("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Chat</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this conversation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="chat-title">Chat Title</Label>
+              <Input
+                id="chat-title"
+                value={newChatTitle}
+                onChange={(e) => setNewChatTitle(e.target.value)}
+                placeholder="Enter chat title..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newChatTitle.trim() && renamingChatId) {
+                    renameChatMutation.mutate({ chatId: renamingChatId, title: newChatTitle.trim() });
+                  }
+                }}
+                data-testid="input-rename-chat-title"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenamingChatId(null);
+                setNewChatTitle("");
+              }}
+              data-testid="button-cancel-rename"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (renamingChatId && newChatTitle.trim()) {
+                  renameChatMutation.mutate({ chatId: renamingChatId, title: newChatTitle.trim() });
+                }
+              }}
+              disabled={!newChatTitle.trim() || renameChatMutation.isPending}
+              data-testid="button-confirm-rename"
+            >
+              {renameChatMutation.isPending ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
