@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import LogoWithBackground from "./LogoWithBackground";
 
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 interface MessageProps {
   message: Message;
   speechSynthesis?: any;
@@ -131,15 +138,20 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                       <a 
                         href={`/${attachment.storagePath}`} 
                         download={attachment.originalName}
-                        className="block bg-primary-foreground/10 rounded p-2 hover:bg-primary-foreground/20 transition-colors"
+                        className="block bg-primary-foreground/10 border border-primary-foreground/20 rounded-lg p-3 hover:bg-primary-foreground/20 hover:border-primary-foreground/30 transition-all"
                         data-testid={`link-document-${attachment.id}`}
                       >
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="text-sm flex-1" data-testid={`text-attachment-name-${attachment.id}`}>
-                            {attachment.originalName}
-                          </span>
-                          <Download className="h-4 w-4" />
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate" data-testid={`text-attachment-name-${attachment.id}`}>
+                              {attachment.originalName}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {formatFileSize(attachment.fileSize)}
+                            </div>
+                          </div>
+                          <Download className="h-4 w-4 flex-shrink-0" />
                         </div>
                       </a>
                     ) : null}
@@ -247,15 +259,20 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                       <a 
                         href={`/${attachment.storagePath}`} 
                         download={attachment.originalName}
-                        className="block bg-muted rounded p-2 hover:bg-muted/80 transition-colors"
+                        className="block bg-muted border border-border rounded-lg p-3 hover:bg-muted/80 hover:border-primary/30 transition-all"
                         data-testid={`link-document-${attachment.id}`}
                       >
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm flex-1" data-testid={`text-attachment-name-${attachment.id}`}>
-                            {attachment.originalName}
-                          </span>
-                          <Download className="h-4 w-4 text-primary" />
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate" data-testid={`text-attachment-name-${attachment.id}`}>
+                              {attachment.originalName}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {formatFileSize(attachment.fileSize)}
+                            </div>
+                          </div>
+                          <Download className="h-4 w-4 text-primary flex-shrink-0" />
                         </div>
                       </a>
                     ) : null}
