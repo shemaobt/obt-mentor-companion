@@ -46,7 +46,8 @@ import {
   Link2,
   Play,
   FileText,
-  Pencil
+  Pencil,
+  TrendingUp
 } from "lucide-react";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
