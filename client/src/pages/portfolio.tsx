@@ -215,9 +215,10 @@ export default function Portfolio() {
 
   // Activities state
   const [newActivityLanguage, setNewActivityLanguage] = useState("");
-  const [newActivityChapters, setNewActivityChapters] = useState("1");
+  const [newActivityChapters, setNewActivityChapters] = useState("0");
+  const [newActivityDurationYears, setNewActivityDurationYears] = useState("0");
+  const [newActivityDurationMonths, setNewActivityDurationMonths] = useState("0");
   const [newActivityNotes, setNewActivityNotes] = useState("");
-  const [newActivityDate, setNewActivityDate] = useState(new Date().toISOString().split('T')[0]);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<MentorshipActivity | null>(null);
   const [editActivityDialogOpen, setEditActivityDialogOpen] = useState(false);
@@ -450,16 +451,17 @@ export default function Portfolio() {
 
   // Create activity mutation
   const createActivityMutation = useMutation({
-    mutationFn: async (data: { languageName: string; chaptersCount: number; activityDate: string; notes?: string }) => {
+    mutationFn: async (data: { languageName: string; chaptersCount: number; durationYears: number; durationMonths: number; notes?: string }) => {
       await apiRequest("POST", "/api/facilitator/activities", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/facilitator/activities'] });
       setActivityDialogOpen(false);
       setNewActivityLanguage("");
-      setNewActivityChapters("1");
+      setNewActivityChapters("0");
+      setNewActivityDurationYears("0");
+      setNewActivityDurationMonths("0");
       setNewActivityNotes("");
-      setNewActivityDate(new Date().toISOString().split('T')[0]);
       toast({
         title: "Success",
         description: "Activity registered",
@@ -1394,21 +1396,36 @@ export default function Portfolio() {
                             <Input
                               id="activity-chapters"
                               type="number"
-                              min="1"
+                              min="0"
                               value={newActivityChapters}
                               onChange={(e) => setNewActivityChapters(e.target.value)}
                               data-testid="input-chapters-count"
                             />
                           </div>
-                          <div>
-                            <Label htmlFor="activity-date">Activity Date</Label>
-                            <Input
-                              id="activity-date"
-                              type="date"
-                              value={newActivityDate}
-                              onChange={(e) => setNewActivityDate(e.target.value)}
-                              data-testid="input-activity-date"
-                            />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="activity-duration-years">Duration (Years)</Label>
+                              <Input
+                                id="activity-duration-years"
+                                type="number"
+                                min="0"
+                                value={newActivityDurationYears}
+                                onChange={(e) => setNewActivityDurationYears(e.target.value)}
+                                data-testid="input-duration-years"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="activity-duration-months">Duration (Months)</Label>
+                              <Input
+                                id="activity-duration-months"
+                                type="number"
+                                min="0"
+                                max="11"
+                                value={newActivityDurationMonths}
+                                onChange={(e) => setNewActivityDurationMonths(e.target.value)}
+                                data-testid="input-duration-months"
+                              />
+                            </div>
                           </div>
                           <div>
                             <Label htmlFor="activity-notes">Notes (optional)</Label>
@@ -1426,11 +1443,12 @@ export default function Portfolio() {
                           <Button
                             onClick={() => createActivityMutation.mutate({
                               languageName: newActivityLanguage,
-                              chaptersCount: parseInt(newActivityChapters),
-                              activityDate: newActivityDate,
+                              chaptersCount: parseInt(newActivityChapters) || 0,
+                              durationYears: parseInt(newActivityDurationYears) || 0,
+                              durationMonths: parseInt(newActivityDurationMonths) || 0,
                               notes: newActivityNotes || undefined
                             })}
-                            disabled={!newActivityLanguage.trim() || !newActivityDate || !newActivityChapters || createActivityMutation.isPending}
+                            disabled={!newActivityLanguage.trim() || createActivityMutation.isPending}
                             data-testid="button-confirm-add-activity"
                           >
                             {createActivityMutation.isPending ? "Registering..." : "Register Activity"}

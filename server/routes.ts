@@ -3267,7 +3267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/facilitator/activities', requireAuth, requireCSRFHeader, async (req: any, res) => {
     try {
-      const { languageName, chaptersCount, activityDate, notes } = req.body;
+      const { languageName, chaptersCount, durationYears, durationMonths, notes } = req.body;
       
       const facilitator = await storage.getFacilitatorByUserId(req.userId);
       
@@ -3278,8 +3278,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activity = await storage.createActivity({
         facilitatorId: facilitator.id,
         languageName,
-        chaptersCount: chaptersCount || 1,
-        activityDate: activityDate ? new Date(activityDate) : undefined,
+        chaptersCount: chaptersCount || 0,
+        durationYears: durationYears || 0,
+        durationMonths: durationMonths || 0,
         notes,
       });
       
