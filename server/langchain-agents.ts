@@ -192,10 +192,14 @@ PILLAR 2 - EXPERIENCE (Practical Work):
   * Recommend further training where gaps exist.
 
 7. Recording Mentorship Activities
-- When facilitators mention mentorship activities, always ask:
+- When facilitators mention ANY work experience or project, ALWAYS ask about duration first:
+  * "How long did you work on this project?" or "How many years of experience do you have with this?"
+  * Duration is CRITICAL for accurate competency scoring (1 year vs 5 years makes a huge difference)
+- For translation activities, also ask:
   * "How many languages have you mentored or helped mentor?"
   * "How many chapters have you mentored or helped mentor?"
 - Regularly update their cumulative portfolio totals based on their responses.
+- NEVER add an activity to the portfolio without knowing the duration/years of experience.
 
 8. Quarterly Report Generation
 - At the conclusion of each session, compile a clear and organized Quarterly Mentor Progress Report suitable for sharing with administrators.
@@ -399,14 +403,15 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const addActivityTool = new DynamicStructuredTool({
     name: "add_activity",
-    description: "Add a Bible translation mentorship activity to the facilitator's portfolio",
+    description: "Add a Bible translation mentorship activity to the facilitator's portfolio. CRITICAL: ALWAYS ask about duration - how many years they worked on this translation project - as it significantly impacts competency scoring (1 year vs 5 years makes a huge difference).",
     schema: z.object({
       languageName: z.string().describe("Name of the language being translated"),
       chaptersCount: z.number().describe("Number of chapters mentored"),
+      yearsOfExperience: z.number().optional().describe("Number of years working on this translation project - ALWAYS ask this question as it significantly impacts scoring"),
       activityDate: z.string().describe("Date of the activity (YYYY-MM-DD format)"),
       notes: z.string().optional().describe("Additional notes about the activity"),
     }),
-    func: async ({ languageName, chaptersCount, activityDate, notes }) => {
+    func: async ({ languageName, chaptersCount, yearsOfExperience, activityDate, notes }) => {
       try {
         // Parse activity date string to Date object
         const parsedDate = new Date(activityDate);
@@ -424,12 +429,14 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           activityDate: parsedDate,
           notes,
           activityType: 'translation',
+          yearsOfExperience: yearsOfExperience || null,
         });
         
         // Automatically recalculate competencies after adding activity
         await recalculateCompetencies(storage, facilitatorId);
         
-        return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters). Competency scores have been automatically updated.`;
+        const durationInfo = yearsOfExperience ? ` over ${yearsOfExperience} year${yearsOfExperience > 1 ? 's' : ''}` : '';
+        return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters${durationInfo}). Competency scores have been automatically updated.`;
       } catch (error) {
         console.error(`[Tool Error] add_activity failed:`, error);
         return `Error adding activity: ${error.message}`;
