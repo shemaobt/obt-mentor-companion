@@ -2296,6 +2296,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Database maintenance endpoint - Backfill NULL course_level values
+  app.post('/api/admin/backfill-course-levels', requireAdmin, requireCSRFHeader, async (req: any, res) => {
+    try {
+      console.log('[Admin] Starting course_level backfill...');
+      
+      // Update all NULL course_level values to 'certificate'
+      const result = await db
+        .update(facilitatorQualifications)
+        .set({ courseLevel: 'certificate' })
+        .where(sql`${facilitatorQualifications.courseLevel} IS NULL`)
+        .returning({ id: facilitatorQualifications.id });
+      
+      console.log(`[Admin] Backfilled ${result.length} qualification records`);
+      
+      res.json({ 
+        success: true, 
+        updatedCount: result.length,
+        message: `Successfully backfilled ${result.length} qualification records with course_level='certificate'`
+      });
+    } catch (error) {
+      console.error("Error during course_level backfill:", error);
+      res.status(500).json({ message: "Failed to backfill course_level values" });
+    }
+  });
+
   // Admin/Supervisor endpoint to generate report for any user (admin) or supervised user (supervisor)
   app.post('/api/admin/users/:userId/generate-report', requireSupervisor, requireCSRFHeader, async (req: any, res) => {
     try {
