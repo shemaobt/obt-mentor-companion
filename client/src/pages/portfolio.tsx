@@ -1580,7 +1580,7 @@ export default function Portfolio() {
 
               {/* Edit Activity Dialog */}
               <Dialog open={editActivityDialogOpen} onOpenChange={setEditActivityDialogOpen}>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Edit Activity</DialogTitle>
                     <DialogDescription>
@@ -1588,79 +1588,186 @@ export default function Portfolio() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
+                    {/* Activity Type */}
                     <div>
-                      <Label htmlFor="edit-activity-language">Language Name</Label>
-                      <Input
-                        id="edit-activity-language"
-                        value={editingActivity?.languageName || ""}
-                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, languageName: e.target.value } : null)}
-                        placeholder="e.g., Portuguese, Spanish"
-                        data-testid="input-edit-language"
-                      />
+                      <Label htmlFor="edit-activity-type">Activity Type</Label>
+                      <Select
+                        value={editingActivity?.activityType || 'translation'}
+                        onValueChange={(value) => setEditingActivity(prev => prev ? { ...prev, activityType: value as any } : null)}
+                      >
+                        <SelectTrigger id="edit-activity-type" data-testid="select-edit-activity-type">
+                          <SelectValue placeholder="Select activity type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="translation">Translation</SelectItem>
+                          <SelectItem value="facilitation">Facilitation</SelectItem>
+                          <SelectItem value="teaching">Teaching</SelectItem>
+                          <SelectItem value="indigenous_work">Work with People Groups</SelectItem>
+                          <SelectItem value="school_work">School Work</SelectItem>
+                          <SelectItem value="general_experience">General Experience</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="edit-activity-chapters">Chapters Mentored</Label>
-                      <Input
-                        id="edit-activity-chapters"
-                        type="number"
-                        min="0"
-                        value={editingActivity?.chaptersCount || 0}
-                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, chaptersCount: parseInt(e.target.value) } : null)}
-                        data-testid="input-edit-chapters"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="edit-duration-years">Duration (Years)</Label>
-                        <Input
-                          id="edit-duration-years"
-                          type="number"
-                          min="0"
-                          value={editingActivity?.durationYears || 0}
-                          onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationYears: parseInt(e.target.value) } : null)}
-                          data-testid="input-edit-duration-years"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-duration-months">Duration (Months)</Label>
-                        <Input
-                          id="edit-duration-months"
-                          type="number"
-                          min="0"
-                          max="11"
-                          value={editingActivity?.durationMonths || 0}
-                          onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationMonths: parseInt(e.target.value) } : null)}
-                          data-testid="input-edit-duration-months"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-activity-notes">Notes</Label>
-                      <Textarea
-                        id="edit-activity-notes"
-                        value={editingActivity?.notes || ""}
-                        onChange={(e) => setEditingActivity(prev => prev ? { ...prev, notes: e.target.value } : null)}
-                        placeholder="Additional context about the activity..."
-                        rows={4}
-                        data-testid="input-edit-notes"
-                      />
-                    </div>
+
+                    {/* Translation-specific fields */}
+                    {(editingActivity?.activityType === 'translation' || !editingActivity?.activityType) && (
+                      <>
+                        <div>
+                          <Label htmlFor="edit-activity-language">Language Name</Label>
+                          <Input
+                            id="edit-activity-language"
+                            value={editingActivity?.languageName || ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, languageName: e.target.value } : null)}
+                            placeholder="e.g., Portuguese, Spanish"
+                            data-testid="input-edit-language"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-activity-chapters">Chapters Translated</Label>
+                          <Input
+                            id="edit-activity-chapters"
+                            type="number"
+                            min="0"
+                            value={editingActivity?.chaptersCount || 0}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, chaptersCount: parseInt(e.target.value) || 0 } : null)}
+                            data-testid="input-edit-chapters"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-duration-years">Duration (Years)</Label>
+                            <Input
+                              id="edit-duration-years"
+                              type="number"
+                              min="0"
+                              value={editingActivity?.durationYears || 0}
+                              onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationYears: parseInt(e.target.value) || 0 } : null)}
+                              data-testid="input-edit-duration-years"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-duration-months">Duration (Months)</Label>
+                            <Input
+                              id="edit-duration-months"
+                              type="number"
+                              min="0"
+                              max="11"
+                              value={editingActivity?.durationMonths || 0}
+                              onChange={(e) => setEditingActivity(prev => prev ? { ...prev, durationMonths: parseInt(e.target.value) || 0 } : null)}
+                              data-testid="input-edit-duration-months"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-activity-notes">Notes</Label>
+                          <Textarea
+                            id="edit-activity-notes"
+                            value={editingActivity?.notes || ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                            placeholder="Additional context about the activity..."
+                            rows={4}
+                            data-testid="input-edit-notes"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* General experience fields */}
+                    {editingActivity?.activityType && editingActivity.activityType !== 'translation' && (
+                      <>
+                        <div>
+                          <Label htmlFor="edit-activity-title">Title</Label>
+                          <Input
+                            id="edit-activity-title"
+                            value={editingActivity?.title || ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, title: e.target.value } : null)}
+                            placeholder="e.g., Translation Facilitator"
+                            data-testid="input-edit-title"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-activity-organization">Organization</Label>
+                          <Input
+                            id="edit-activity-organization"
+                            value={editingActivity?.organization || ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, organization: e.target.value } : null)}
+                            placeholder="e.g., YWAM"
+                            data-testid="input-edit-organization"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-years-experience">Years of Experience</Label>
+                          <Input
+                            id="edit-years-experience"
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={editingActivity?.yearsOfExperience || 0}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, yearsOfExperience: parseFloat(e.target.value) || 0 } : null)}
+                            data-testid="input-edit-years-experience"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-activity-description">Description</Label>
+                          <Textarea
+                            id="edit-activity-description"
+                            value={editingActivity?.description || ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, description: e.target.value } : null)}
+                            placeholder="Describe your experience..."
+                            rows={4}
+                            data-testid="input-edit-description"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-activity-date">Activity Date</Label>
+                          <Input
+                            id="edit-activity-date"
+                            type="date"
+                            value={editingActivity?.activityDate ? new Date(editingActivity.activityDate).toISOString().split('T')[0] : ""}
+                            onChange={(e) => setEditingActivity(prev => prev ? { ...prev, activityDate: e.target.value ? new Date(e.target.value) : null } : null)}
+                            data-testid="input-edit-activity-date"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditActivityDialogOpen(false);
+                        setEditingActivity(null);
+                      }}
+                      data-testid="button-cancel-edit-activity"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
                       onClick={() => {
                         if (editingActivity) {
-                          updateActivityMutation.mutate({
+                          const updates: any = {
                             id: editingActivity.id,
-                            languageName: editingActivity.languageName || undefined,
-                            chaptersCount: editingActivity.chaptersCount || undefined,
-                            durationYears: editingActivity.durationYears || undefined,
-                            durationMonths: editingActivity.durationMonths || undefined,
-                            notes: editingActivity.notes || undefined
-                          });
+                            activityType: editingActivity.activityType || 'translation',
+                          };
+
+                          if (editingActivity.activityType === 'translation' || !editingActivity.activityType) {
+                            updates.languageName = editingActivity.languageName || undefined;
+                            updates.chaptersCount = editingActivity.chaptersCount || undefined;
+                            updates.durationYears = editingActivity.durationYears || undefined;
+                            updates.durationMonths = editingActivity.durationMonths || undefined;
+                            updates.notes = editingActivity.notes || undefined;
+                          } else {
+                            updates.title = editingActivity.title || undefined;
+                            updates.organization = editingActivity.organization || undefined;
+                            updates.yearsOfExperience = editingActivity.yearsOfExperience || undefined;
+                            updates.description = editingActivity.description || undefined;
+                            updates.activityDate = editingActivity.activityDate || undefined;
+                          }
+
+                          updateActivityMutation.mutate(updates);
                         }
                       }}
-                      disabled={!editingActivity?.languageName || updateActivityMutation.isPending}
+                      disabled={updateActivityMutation.isPending}
                       data-testid="button-confirm-edit-activity"
                     >
                       {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
