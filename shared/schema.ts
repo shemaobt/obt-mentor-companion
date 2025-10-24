@@ -255,7 +255,7 @@ export const facilitatorQualifications = pgTable("facilitator_qualifications", {
   courseLevel: varchar("course_level", { 
     enum: ["introduction", "certificate", "bachelor", "master", "doctoral"] 
   }).default("certificate"), // Academic level of the course (TEMPORARILY NULLABLE - will be made NOT NULL after backfill)
-  description: text("description"), // Brief description of content (optional)
+  description: text("description").notNull(), // Brief description of content (MANDATORY)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
