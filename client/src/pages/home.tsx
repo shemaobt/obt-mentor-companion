@@ -13,7 +13,7 @@ export default function Home() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [defaultAssistant, setDefaultAssistant] = useState<AssistantId>('storyteller');
+  const [defaultAssistant, setDefaultAssistant] = useState<AssistantId>('obtMentor');
 
   // Ensure sidebar is closed when switching to mobile
   useEffect(() => {
