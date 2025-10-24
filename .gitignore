@@ -85,4 +85,4 @@ vite.config.ts.*
 
 # Replit specific
 .replit
-replit.nix
+replit.nixbackups/
