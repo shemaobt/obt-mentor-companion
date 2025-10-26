@@ -14,6 +14,7 @@ import {
   mentorshipActivities,
   quarterlyReports,
   competencyEvidence,
+  competencyChangeHistory,
   systemSettings,
   documents,
   type User,
@@ -47,6 +48,8 @@ import {
   type InsertQuarterlyReport,
   type CompetencyEvidence,
   type InsertCompetencyEvidence,
+  type CompetencyChangeHistory,
+  type InsertCompetencyChangeHistory,
   type Document,
   type InsertDocument,
 } from "@shared/schema";
@@ -175,9 +178,10 @@ export interface IStorage {
   // Competency operations
   getFacilitatorCompetencies(facilitatorId: string): Promise<FacilitatorCompetency[]>;
   upsertCompetency(competency: InsertFacilitatorCompetency): Promise<FacilitatorCompetency>;
-  updateCompetencyStatus(competencyId: string, status: string, notes?: string): Promise<FacilitatorCompetency>;
+  updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string): Promise<FacilitatorCompetency>;
   recalculateCompetencies(facilitatorId: string): Promise<void>;
   recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}>;
+  getCompetencyChangeHistory(competencyRecordId: string): Promise<CompetencyChangeHistory[]>;
   
   // Qualification operations
   getFacilitatorQualifications(facilitatorId: string): Promise<FacilitatorQualification[]>;
@@ -1100,7 +1104,33 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateCompetencyStatus(competencyId: string, status: string, notes?: string): Promise<FacilitatorCompetency> {
+  async updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string): Promise<FacilitatorCompetency> {
+    // First, fetch the current competency to get the old status
+    const [current] = await db
+      .select()
+      .from(facilitatorCompetencies)
+      .where(eq(facilitatorCompetencies.id, competencyId))
+      .limit(1);
+    
+    if (!current) {
+      throw new Error('Competency not found');
+    }
+    
+    // Record change history if status changed AND we have changedBy info (indicating manual supervisor change)
+    if (current.status !== status && changedBy) {
+      await db.insert(competencyChangeHistory).values({
+        competencyRecordId: competencyId,
+        facilitatorId: current.facilitatorId,
+        competencyId: current.competencyId,
+        oldStatus: current.status as any,
+        newStatus: status as any,
+        notes: notes || '',
+        changedBy,
+        changedByUserId: changedByUserId || null,
+      });
+    }
+    
+    // Update the competency
     const [updated] = await db
       .update(facilitatorCompetencies)
       .set({ 
@@ -1116,6 +1146,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updated;
+  }
+
+  async getCompetencyChangeHistory(competencyRecordId: string): Promise<CompetencyChangeHistory[]> {
+    const history = await db
+      .select()
+      .from(competencyChangeHistory)
+      .where(eq(competencyChangeHistory.competencyRecordId, competencyRecordId))
+      .orderBy(desc(competencyChangeHistory.changedAt));
+    
+    return history;
   }
 
   async recalculateCompetencies(facilitatorId: string): Promise<void> {
