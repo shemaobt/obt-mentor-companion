@@ -204,10 +204,20 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
   // Update competency mutation
   const updateCompetencyMutation = useMutation({
     mutationFn: async ({ competencyId, status, notes }: { competencyId: CompetencyId; status: CompetencyStatus; notes?: string }) => {
-      await apiRequest("POST", `/api/admin/users/${userId}/competencies`, { competencyId, status, notes });
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/competencies`, { competencyId, status, notes });
+      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'competencies'] });
+    onSuccess: async (updatedCompetency: FacilitatorCompetency) => {
+      // Invalidate competencies query
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'competencies'] });
+      
+      // Invalidate history for the specific competency that was updated using the returned record ID
+      if (updatedCompetency?.id) {
+        await queryClient.invalidateQueries({ 
+          queryKey: ['/api/admin/users', userId, 'competencies', updatedCompetency.id, 'history'] 
+        });
+      }
+      
       toast({
         title: "Success",
         description: "Competency updated successfully",
