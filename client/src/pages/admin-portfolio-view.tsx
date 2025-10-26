@@ -39,7 +39,8 @@ import {
   type FacilitatorCompetency, 
   type FacilitatorQualification, 
   type MentorshipActivity,
-  type QuarterlyReport
+  type QuarterlyReport,
+  type CompetencyChangeHistory
 } from "@shared/schema";
 
 const competencyStatusOptions = ['not_started', 'emerging', 'growing', 'proficient', 'advanced'] as const;
@@ -61,6 +62,60 @@ const statusColors: Record<CompetencyStatus, string> = {
   advanced: ''
 };
 
+// Competency History Display Component
+function CompetencyHistoryDisplay({ competencyRecordId, userId }: { competencyRecordId: string; userId: string }) {
+  const { data: history = [], isLoading } = useQuery<CompetencyChangeHistory[]>({
+    queryKey: ['/api/admin/users', userId, 'competencies', competencyRecordId, 'history'],
+    enabled: !!competencyRecordId && !!userId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 text-center py-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className="mt-3 text-center py-4">
+        <p className="text-sm text-muted-foreground">No change history yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {history.map((change, index) => (
+        <div key={change.id} className="bg-muted/30 rounded-lg p-3" data-testid={`history-item-${index}`}>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {statusLabels[change.oldStatus as CompetencyStatus]} → {statusLabels[change.newStatus as CompetencyStatus]}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Changed by {change.changedBy} on {new Date(change.changedAt).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          </div>
+          {change.notes && (
+            <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
+              {change.notes}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface AdminPortfolioProps {
   params: {
     userId: string;
@@ -81,6 +136,18 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
   // Competency editing state
   const [editingCompetency, setEditingCompetency] = useState<CompetencyId | null>(null);
   const [tempNotes, setTempNotes] = useState("");
+  
+  // Status change confirmation dialog state
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    competencyId: CompetencyId;
+    newStatus: CompetencyStatus;
+    currentNotes: string;
+  } | null>(null);
+  const [changeReason, setChangeReason] = useState("");
+  
+  // Change history state
+  const [expandedHistory, setExpandedHistory] = useState<CompetencyId | null>(null);
   
   // Report generation state
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -183,6 +250,34 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
   // Get competency data object
   const getCompetencyData = (competencyId: CompetencyId) => {
     return competencies.find(c => c.competencyId === competencyId);
+  };
+  
+  // Handle status change - show confirmation dialog
+  const handleStatusChange = (competencyId: CompetencyId, newStatus: CompetencyStatus) => {
+    const currentStatus = getCompetencyStatus(competencyId);
+    const currentNotes = getCompetencyNotes(competencyId);
+    
+    // If status actually changed, show confirmation dialog
+    if (currentStatus !== newStatus) {
+      setPendingStatusChange({ competencyId, newStatus, currentNotes });
+      setChangeReason("");
+      setConfirmDialogOpen(true);
+    }
+  };
+  
+  // Confirm the status change
+  const confirmStatusChange = () => {
+    if (!pendingStatusChange) return;
+    
+    updateCompetencyMutation.mutate({
+      competencyId: pendingStatusChange.competencyId,
+      status: pendingStatusChange.newStatus,
+      notes: changeReason || pendingStatusChange.currentNotes,
+    });
+    
+    setConfirmDialogOpen(false);
+    setPendingStatusChange(null);
+    setChangeReason("");
   };
 
   if (isLoading) {
@@ -325,11 +420,7 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
                                   <div className="flex items-center space-x-2 flex-wrap">
                                     <Select
                                       value={status}
-                                      onValueChange={(value) => updateCompetencyMutation.mutate({ 
-                                        competencyId, 
-                                        status: value as CompetencyStatus,
-                                        notes
-                                      })}
+                                      onValueChange={(value) => handleStatusChange(competencyId, value as CompetencyStatus)}
                                     >
                                       <SelectTrigger className="w-48" data-testid={`select-status-${competencyId}`}>
                                         <SelectValue />
@@ -411,6 +502,31 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
                                           Cancel
                                         </Button>
                                       </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Change History Section */}
+                                  {getCompetencyData(competencyId)?.id && (
+                                    <div className="mt-4 pt-4 border-t">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setExpandedHistory(
+                                          expandedHistory === competencyId ? null : competencyId
+                                        )}
+                                        className="w-full justify-start"
+                                        data-testid={`button-toggle-history-${competencyId}`}
+                                      >
+                                        <Sparkles className="h-4 w-4 mr-2" />
+                                        {expandedHistory === competencyId ? "Hide History" : "View Change History"}
+                                      </Button>
+                                      
+                                      {expandedHistory === competencyId && (
+                                        <CompetencyHistoryDisplay
+                                          competencyRecordId={getCompetencyData(competencyId)!.id}
+                                          userId={userId}
+                                        />
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -714,6 +830,53 @@ export default function AdminPortfolioView({ params }: AdminPortfolioProps) {
           </Tabs>
         </div>
       </div>
+      
+      {/* Confirmation Dialog for Status Changes */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent data-testid="dialog-confirm-status-change">
+          <DialogHeader>
+            <DialogTitle>Confirm Status Change</DialogTitle>
+            <DialogDescription>
+              You are changing the status of {pendingStatusChange && getCompetencyName(pendingStatusChange.competencyId)} 
+              {pendingStatusChange && ` from ${statusLabels[getCompetencyStatus(pendingStatusChange.competencyId)]} to ${statusLabels[pendingStatusChange.newStatus]}`}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="change-reason">Why are you making this change? *</Label>
+            <Textarea
+              id="change-reason"
+              value={changeReason}
+              onChange={(e) => setChangeReason(e.target.value)}
+              placeholder="Explain the reason for this status change..."
+              className="mt-2 min-h-[100px]"
+              data-testid="textarea-change-reason"
+            />
+            <p className="text-sm text-muted-foreground mt-2">
+              This note will be recorded in the change history and visible to the facilitator.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDialogOpen(false);
+                setPendingStatusChange(null);
+                setChangeReason("");
+              }}
+              data-testid="button-cancel-change"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmStatusChange}
+              disabled={!changeReason.trim() || updateCompetencyMutation.isPending}
+              data-testid="button-confirm-change"
+            >
+              {updateCompetencyMutation.isPending ? "Updating..." : "Confirm Change"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
