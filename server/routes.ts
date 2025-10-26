@@ -2491,6 +2491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Facilitator profile not found for this user" });
       }
       
+      // First upsert to ensure the competency record exists
       const competency = await storage.upsertCompetency({
         facilitatorId: facilitator.id,
         competencyId,
@@ -2499,13 +2500,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusSource: 'manual', // Mark as manually set by admin
       });
       
-      res.json(competency);
+      // Get supervisor/admin name for change history
+      const changedBy = req.user.firstName && req.user.lastName 
+        ? `${req.user.firstName} ${req.user.lastName}`
+        : req.user.email;
+      
+      // Now update with history tracking (this will record the change if status changed)
+      const updated = await storage.updateCompetencyStatus(
+        competency.id, 
+        status, 
+        notes, 
+        changedBy,
+        req.userId
+      );
+      
+      res.json(updated);
     } catch (error) {
       console.error("Error updating user competency:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid competency data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update user competency" });
+    }
+  });
+
+  app.get('/api/admin/users/:userId/competencies/:competencyRecordId/history', requireSupervisor, async (req: any, res) => {
+    try {
+      const { userId, competencyRecordId } = req.params;
+      
+      // Check if user is admin or supervises this user
+      if (!req.user.isAdmin) {
+        const supervisedUser = await storage.getUserById(userId);
+        if (!supervisedUser || supervisedUser.supervisorId !== req.userId) {
+          return res.status(403).json({ message: "You can only view history of users you supervise" });
+        }
+      }
+      
+      const history = await storage.getCompetencyChangeHistory(competencyRecordId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching competency change history:", error);
+      res.status(500).json({ message: "Failed to fetch change history" });
     }
   });
 
