@@ -322,6 +322,24 @@ export const competencyEvidence = pgTable("competency_evidence", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Competency change history - audit trail for manual status changes by supervisors
+export const competencyChangeHistory = pgTable("competency_change_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  competencyRecordId: varchar("competency_record_id").notNull().references(() => facilitatorCompetencies.id, { onDelete: "cascade" }), // The specific competency record
+  facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }), // For easier querying
+  competencyId: varchar("competency_id").notNull(), // Which competency type (e.g., "translation_theory")
+  oldStatus: varchar("old_status", { 
+    enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
+  }).notNull(),
+  newStatus: varchar("new_status", { 
+    enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
+  }).notNull(),
+  notes: text("notes").notNull(), // Why the change was made (required)
+  changedBy: varchar("changed_by").notNull(), // Supervisor/admin name
+  changedByUserId: varchar("changed_by_user_id").references(() => users.id, { onDelete: "set null" }), // Supervisor/admin user ID
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+});
+
 // Documents for RAG context
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -583,6 +601,11 @@ export const insertCompetencyEvidenceSchema = createInsertSchema(competencyEvide
   createdAt: true,
 });
 
+export const insertCompetencyChangeHistorySchema = createInsertSchema(competencyChangeHistory).omit({
+  id: true,
+  changedAt: true,
+});
+
 export const insertMessageAttachmentSchema = createInsertSchema(messageAttachments).omit({
   id: true,
   createdAt: true,
@@ -623,6 +646,8 @@ export type QuarterlyReport = typeof quarterlyReports.$inferSelect;
 export type InsertQuarterlyReport = z.infer<typeof insertQuarterlyReportSchema>;
 export type CompetencyEvidence = typeof competencyEvidence.$inferSelect;
 export type InsertCompetencyEvidence = z.infer<typeof insertCompetencyEvidenceSchema>;
+export type CompetencyChangeHistory = typeof competencyChangeHistory.$inferSelect;
+export type InsertCompetencyChangeHistory = z.infer<typeof insertCompetencyChangeHistorySchema>;
 export type MessageAttachment = typeof messageAttachments.$inferSelect;
 export type InsertMessageAttachment = z.infer<typeof insertMessageAttachmentSchema>;
 export type Document = typeof documents.$inferSelect;
