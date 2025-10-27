@@ -24,7 +24,7 @@ Preferred communication style: Simple, everyday language.
     - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini 2.5 models.
     - **3-Agent Architecture**:
         - **Conversational Agent** (Gemini 2.5 Flash): Fast natural conversations with strict OBT-only scope limitation
-        - **Portfolio Agent** (Gemini 2.5 Flash): Fast structured data operations, manages competencies/qualifications/activities
+        - **Portfolio Agent** (Gemini 2.5 Pro): High-quality structured data operations, manages competencies/qualifications/activities
         - **Report Agent** (Gemini 2.5 Pro): High-quality narrative generation for quarterly reports
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
     - **Audio Features**:
