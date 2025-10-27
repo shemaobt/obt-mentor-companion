@@ -42,7 +42,11 @@
     "feedback": "Feedback",
     "settings": "Settings",
     "newChat": "New Chat",
-    "adminPanel": "Admin Panel"
+    "adminPanel": "Admin Panel",
+    "dashboard": "Dashboard",
+    "userManagement": "User Management",
+    "sendFeedback": "Send Feedback",
+    "mySupervisedUsers": "My Supervised Users"
   },
   "chat": {
     "typeMessage": "Type a message...",
@@ -63,7 +67,20 @@
     "deleteChain": "Delete chain",
     "newChain": "New Chain",
     "continueChain": "Continue",
-    "enterChainTitle": "Enter chain title:"
+    "enterChainTitle": "Enter chain title:",
+    "createSuccess": "Chat created successfully",
+    "createError": "Failed to create new chat",
+    "deleteSuccess": "Chat deleted successfully",
+    "deleteError": "Failed to delete chat",
+    "renameSuccess": "Chat renamed successfully",
+    "renameError": "Failed to rename chat",
+    "chainCreateSuccess": "Chat chain created successfully",
+    "chainCreateError": "Failed to create chat chain",
+    "chainDeleteSuccess": "Chat chain deleted successfully",
+    "chainDeleteError": "Failed to delete chat chain",
+    "chainContinueError": "Failed to continue chat chain",
+    "chats": "chats",
+    "loggedOut": "You are logged out. Logging in again..."
   },
   "portfolio": {
     "title": "Portfolio",
@@ -100,7 +117,12 @@
     "removeSupervisor": "Remove Supervisor",
     "assignSupervisor": "Assign Supervisor",
     "userManagement": "User Management",
-    "feedbackManagement": "Feedback Management"
+    "feedbackManagement": "Feedback Management",
+    "pendingUserApprovalsTitle": "Pending User Approvals",
+    "pendingUserApprovalsDesc": "You have {{count}} user{{plural}} awaiting approval. Click User Management to review.",
+    "pendingSupervisedUsersDesc": "You have {{count}} supervised user{{plural}} awaiting approval. Click My Supervised Users to review.",
+    "plural_users": "s",
+    "plural_user": ""
   },
   "reports": {
     "quarterlyReport": "Quarterly Report",
