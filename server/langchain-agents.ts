@@ -8,7 +8,7 @@ import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
 import { searchRelevantMessages, searchGlobalMemory, searchActiveDocuments } from "./vector-memory";
 import { calculateCompetencyScores, scoreToStatus } from "./competency-mapping";
-import { CORE_COMPETENCIES, getCompetencyDefinition } from "@shared/schema";
+import { CORE_COMPETENCIES } from "@shared/schema";
 
 /**
  * LangChain Multi-Agent System for OBT Mentor Companion
@@ -955,7 +955,7 @@ export async function generateReportNarrative(params: {
 
   // Build comprehensive context for the report
   const competencyBreakdown = params.competencies.map(c => {
-    const compDef = getCompetencyDefinition(c.competencyId);
+    const compDef = CORE_COMPETENCIES[c.competencyId];
     return `- ${compDef?.name || c.competencyId}: ${c.status}`;
   }).join('\n');
 
