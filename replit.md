@@ -29,8 +29,8 @@ Preferred communication style: Simple, everyday language.
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
     - **Audio Features**:
         - **Transcription**: Gemini 2.5 native audio (supports up to 9.5 hours, speaker diarization, 24+ languages)
-        - **TTS**: OpenAI with automatic language detection via franc library (detects language, selects appropriate voice)
-        - **Embeddings**: OpenAI text-embedding-3-small for vector memory
+        - **TTS**: Google Cloud Text-to-Speech with automatic language detection via franc library (Neural2/WaveNet voices, native pronunciation for 16+ languages)
+        - **Embeddings**: Google text-embedding-004 (768 dimensions) for vector memory
     - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
     - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
     - **Intelligent Competency Evaluation**: Automatic scoring based on qualifications and activities with strict scoring rules, ensuring credit for actual study/work.
@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
     - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching.
     - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on uploaded documentation. It does not automatically add experiences/qualifications; explicit user request is needed.
     - **Document Citation System**: AI explicitly cites specific document names (e.g., "Segundo o Manual OBT...") instead of generic references, with clear citation rules in the prompt.
-- **Vector Memory System**: Qdrant Cloud for global memory, using `text-embedding-3-small` for embeddings.
+- **Vector Memory System**: Qdrant Cloud for global memory, using Google `text-embedding-004` (768 dimensions) for embeddings.
     - **Enhanced RAG Document Chunking**: Semantic chunking (~100-word chunks) with automatic competency tagging, rich metadata storage, and backward compatibility.
 - **API Design**: RESTful, secured with session-based authentication, CSRF protection, and authorization checks.
 - **Portfolio Management**: Comprehensive tracking of competencies, qualifications (with multiple certificate uploads, download, preview, delete), activities, and quarterly reports.
@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 ## Core Infrastructure
 - **Database**: Neon PostgreSQL
 - **Authentication**: Replit Auth OIDC
-- **AI Service**: Google Gemini 2.5 API (chat agents, audio transcription), OpenAI API (TTS with auto language detection, embeddings)
+- **AI Service**: Google Gemini 2.5 API (chat agents, audio transcription, embeddings), Google Cloud Text-to-Speech (multilingual TTS with native pronunciation)
 - **Vector Database**: Qdrant Cloud
 
 ## Frontend Libraries
@@ -69,7 +69,8 @@ Preferred communication style: Simple, everyday language.
 - **Session Storage**: connect-pg-simple
 - **Password Hashing**: bcryptjs
 - **Vector Database Client**: @qdrant/js-client-rest
-- **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/google-genai, @langchain/langgraph)
+- **AI Frameworks**: LangChain (@langchain/core, @langchain/google-genai, @langchain/langgraph)
+- **Google Cloud Services**: @google-cloud/text-to-speech (multilingual TTS), @google/generative-ai (Gemini embeddings)
 - **Agent Orchestration**: LangGraph
 - **Language Detection**: franc (automatic language detection for TTS voice selection)
 
