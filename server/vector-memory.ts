@@ -464,7 +464,9 @@ export async function getComprehensiveContext(params: {
           const competencyNote = chunk.competencyTags && chunk.competencyTags.length > 0 
             ? ` [Relevant to: ${chunk.competencyTags.join(', ')}]` 
             : '';
-          context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1})${competencyNote}:**\n`;
+          // Remove file extension from document name for cleaner citations
+          const documentNameWithoutExt = chunk.documentName.replace(/\.(pdf|docx|txt)$/i, '');
+          context += `**From "${documentNameWithoutExt}" (Section ${chunk.chunkIndex + 1})${competencyNote}:**\n`;
           context += `${chunk.chunkText}\n\n`;
         });
       } else {
