@@ -26,6 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { TranslateWidget } from "./TranslateWidget";
 import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
@@ -550,8 +551,13 @@ export default function Sidebar({
         )}
       </div>
 
+      {/* Translation Widget (always visible) */}
+      <div className="p-3 md:p-4 border-t border-border">
+        <TranslateWidget />
+      </div>
+
       {/* User Menu */}
-      <div className="mt-auto p-3 md:p-4 border-t border-border">
+      <div className="p-3 md:p-4 border-t border-border">
         <Button
           variant="ghost" 
           className={`flex items-center space-x-2 md:space-x-3 p-2 rounded-md hover:bg-accent w-full justify-start ${isMobile ? 'h-10 sm:h-12' : 'h-10'}`}
