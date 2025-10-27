@@ -394,6 +394,11 @@ const loginValidationSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const changePasswordValidationSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters long"),
+});
+
 // Rate limiting for authentication routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -607,6 +612,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.clearCookie('translation.sid'); // Use our custom session cookie name
       res.json({ message: "Logged out successfully" });
     });
+  });
+
+  app.post('/api/auth/change-password', requireAuth, authLimiter, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword } = changePasswordValidationSchema.parse(req.body);
+      
+      // Get user from database
+      const user = await storage.getUserById(req.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify current password
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      
+      // Update password
+      await storage.updateUserPassword(req.userId, hashedPassword);
+      
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to change password" });
+    }
   });
 
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
