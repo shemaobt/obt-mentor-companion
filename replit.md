@@ -20,20 +20,24 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Replit Auth (OpenID Connect), Express sessions with PostgreSQL store, Passport.js, HTTP-only cookies, admin approval for new users.
 - **Database**: PostgreSQL (Neon serverless driver), Drizzle ORM for schema management.
 - **Data Models**: Users, Facilitators, Competencies (11 OBT core competencies with bilingual names and status levels), Qualifications (with mandatory descriptions and optional certificate attachments supporting PDF, JPEG, PNG, DOCX), Activities, Quarterly Reports, Chats, Messages.
-- **AI Integration (LangChain Multi-Agent System with Google Gemini)**:
-    - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini models.
+- **AI Integration (LangChain Multi-Agent System with Google Gemini 2.5)**:
+    - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini 2.5 models.
     - **3-Agent Architecture**:
-        - **Conversational Agent** (Gemini 1.5 Pro): Natural conversations, empathetic guidance, delegates portfolio operations
-        - **Portfolio Agent** (Gemini 1.5 Flash): Fast structured data operations, manages competencies/qualifications/activities
-        - **Report Agent** (Gemini 1.5 Pro): High-quality narrative generation for quarterly reports
-    - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini (75-98% cost reduction)
+        - **Conversational Agent** (Gemini 2.5 Pro): Natural conversations, empathetic guidance, delegates portfolio operations
+        - **Portfolio Agent** (Gemini 2.5 Flash): Fast structured data operations, manages competencies/qualifications/activities
+        - **Report Agent** (Gemini 2.5 Pro): High-quality narrative generation for quarterly reports
+    - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
+    - **Audio Features**:
+        - **Transcription**: Gemini 2.5 native audio (supports up to 9.5 hours, speaker diarization, 24+ languages)
+        - **TTS**: OpenAI with automatic language detection via franc library (detects language, selects appropriate voice)
+        - **Embeddings**: OpenAI text-embedding-3-small for vector memory
     - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
     - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
     - **Intelligent Competency Evaluation**: Automatic scoring based on qualifications and activities with strict scoring rules, ensuring credit for actual study/work.
     - **Competency Observation System**: AI silently tracks competency signals (`track_competency_evidence`) and proactively suggests level changes (`suggest_competency_update`) based on accumulated evidence, requiring user approval.
     - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching.
     - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on uploaded documentation. It does not automatically add experiences/qualifications; explicit user request is needed.
-    - **Legacy OpenAI Features**: Whisper (audio transcription), TTS (text-to-speech), and embeddings still use OpenAI API (no Gemini equivalents yet)
+    - **Document Citation System**: AI explicitly cites specific document names (e.g., "Segundo o Manual OBT...") instead of generic references, with clear citation rules in the prompt.
 - **Vector Memory System**: Qdrant Cloud for global memory, using `text-embedding-3-small` for embeddings.
     - **Enhanced RAG Document Chunking**: Semantic chunking (~100-word chunks) with automatic competency tagging, rich metadata storage, and backward compatibility.
 - **API Design**: RESTful, secured with session-based authentication, CSRF protection, and authorization checks.
@@ -47,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 ## Core Infrastructure
 - **Database**: Neon PostgreSQL
 - **Authentication**: Replit Auth OIDC
-- **AI Service**: Google Gemini API (main agents), OpenAI API (Whisper, TTS, Embeddings)
+- **AI Service**: Google Gemini 2.5 API (chat agents, audio transcription), OpenAI API (TTS with auto language detection, embeddings)
 - **Vector Database**: Qdrant Cloud
 
 ## Frontend Libraries
@@ -67,6 +71,7 @@ Preferred communication style: Simple, everyday language.
 - **Vector Database Client**: @qdrant/js-client-rest
 - **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/google-genai, @langchain/langgraph)
 - **Agent Orchestration**: LangGraph
+- **Language Detection**: franc (automatic language detection for TTS voice selection)
 
 ## Development Tools
 - **Build Tools**: Vite (frontend), esbuild (backend)
