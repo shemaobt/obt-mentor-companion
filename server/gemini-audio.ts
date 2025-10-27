@@ -119,38 +119,68 @@ Include timestamps if possible.`;
 }
 
 /**
- * For TTS, we use OpenAI TTS with automatic language detection for now.
- * OpenAI's TTS models automatically detect the language and speak with
- * native pronunciation for all supported languages.
- * 
- * Note: Migrating to Google Cloud TTS would require service account credentials,
- * which is more complex than simple API key authentication.
+ * Gemini 2.5 Native TTS - Text-to-Speech with automatic language detection
+ * Supports 24+ languages with natural pronunciation
  */
-import OpenAI from "openai";
 
-// Lazy-loaded OpenAI instance for TTS
-let openai: OpenAI | null = null;
-function getOpenAI() {
-  if (!openai) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is required for text-to-speech features');
-    }
-    openai = new OpenAI({ apiKey });
-  }
-  return openai;
+// Voice mapping based on detected language
+const GEMINI_VOICE_MAP: Record<string, string> = {
+  'pt-BR': 'Kore',    // Portuguese - warm, friendly
+  'en-US': 'Puck',    // English - clear, neutral
+  'es-ES': 'Kore',    // Spanish
+  'fr-FR': 'Puck',    // French
+  'de-DE': 'Kore',    // German
+  'it-IT': 'Puck',    // Italian
+  'ja-JP': 'Kore',    // Japanese
+  'ko-KR': 'Puck',    // Korean
+  'zh-CN': 'Kore',    // Chinese
+  'hi-IN': 'Puck',    // Hindi
+  'ar-SA': 'Kore',    // Arabic
+  'ru-RU': 'Puck',    // Russian
+};
+
+const DEFAULT_VOICE = 'Kore';
+
+/**
+ * Convert PCM audio data to WAV format
+ * Gemini returns PCM 24kHz mono, we need to add WAV headers
+ */
+function pcmToWav(pcmData: Buffer): Buffer {
+  const channels = 1;  // Mono
+  const sampleRate = 24000;  // 24kHz
+  const bitsPerSample = 16;  // 16-bit
+  
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+  const dataSize = pcmData.length;
+  
+  // WAV header (44 bytes)
+  const header = Buffer.alloc(44);
+  
+  // RIFF chunk descriptor
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write('WAVE', 8);
+  
+  // fmt sub-chunk
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);  // Sub-chunk size
+  header.writeUInt16LE(1, 20);   // Audio format (1 = PCM)
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  
+  // data sub-chunk
+  header.write('data', 36);
+  header.writeUInt32LE(dataSize, 40);
+  
+  return Buffer.concat([header, pcmData]);
 }
 
 /**
- * OpenAI TTS automatically detects language from text and speaks with native pronunciation.
- * The voice selection just affects tone/style, not the accent or language.
- * We use 'alloy' as the default voice as it sounds most neutral across all languages.
- */
-const DEFAULT_VOICE = 'alloy';
-
-/**
- * Generate speech with automatic language detection
- * OpenAI TTS automatically detects the language and speaks with native pronunciation
+ * Generate speech with automatic language detection using Gemini 2.5 TTS
  * Returns both the audio buffer and the detected language/voice for caching
  */
 export async function generateSpeechWithAutoLanguage(text: string): Promise<{
@@ -159,61 +189,101 @@ export async function generateSpeechWithAutoLanguage(text: string): Promise<{
   voice: string;
 }> {
   try {
-    // Detect language from text (for logging purposes)
+    // Detect language from text
     const detectedLanguage = detectLanguage(text);
+    const voiceName = GEMINI_VOICE_MAP[detectedLanguage] || DEFAULT_VOICE;
     
-    console.log(`[OpenAI TTS] Generating speech for detected language: ${detectedLanguage}`);
-    console.log(`[OpenAI TTS] Note: OpenAI TTS automatically uses native pronunciation for all languages`);
+    console.log(`[Gemini TTS] Generating speech for detected language: ${detectedLanguage}`);
+    console.log(`[Gemini TTS] Using voice: ${voiceName}`);
     
-    // OpenAI TTS automatically detects language and uses native pronunciation
-    // regardless of voice selection. The voice just affects tone/style.
-    const speech = await getOpenAI().audio.speech.create({
-      model: "tts-1-hd",  // Higher quality model
-      voice: DEFAULT_VOICE as any,
-      input: text,
-      speed: 1.0,
-    });
+    // Get Gemini client
+    const client = getGeminiClient();
+    
+    // Call Gemini TTS API using REST endpoint
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey!,
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Say naturally: ${text}`
+            }]
+          }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName
+                }
+              }
+            }
+          }
+        })
+      }
+    );
 
-    const buffer = Buffer.from(await speech.arrayBuffer());
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini TTS API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract audio data from response
+    const audioBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!audioBase64) {
+      throw new Error('No audio data in Gemini TTS response');
+    }
+    
+    // Convert base64 PCM to Buffer
+    const pcmBuffer = Buffer.from(audioBase64, 'base64');
+    
+    // Convert PCM to WAV format
+    const wavBuffer = pcmToWav(pcmBuffer);
+    
+    console.log(`[Gemini TTS] Generated ${wavBuffer.length} bytes of audio`);
+    
     return {
-      buffer,
+      buffer: wavBuffer,
       language: detectedLanguage,
-      voice: DEFAULT_VOICE
+      voice: voiceName
     };
   } catch (error) {
-    console.error("Error generating speech with OpenAI TTS:", error);
-    throw new Error("Failed to generate speech");
+    console.error("Error generating speech with Gemini TTS:", error);
+    throw new Error("Failed to generate speech with Gemini TTS");
   }
 }
 
 /**
- * Generate streaming speech with automatic language detection
- * OpenAI TTS automatically detects the language and speaks with native pronunciation
+ * Generate streaming speech with automatic language detection using Gemini 2.5 TTS
+ * Note: Gemini TTS doesn't support true streaming, so we generate the full audio and stream it
  */
 export async function generateSpeechStreamWithAutoLanguage(text: string): Promise<ReadableStream> {
   try {
-    // Detect language from text (for logging purposes)
-    const detectedLanguage = detectLanguage(text);
+    console.log(`[Gemini TTS Stream] Generating speech...`);
     
-    console.log(`[OpenAI TTS Stream] Generating speech for detected language: ${detectedLanguage}`);
-    console.log(`[OpenAI TTS Stream] OpenAI automatically uses native pronunciation`);
+    // Generate the full audio using Gemini TTS
+    const { buffer } = await generateSpeechWithAutoLanguage(text);
     
-    // OpenAI TTS automatically detects language and uses native pronunciation
-    const speech = await getOpenAI().audio.speech.create({
-      model: "tts-1-hd",  // Higher quality model
-      voice: DEFAULT_VOICE as any,
-      input: text,
-      response_format: "mp3",
-      speed: 1.0
+    // Create a ReadableStream from the buffer
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(buffer);
+        controller.close();
+      }
     });
 
-    if (!speech.body) {
-      throw new Error("OpenAI returned empty response body");
-    }
-
-    return speech.body;
+    return stream;
   } catch (error) {
-    console.error("Error generating speech stream with OpenAI TTS:", error);
-    throw new Error("Failed to generate speech stream");
+    console.error("Error generating speech stream with Gemini TTS:", error);
+    throw new Error("Failed to generate speech stream with Gemini TTS");
   }
 }
