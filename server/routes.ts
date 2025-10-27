@@ -426,6 +426,15 @@ const aiApiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiter for password change (moderate protection for authenticated users)
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Allow 10 password change attempts per 15 minutes
+  message: { message: "Too many password change attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/signup', authLimiter, async (req: any, res) => {
@@ -614,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.post('/api/auth/change-password', requireAuth, authLimiter, async (req: any, res) => {
+  app.post('/api/auth/change-password', requireAuth, passwordChangeLimiter, async (req: any, res) => {
     try {
       const { currentPassword, newPassword } = changePasswordValidationSchema.parse(req.body);
       
