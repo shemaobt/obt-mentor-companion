@@ -274,9 +274,9 @@ export function initializeGeminiModels() {
     throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required for Gemini models');
   }
   
-  // Conversational Agent - Gemini 2.5 Flash (using Flash due to Pro quota limits)
+  // Conversational Agent - Gemini 2.5 Pro for natural conversations
   const conversationalModel = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
@@ -294,9 +294,9 @@ export function initializeGeminiModels() {
     maxRetries: 2,
   });
 
-  // Report Agent - Gemini 2.5 Flash (using Flash due to Pro quota limits)
+  // Report Agent - Gemini 2.5 Pro for high-quality narratives
   const reportModel = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     temperature: 0.5,
     apiKey,
     maxOutputTokens: 8192,
