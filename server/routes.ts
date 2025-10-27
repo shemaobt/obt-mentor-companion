@@ -115,10 +115,18 @@ class AudioCache {
 
 const audioCache = new AudioCache();
 
-// OpenAI instance for direct API calls
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR 
-});
+// Lazy-loaded OpenAI instance for direct API calls
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is required for translation features');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 // Multer configuration for file uploads (images and audio)
 const fileStorage = multer.diskStorage({
@@ -1755,7 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : `Translate the following text from ${fromLanguage} to ${toLanguage}:\n\n${text}`;
 
       // Create a direct OpenAI chat completion for translation
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           { role: 'system', content: 'You are a professional translator. Provide only the translation without any additional text or explanations.' },
