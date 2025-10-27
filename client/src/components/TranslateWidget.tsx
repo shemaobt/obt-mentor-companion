@@ -14,9 +14,16 @@ export function TranslateWidget() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2">
-      <Languages className="h-4 w-4 text-muted-foreground" />
-      <div id="google_translate_element" className="flex-1" data-testid="translate-widget"></div>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 px-2">
+        <Languages className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Translate</span>
+      </div>
+      <div 
+        id="google_translate_element" 
+        className="translate-widget-container"
+        data-testid="translate-widget"
+      ></div>
     </div>
   );
 }
