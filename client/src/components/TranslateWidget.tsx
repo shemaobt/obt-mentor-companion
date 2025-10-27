@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const languages = [
-  { code: 'en', name: 'English' },
+  { code: '', name: 'English' },
   { code: 'pt', name: 'Português' },
   { code: 'es', name: 'Español' },
   { code: 'fr', name: 'Français' },
@@ -26,75 +26,58 @@ const languages = [
 ];
 
 export function TranslateWidget() {
-  const [selectedLang, setSelectedLang] = useState('en');
-  const [isGoogleReady, setIsGoogleReady] = useState(false);
-  const [pendingLang, setPendingLang] = useState<string | null>(null);
+  const [selectedLang, setSelectedLang] = useState('');
+
+  const doGoogleLanguageTranslator = (langCode: string) => {
+    const translateFrame = document.querySelector('.goog-te-menu-frame') as HTMLIFrameElement;
+    if (!translateFrame || !translateFrame.contentWindow) {
+      console.log('[Translate] Frame not ready, retrying...');
+      setTimeout(() => doGoogleLanguageTranslator(langCode), 100);
+      return;
+    }
+
+    const innerDoc = translateFrame.contentWindow.document;
+    const langLink = innerDoc.querySelector(`a.goog-te-menu2-item span.text:contains('${langCode}')`)?.parentElement as HTMLElement;
+    
+    if (!langLink) {
+      // Fallback: try direct combo approach
+      const combo = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+      if (combo) {
+        combo.value = langCode;
+        combo.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    } else {
+      langLink.click();
+    }
+  };
 
   const translatePage = (langCode: string) => {
     setSelectedLang(langCode);
     
-    console.log('[TranslateWidget] Attempting to translate to:', langCode);
-    
-    // Persistent polling - keep trying until Google Translate is ready
-    const pollAndTranslate = () => {
-      const googleTranslateElement = document.querySelector('.goog-te-combo') as HTMLSelectElement;
-      
-      if (googleTranslateElement) {
-        // Google Translate is ready, trigger the translation
-        console.log('[TranslateWidget] Google Translate element found, triggering translation');
-        console.log('[TranslateWidget] Current value:', googleTranslateElement.value);
-        console.log('[TranslateWidget] Setting to:', langCode);
-        
-        googleTranslateElement.value = langCode;
-        
-        // Trigger change event with bubbles - Google Translate requires this
-        const changeEvent = new Event('change', { bubbles: true });
-        googleTranslateElement.dispatchEvent(changeEvent);
-        
-        console.log('[TranslateWidget] Event dispatched, new value:', googleTranslateElement.value);
-        setPendingLang(null);
-        return;
-      }
-      
-      // Not ready yet, store the pending language and try again
-      console.log('[TranslateWidget] Google Translate not ready, polling...');
-      setPendingLang(langCode);
-      setTimeout(pollAndTranslate, 100);
-    };
-    
-    pollAndTranslate();
+    const combo = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+    if (combo) {
+      combo.value = langCode;
+      combo.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      // Widget not ready, try triggering initialization
+      setTimeout(() => translatePage(langCode), 100);
+    }
   };
 
   useEffect(() => {
-    console.log('[TranslateWidget] Component mounted, initializing Google Translate...');
-    
-    // Initialize Google Translate once the component mounts
-    const initGoogleTranslate = () => {
+    // Initialize widget on mount
+    const initWidget = () => {
       const win = window as any;
-      
-      // Check if Google Translate script is loaded
-      if (typeof win.google === 'undefined' || typeof win.google.translate === 'undefined') {
-        console.log('[TranslateWidget] Google Translate script not loaded yet, retrying...');
-        setTimeout(initGoogleTranslate, 100);
+      if (typeof win.google?.translate?.TranslateElement === 'undefined') {
+        setTimeout(initWidget, 100);
         return;
       }
-      
-      // Check if element exists
+
       const element = document.getElementById('google_translate_element');
-      if (!element) {
-        console.log('[TranslateWidget] Element not found, retrying...');
-        setTimeout(initGoogleTranslate, 100);
-        return;
+      if (!element || element.children.length > 0) {
+        return; // Already initialized
       }
-      
-      // Check if already initialized (has children)
-      if (element.children.length > 0) {
-        console.log('[TranslateWidget] Google Translate already initialized');
-        setIsGoogleReady(true);
-        return;
-      }
-      
-      console.log('[TranslateWidget] Initializing Google Translate widget...');
+
       try {
         new win.google.translate.TranslateElement({
           pageLanguage: 'en',
@@ -102,36 +85,13 @@ export function TranslateWidget() {
           layout: win.google.translate.TranslateElement.InlineLayout.SIMPLE,
           autoDisplay: false
         }, 'google_translate_element');
-        console.log('[GoogleTranslate] Widget initialized, waiting for combo element...');
-        
-        // Wait for the combo element to appear
-        const checkCombo = setInterval(() => {
-          const combo = document.querySelector('.goog-te-combo');
-          if (combo) {
-            console.log('[TranslateWidget] Google Translate is ready!');
-            setIsGoogleReady(true);
-            clearInterval(checkCombo);
-            
-            // If there's a pending language selection, apply it now
-            if (pendingLang) {
-              console.log('[TranslateWidget] Applying pending language:', pendingLang);
-              const googleTranslateElement = combo as HTMLSelectElement;
-              googleTranslateElement.value = pendingLang;
-              const changeEvent = new Event('change', { bubbles: true });
-              googleTranslateElement.dispatchEvent(changeEvent);
-              setPendingLang(null);
-            }
-          }
-        }, 100);
-        
-      } catch (error) {
-        console.error('[TranslateWidget] Error initializing Google Translate:', error);
+      } catch (e) {
+        console.error('Translation init error:', e);
       }
     };
-    
-    // Start initialization
-    initGoogleTranslate();
-  }, [pendingLang]);
+
+    initWidget();
+  }, []);
 
   return (
     <div className="px-2">
@@ -152,10 +112,10 @@ export function TranslateWidget() {
         <DropdownMenuContent align="start" className="w-56">
           {languages.map((lang) => (
             <DropdownMenuItem
-              key={lang.code}
+              key={lang.code || 'en'}
               onClick={() => translatePage(lang.code)}
               className={selectedLang === lang.code ? 'bg-accent' : ''}
-              data-testid={`menu-item-lang-${lang.code}`}
+              data-testid={`menu-item-lang-${lang.code || 'en'}`}
             >
               {lang.name}
             </DropdownMenuItem>
