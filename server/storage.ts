@@ -73,6 +73,7 @@ export interface IStorage {
   incrementUserMessageCount(userId: string): Promise<void>;
   incrementUserApiUsage(userId: string): Promise<void>;
   updateUserLastLogin(userId: string): Promise<void>;
+  updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
   
   // Chat chain operations
   getUserChatChains(userId: string): Promise<ChatChain[]>;
@@ -314,6 +315,16 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ 
         lastLoginAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        password: hashedPassword,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));

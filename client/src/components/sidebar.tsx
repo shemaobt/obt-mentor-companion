@@ -26,6 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
@@ -47,7 +48,8 @@ import {
   Play,
   FileText,
   Pencil,
-  TrendingUp
+  TrendingUp,
+  Lock
 } from "lucide-react";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
@@ -72,6 +74,7 @@ export default function Sidebar({
   const [chainsExpanded, setChainsExpanded] = useState(true);
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [newChatTitle, setNewChatTitle] = useState("");
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -724,6 +727,20 @@ export default function Sidebar({
             {/* Theme Switcher (visible to all users) */}
             <ThemeSwitcher />
             
+            {/* Change Password option (visible to all users) */}
+            <Button
+              variant="ghost"
+              className={`w-full justify-start text-sm px-4 ${isMobile ? 'h-12' : 'py-2 h-auto'}`}
+              onClick={() => {
+                setChangePasswordOpen(true);
+                setUserMenuOpen(false);
+              }}
+              data-testid="button-change-password"
+            >
+              <Lock className="mr-2 h-4 w-4" />
+              Change Password
+            </Button>
+            
             <Separator className="my-1" />
             
             {/* Logout option (visible to all users) */}
@@ -799,6 +816,12 @@ export default function Sidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog 
+        open={changePasswordOpen} 
+        onOpenChange={setChangePasswordOpen}
+      />
     </div>
   );
 }
