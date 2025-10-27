@@ -29,7 +29,7 @@ Preferred communication style: Simple, everyday language.
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
     - **Audio Features**:
         - **Transcription**: Gemini 2.5 native audio (supports up to 9.5 hours, speaker diarization, 24+ languages)
-        - **TTS**: Google Cloud Text-to-Speech with automatic language detection via franc library (Neural2/WaveNet voices, native pronunciation for 16+ languages)
+        - **TTS**: OpenAI tts-1-hd with automatic multilingual native pronunciation (supports 50+ languages with automatic language detection)
         - **Embeddings**: Google text-embedding-004 (768 dimensions) for vector memory
     - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
     - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 ## Core Infrastructure
 - **Database**: Neon PostgreSQL
 - **Authentication**: Replit Auth OIDC
-- **AI Service**: Google Gemini 2.5 API (chat agents, audio transcription, embeddings), Google Cloud Text-to-Speech (multilingual TTS with native pronunciation)
+- **AI Service**: Google Gemini 2.5 API (chat agents, audio transcription, embeddings), OpenAI API (multilingual TTS with automatic native pronunciation)
 - **Vector Database**: Qdrant Cloud
 
 ## Frontend Libraries
@@ -69,10 +69,10 @@ Preferred communication style: Simple, everyday language.
 - **Session Storage**: connect-pg-simple
 - **Password Hashing**: bcryptjs
 - **Vector Database Client**: @qdrant/js-client-rest
-- **AI Frameworks**: LangChain (@langchain/core, @langchain/google-genai, @langchain/langgraph)
-- **Google Cloud Services**: @google-cloud/text-to-speech (multilingual TTS), @google/generative-ai (Gemini embeddings)
+- **AI Frameworks**: LangChain (@langchain/core, @langchain/google-genai, @langchain/langgraph), OpenAI SDK (multilingual TTS)
+- **Google Cloud Services**: @google/generative-ai (Gemini embeddings and chat)
 - **Agent Orchestration**: LangGraph
-- **Language Detection**: franc (automatic language detection for TTS voice selection)
+- **Language Detection**: franc (automatic language detection for logging/analytics)
 
 ## Development Tools
 - **Build Tools**: Vite (frontend), esbuild (backend)
