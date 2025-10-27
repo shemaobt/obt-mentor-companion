@@ -16,7 +16,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
-import { processMessageWithLangChain, generateReportNarrative, getComprehensiveContext } from "./langchain-agents";
+import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
 import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";

@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
-import { searchRelevantMessages, searchGlobalMemory, searchActiveDocuments } from "./vector-memory";
+// Vector memory functions are used via routes.ts
 import { calculateCompetencyScores, scoreToStatus } from "./competency-mapping";
 import { CORE_COMPETENCIES } from "@shared/schema";
 
@@ -829,42 +829,7 @@ export async function createPortfolioAgent(storage: IStorage, userId: string, fa
   return agent;
 }
 
-/**
- * Comprehensive context retrieval from multiple sources
- */
-async function getComprehensiveContext(storage: IStorage, userId: string, facilitatorId: string, userMessage: string, chatId: string): Promise<string> {
-  const contextParts: string[] = [];
-
-  try {
-    // 1. Semantic search in facilitator's own conversations
-    const relevantMessages = await searchRelevantMessages(facilitatorId, userMessage, 5);
-    if (relevantMessages.length > 0) {
-      contextParts.push("## Relevant Past Conversations:");
-      contextParts.push(relevantMessages.map(msg => 
-        `[${new Date(msg.createdAt).toLocaleDateString()}] ${msg.content}`
-      ).join('\n\n'));
-    }
-
-    // 2. Global semantic search across all facilitators
-    const globalResults = await searchGlobalMemory(userMessage, 3);
-    if (globalResults.length > 0) {
-      contextParts.push("\n## Related Experiences from Other Facilitators:");
-      contextParts.push(globalResults.map(result => result.content).join('\n\n'));
-    }
-
-    // 3. Search uploaded reference documents
-    const documentResults = await searchActiveDocuments(userMessage, 3);
-    if (documentResults.length > 0) {
-      contextParts.push("\n## Reference Materials:");
-      contextParts.push(documentResults.map(doc => doc.content).join('\n\n'));
-    }
-
-    return contextParts.length > 0 ? contextParts.join('\n\n') : '';
-  } catch (error) {
-    console.error('[Context Retrieval Error]', error);
-    return '';
-  }
-}
+// Note: getComprehensiveContext is now in vector-memory.ts and imported in routes.ts
 
 /**
  * Route message to appropriate agent
