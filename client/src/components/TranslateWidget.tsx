@@ -33,12 +33,15 @@ export function TranslateWidget() {
   const translatePage = (langCode: string) => {
     setSelectedLang(langCode);
     
+    console.log('[TranslateWidget] Attempting to translate to:', langCode);
+    
     // Persistent polling - keep trying until Google Translate is ready
     const pollAndTranslate = () => {
       const googleTranslateElement = document.querySelector('.goog-te-combo') as HTMLSelectElement;
       
       if (googleTranslateElement) {
         // Google Translate is ready, trigger the translation
+        console.log('[TranslateWidget] Google Translate element found, triggering translation');
         googleTranslateElement.value = langCode;
         googleTranslateElement.dispatchEvent(new Event('change'));
         setPendingLang(null);
@@ -46,6 +49,7 @@ export function TranslateWidget() {
       }
       
       // Not ready yet, store the pending language and try again
+      console.log('[TranslateWidget] Google Translate not ready, polling...');
       setPendingLang(langCode);
       setTimeout(pollAndTranslate, 100);
     };
