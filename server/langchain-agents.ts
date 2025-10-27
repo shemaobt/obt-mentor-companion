@@ -940,16 +940,40 @@ export async function processMessageWithLangChain(
 
   const humanMessage = new HumanMessage({ content: messageContent });
 
-  // Invoke LangGraph React agent
-  const result = await agent.invoke({
-    messages: [...formattedHistory, humanMessage],
-  });
+  // Invoke LangGraph React agent with error handling
+  try {
+    console.log('[LangChain] Invoking agent...');
+    const result = await agent.invoke({
+      messages: [...formattedHistory, humanMessage],
+    });
+    console.log('[LangChain] Agent invocation successful');
 
-  // Extract the final AI message
-  const aiMessages = result.messages.filter((msg: any) => msg.role === 'ai' || msg._getType() === 'ai');
-  const lastAIMessage = aiMessages[aiMessages.length - 1];
-  
-  return lastAIMessage?.content || "I apologize, but I wasn't able to generate a response. Please try again.";
+    // Extract the final AI message
+    const aiMessages = result.messages.filter((msg: any) => msg.role === 'ai' || msg._getType() === 'ai');
+    const lastAIMessage = aiMessages[aiMessages.length - 1];
+    
+    return lastAIMessage?.content || "I apologize, but I wasn't able to generate a response. Please try again.";
+  } catch (error: any) {
+    console.error('[LangChain] Error invoking agent:', error);
+    console.error('[LangChain] Error details:', {
+      message: error?.message,
+      status: error?.status,
+      statusText: error?.statusText,
+      code: error?.code,
+      type: error?.type
+    });
+    
+    // Provide user-friendly error messages based on error type
+    if (error?.message?.includes('API key') || error?.message?.includes('authentication') || error?.message?.includes('401')) {
+      throw new Error('Google API key authentication failed. Please verify your API key is valid and has access to the Gemini API.');
+    } else if (error?.message?.includes('quota') || error?.message?.includes('429')) {
+      throw new Error('API quota exceeded. Please check your Google Cloud billing and quota limits.');
+    } else if (error?.message?.includes('permission') || error?.message?.includes('403')) {
+      throw new Error('API access denied. Please ensure the Gemini API is enabled in your Google Cloud project.');
+    } else {
+      throw new Error(`AI agent error: ${error?.message || 'Unknown error occurred'}`);
+    }
+  }
 }
 
 /**
