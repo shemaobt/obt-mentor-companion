@@ -280,6 +280,8 @@ export function initializeGeminiModels() {
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
+    timeout: 30000, // 30 second timeout
+    maxRetries: 2,
   });
 
   // Portfolio Agent - Gemini 2.5 Flash for fast structured operations
@@ -288,6 +290,8 @@ export function initializeGeminiModels() {
     temperature: 0.3,
     apiKey,
     maxOutputTokens: 8192,
+    timeout: 30000, // 30 second timeout
+    maxRetries: 2,
   });
 
   // Report Agent - Gemini 2.5 Pro for high-quality narratives
@@ -296,6 +300,8 @@ export function initializeGeminiModels() {
     temperature: 0.5,
     apiKey,
     maxOutputTokens: 8192,
+    timeout: 30000, // 30 second timeout
+    maxRetries: 2,
   });
 
   return { conversationalModel, portfolioModel, reportModel };
