@@ -132,24 +132,27 @@ const openai = new OpenAI({
 
 /**
  * Language to voice mapping for OpenAI TTS
+ * NOTE: OpenAI TTS models automatically pronounce text in the correct language
+ * regardless of voice selection. The voice just affects tone/style, not accent.
+ * We map voices based on which sounds most natural for each language family.
  */
 const LANGUAGE_TO_VOICE: Record<string, string> = {
-  'pt-BR': 'onyx',    // Portuguese - warm, natural voice
-  'en-US': 'alloy',   // English - neutral
-  'es-ES': 'nova',    // Spanish - warm
-  'fr-FR': 'shimmer', // French - expressive
-  'de-DE': 'echo',    // German - clear
-  'it-IT': 'fable',   // Italian - expressive
-  'ru-RU': 'echo',    // Russian
-  'zh-CN': 'alloy',   // Chinese
-  'ar-SA': 'alloy',   // Arabic
-  'ja-JP': 'alloy',   // Japanese
-  'ko-KR': 'alloy',   // Korean
-  'hi-IN': 'alloy',   // Hindi
-  'id-ID': 'alloy',   // Indonesian
-  'nl-NL': 'alloy',   // Dutch
-  'sv-SE': 'alloy',   // Swedish
-  'da-DK': 'alloy',   // Danish
+  'pt-BR': 'nova',     // Portuguese - warm, feminine (sounds more natural for Portuguese)
+  'en-US': 'alloy',    // English - neutral, balanced
+  'es-ES': 'nova',     // Spanish - warm (Romance language, similar to Portuguese)
+  'fr-FR': 'shimmer',  // French - expressive (Romance language)
+  'de-DE': 'onyx',     // German - deep, clear (Germanic language)
+  'it-IT': 'shimmer',  // Italian - expressive (Romance language)
+  'ru-RU': 'echo',     // Russian - resonant (Slavic language)
+  'zh-CN': 'alloy',    // Chinese - neutral
+  'ar-SA': 'fable',    // Arabic - expressive
+  'ja-JP': 'alloy',    // Japanese - neutral
+  'ko-KR': 'alloy',    // Korean - neutral
+  'hi-IN': 'fable',    // Hindi - expressive
+  'id-ID': 'nova',     // Indonesian - warm
+  'nl-NL': 'alloy',    // Dutch - neutral (Germanic)
+  'sv-SE': 'alloy',    // Swedish - neutral (Germanic)
+  'da-DK': 'alloy',    // Danish - neutral (Germanic)
 };
 
 /**
@@ -169,10 +172,12 @@ export async function generateSpeechWithAutoLanguage(text: string): Promise<{
     
     console.log(`[TTS] Generating speech for language ${detectedLanguage} with voice '${voice}'`);
     
+    // Use tts-1-hd for higher quality and better pronunciation
     const speech = await openai.audio.speech.create({
-      model: "tts-1",
+      model: "tts-1-hd",
       voice: voice as any,
       input: text,
+      speed: 1.0, // Normal speed for natural pronunciation
     });
 
     const buffer = Buffer.from(await speech.arrayBuffer());
@@ -198,12 +203,13 @@ export async function generateSpeechStreamWithAutoLanguage(text: string): Promis
     
     console.log(`[TTS Stream] Generating speech for language ${detectedLanguage} with voice '${voice}'`);
     
+    // Use tts-1-hd for higher quality and better pronunciation across all languages
     const speech = await openai.audio.speech.create({
-      model: "tts-1",
+      model: "tts-1-hd",
       voice: voice as any,
       input: text,
       response_format: "mp3",
-      speed: 1.0
+      speed: 1.0  // Normal speed ensures natural pronunciation
     });
 
     if (!speech.body) {
