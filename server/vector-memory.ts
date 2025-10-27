@@ -10,7 +10,7 @@ const qdrant = new QdrantClient({
 });
 
 // Initialize Google Gemini client for embeddings
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '');
 
 // Collection name for OBT conversations
 const COLLECTION_NAME = 'obt_global_memory';
