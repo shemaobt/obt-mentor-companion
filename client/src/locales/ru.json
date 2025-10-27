@@ -21,6 +21,7 @@
     "download": "Скачать",
     "upload": "Загрузить",
     "view": "Просмотр",
+    "rename": "Переименовать",
     "selectLanguage": "Выбрать язык"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "Запись...",
     "stopRecording": "Стоп",
     "playAudio": "Воспроизвести аудио",
-    "thinking": "Думаю..."
+    "thinking": "Думаю...",
+    "chatChains": "Цепочки Чатов",
+    "recentChats": "Недавние Чаты",
+    "noChatsYet": "Пока нет чатов",
+    "startNewConversation": "Начать новый разговор",
+    "deleteChain": "Удалить цепочку",
+    "newChain": "Новая Цепочка",
+    "continueChain": "Продолжить",
+    "enterChainTitle": "Введите название цепочки:"
   },
   "portfolio": {
     "title": "Портфолио",

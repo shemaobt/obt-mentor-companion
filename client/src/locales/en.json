@@ -21,6 +21,7 @@
     "download": "Download",
     "upload": "Upload",
     "view": "View",
+    "rename": "Rename",
     "selectLanguage": "Select language"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "Recording...",
     "stopRecording": "Stop",
     "playAudio": "Play audio",
-    "thinking": "Thinking..."
+    "thinking": "Thinking...",
+    "chatChains": "Chat Chains",
+    "recentChats": "Recent Chats",
+    "noChatsYet": "No chats yet",
+    "startNewConversation": "Start a new conversation",
+    "deleteChain": "Delete chain",
+    "newChain": "New Chain",
+    "continueChain": "Continue",
+    "enterChainTitle": "Enter chain title:"
   },
   "portfolio": {
     "title": "Portfolio",

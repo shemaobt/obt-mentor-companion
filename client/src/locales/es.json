@@ -21,6 +21,7 @@
     "download": "Descargar",
     "upload": "Subir",
     "view": "Ver",
+    "rename": "Renombrar",
     "selectLanguage": "Seleccionar idioma"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "Grabando...",
     "stopRecording": "Detener",
     "playAudio": "Reproducir audio",
-    "thinking": "Pensando..."
+    "thinking": "Pensando...",
+    "chatChains": "Cadenas de Conversación",
+    "recentChats": "Conversaciones Recientes",
+    "noChatsYet": "No hay conversaciones aún",
+    "startNewConversation": "Iniciar una nueva conversación",
+    "deleteChain": "Eliminar cadena",
+    "newChain": "Nueva Cadena",
+    "continueChain": "Continuar",
+    "enterChainTitle": "Ingrese el título de la cadena:"
   },
   "portfolio": {
     "title": "Portafolio",
