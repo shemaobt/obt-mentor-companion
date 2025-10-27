@@ -25,88 +25,59 @@ const languages = [
   { code: 'tr', name: 'Türkçe' },
 ];
 
-declare global {
-  interface Window {
-    google: any;
-    googleTranslateElementInit: () => void;
-  }
-}
-
 export function TranslateWidget() {
   const [selectedLang, setSelectedLang] = useState('');
-  const [isReady, setIsReady] = useState(false);
 
-  const translatePage = (langCode: string) => {
-    console.log('[TranslateWidget] Translate to:', langCode);
+  const changeLang = (langCode: string) => {
     setSelectedLang(langCode);
     
+    // Direct approach: find and click the select
     const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
     if (select) {
-      console.log('[TranslateWidget] Select element found, changing value from', select.value, 'to', langCode);
       select.value = langCode;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      console.log('[TranslateWidget] Change event dispatched');
-    } else {
-      console.warn('[TranslateWidget] Google Translate select not found!');
+      select.dispatchEvent(new Event('change'));
     }
   };
 
   useEffect(() => {
-    console.log('[TranslateWidget] Component mounted');
+    // Initialize Google Translate when component mounts
+    let attempts = 0;
+    const maxAttempts = 50;
     
-    const initTranslate = () => {
-      console.log('[TranslateWidget] Checking for Google Translate...');
+    const init = () => {
+      attempts++;
       
-      if (typeof window.google === 'undefined' || !window.google.translate) {
-        console.log('[TranslateWidget] Google not available yet, retrying...');
-        setTimeout(initTranslate, 200);
+      const w = window as any;
+      if (!w.google?.translate?.TranslateElement) {
+        if (attempts < maxAttempts) {
+          setTimeout(init, 100);
+        }
         return;
       }
       
-      const element = document.getElementById('google_translate_element');
-      if (!element) {
-        console.log('[TranslateWidget] Element not in DOM yet, retrying...');
-        setTimeout(initTranslate, 200);
+      const el = document.getElementById('google_translate_element');
+      if (!el) {
+        if (attempts < maxAttempts) {
+          setTimeout(init, 100);
+        }
         return;
       }
       
-      if (element.childElementCount > 0) {
-        console.log('[TranslateWidget] Already initialized');
-        setIsReady(true);
-        return;
-      }
-      
-      console.log('[TranslateWidget] Initializing Google Translate widget...');
-      
-      try {
-        new window.google.translate.TranslateElement({
-          pageLanguage: 'en',
-          includedLanguages: 'en,pt,es,fr,de,it,zh-CN,zh-TW,ja,ko,ar,hi,ru,tr',
-          layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
-          autoDisplay: false
-        }, 'google_translate_element');
-        
-        console.log('[TranslateWidget] Widget created, waiting for select...');
-        
-        // Wait for the select element to appear
-        const waitForSelect = setInterval(() => {
-          const select = document.querySelector('.goog-te-combo');
-          if (select) {
-            console.log('[TranslateWidget] Select element ready!');
-            setIsReady(true);
-            clearInterval(waitForSelect);
-          }
-        }, 100);
-        
-      } catch (error) {
-        console.error('[TranslateWidget] Error initializing:', error);
+      if (el.childElementCount === 0) {
+        try {
+          new w.google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,pt,es,fr,de,it,zh-CN,zh-TW,ja,ko,ar,hi,ru,tr',
+            layout: w.google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          }, 'google_translate_element');
+        } catch (e) {
+          // Ignore errors
+        }
       }
     };
     
-    // Start initialization with a small delay to ensure DOM is ready
-    const timeout = setTimeout(initTranslate, 100);
-    
-    return () => clearTimeout(timeout);
+    setTimeout(init, 500);
   }, []);
 
   return (
@@ -129,7 +100,7 @@ export function TranslateWidget() {
           {languages.map((lang) => (
             <DropdownMenuItem
               key={lang.code || 'en'}
-              onClick={() => translatePage(lang.code)}
+              onClick={() => changeLang(lang.code)}
               className={selectedLang === lang.code ? 'bg-accent' : ''}
               data-testid={`menu-item-lang-${lang.code || 'en'}`}
             >
@@ -139,19 +110,7 @@ export function TranslateWidget() {
         </DropdownMenuContent>
       </DropdownMenu>
       
-      {/* Hidden Google Translate element */}
-      <div 
-        id="google_translate_element" 
-        className="hidden"
-        data-testid="translate-widget"
-      ></div>
-      
-      {/* Debug info */}
-      {!isReady && (
-        <div className="text-xs text-muted-foreground mt-1 px-2">
-          Loading translator...
-        </div>
-      )}
+      <div id="google_translate_element" className="hidden" data-testid="translate-widget"></div>
     </div>
   );
 }
