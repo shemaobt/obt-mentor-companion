@@ -842,15 +842,27 @@ Respond with ONLY ONE WORD:
 Do not provide explanations or additional text.`;
 
   try {
-    const response = await conversationalModel.invoke([
+    console.log('[Supervisor] Starting routing decision...');
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Routing timeout after 10 seconds')), 10000)
+    );
+    
+    const invokePromise = conversationalModel.invoke([
       { role: 'system', content: supervisorPrompt },
       { role: 'user', content: userMessage }
     ]);
     
+    const response = await Promise.race([invokePromise, timeoutPromise]);
+    console.log('[Supervisor] Routing decision received');
+    
     const route = response.content.toString().trim().toUpperCase();
+    console.log('[Supervisor] Routing to:', route);
     return route === 'REPORT' ? 'REPORT' : 'CONVERSATIONAL';
   } catch (error) {
     console.error('[Supervisor Routing Error]', error);
+    console.error('[Supervisor] Defaulting to CONVERSATIONAL agent');
     return 'CONVERSATIONAL'; // Default to conversational on error
   }
 }
@@ -943,9 +955,17 @@ export async function processMessageWithLangChain(
   // Invoke LangGraph React agent with error handling
   try {
     console.log('[LangChain] Invoking agent...');
-    const result = await agent.invoke({
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Agent invocation timeout after 60 seconds')), 60000)
+    );
+    
+    const invokePromise = agent.invoke({
       messages: [...formattedHistory, humanMessage],
     });
+    
+    const result = await Promise.race([invokePromise, timeoutPromise]);
     console.log('[LangChain] Agent invocation successful');
 
     // Extract the final AI message
