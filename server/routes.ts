@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateChatTitle, transcribeAudio, generateSpeech, generateSpeechStream } from "./openai";
+import { generateChatTitle } from "./openai";
+import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage } from "./gemini-audio";
 import OpenAI from "openai";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext, deleteChatEmbeddings } from "./vector-memory";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
@@ -15,7 +16,6 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
-import { transcribeAudio as whisperTranscribe } from "./whisper";
 import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
 import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
 import { randomUUID } from "crypto";
@@ -1582,7 +1582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No audio file provided" });
       }
 
-      const transcription = await transcribeAudio(req.file.buffer, req.file.originalname);
+      const transcription = await transcribeAudioWithGemini(req.file.buffer, req.file.originalname);
       
       // Track API usage
       await storage.incrementUserApiUsage(req.userId);
@@ -1594,10 +1594,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Text-to-speech endpoint using OpenAI TTS with streaming for faster playback
+  // Text-to-speech endpoint with automatic language detection and streaming
   app.post('/api/audio/speak', requireAuth, async (req: any, res) => {
     try {
-      const { text, language = 'en-US', voice } = req.body;
+      const { text } = req.body;
       
       if (!text || typeof text !== 'string') {
         return res.status(400).json({ message: "Text is required" });
@@ -1607,8 +1607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Text too long (max 4096 characters)" });
       }
 
-      // Generate ETag for this content (include voice for proper caching)
-      const etag = audioCache.getETag(text, language, voice);
+      // Generate ETag for this content (language/voice are auto-detected)
+      const etag = audioCache.getETag(text, 'auto', 'auto');
       
       // Check if client has cached version
       const clientETag = req.headers['if-none-match'];
@@ -1616,8 +1616,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(304).end(); // Not Modified
       }
 
-      // Check server cache first
-      let cached = audioCache.get(text, language, voice);
+      // Check server cache first (use 'auto' since language/voice are auto-detected)
+      let cached = audioCache.get(text, 'auto', 'auto');
 
       if (cached) {
         // Cache hit - instant response!
@@ -1634,10 +1634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Track API usage for new generations
       await storage.incrementUserApiUsage(req.userId);
 
-      // Get the stream from OpenAI (this might fail, so handle before sending headers)
+      // Get the stream with auto language detection
       let webStream: ReadableStream;
       try {
-        webStream = await generateSpeechStream(text, language, voice);
+        webStream = await generateSpeechStreamWithAutoLanguage(text);
       } catch (streamError) {
         console.error("Error getting speech stream:", streamError);
         return res.status(502).json({ message: "Failed to get audio from service" });
@@ -1667,9 +1667,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           chunks.push(Buffer.from(value));
         }
         
-        // Cache the complete audio
+        // Cache the complete audio (use 'auto' since language/voice are auto-detected)
         const completeBuffer = Buffer.concat(chunks);
-        audioCache.set(text, language, completeBuffer, voice);
+        audioCache.set(text, 'auto', completeBuffer, 'auto');
       } catch (streamError) {
         console.error("Error streaming audio chunks:", streamError);
         // Headers already sent, can't return error status
@@ -1739,7 +1739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const filename = req.file.originalname || 'audio.webm';
-      const transcribedText = await transcribeAudio(req.file.buffer, filename);
+      const transcribedText = await transcribeAudioWithGemini(req.file.buffer, filename);
       
       res.json({
         text: transcribedText,
@@ -1751,10 +1751,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public text-to-speech endpoint
+  // Public text-to-speech endpoint (with automatic language detection)
   app.post('/api/public/speak', aiApiLimiter, async (req: any, res) => {
     try {
-      const { text, language = 'en-US', voice = 'alloy' } = req.body;
+      const { text } = req.body;
       
       if (!text || typeof text !== 'string') {
         return res.status(400).json({ error: "Text is required" });
@@ -1764,24 +1764,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Text too long (max 1024 characters for public API)" });
       }
 
-      // Generate ETag for this content
-      const etag = audioCache.getETag(text, language, voice);
+      // Check server cache first (cache key is just text, language/voice are auto-detected)
+      let cached = audioCache.get(text, 'auto', 'auto');
+      let audioBuffer: Buffer;
+      let detectedLanguage: string;
+      let detectedVoice: string;
+
+      if (cached) {
+        audioBuffer = cached.buffer;
+        // For cached items, we don't have the detected language/voice, but it doesn't matter for the response
+        detectedLanguage = 'cached';
+        detectedVoice = 'cached';
+      } else {
+        // Generate with auto language detection
+        const result = await generateSpeechWithAutoLanguage(text);
+        audioBuffer = result.buffer;
+        detectedLanguage = result.language;
+        detectedVoice = result.voice;
+        
+        // Cache with 'auto' as the language/voice keys since they're detected
+        cached = audioCache.set(text, 'auto', audioBuffer, 'auto');
+      }
+      
+      // Generate ETag based on text only (language/voice are auto-detected)
+      const etag = audioCache.getETag(text, 'auto', 'auto');
       
       // Check if client has cached version
       const clientETag = req.headers['if-none-match'];
       if (clientETag === etag) {
         return res.status(304).end(); // Not Modified
-      }
-
-      // Check server cache first
-      let cached = audioCache.get(text, language, voice);
-      let audioBuffer: Buffer;
-
-      if (cached) {
-        audioBuffer = cached.buffer;
-      } else {
-        audioBuffer = await generateSpeech(text, language, voice);
-        cached = audioCache.set(text, language, audioBuffer, voice);
       }
       
       res.set({
