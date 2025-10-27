@@ -217,7 +217,7 @@ const certificateUpload = multer({
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25MB limit (Whisper max file size)
+    fileSize: 25 * 1024 * 1024, // 25MB limit
   },
   fileFilter: (req: any, file: any, cb: any) => {
     // Accept audio files
@@ -874,7 +874,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (fileType === 'audio') {
         try {
-          transcription = await whisperTranscribe(file.path);
+          // Read the file from disk and transcribe with Gemini
+          const audioBuffer = await fs.readFile(file.path);
+          transcription = await transcribeAudioWithGemini(audioBuffer, file.originalname);
         } catch (error) {
           console.error('Error transcribing audio:', error);
         }
@@ -1575,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio transcription endpoint using OpenAI Whisper
+  // Audio transcription endpoint using Gemini 2.5 native audio
   app.post('/api/audio/transcribe', requireAuth, upload.single('audio'), async (req: any, res) => {
     try {
       if (!req.file) {

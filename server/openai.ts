@@ -4,24 +4,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "your_openai_api_key"
 });
 
-// Audio transcription using Whisper
-export async function transcribeAudio(audioBuffer: Buffer, filename: string): Promise<string> {
-  try {
-    const transcription = await openai.audio.transcriptions.create({
-      file: await toFile(audioBuffer, filename),
-      model: "whisper-1",
-      language: undefined, // Let Whisper auto-detect language
-      response_format: "text"
-    });
-    
-    return transcription;
-  } catch (error) {
-    console.error("Error transcribing audio:", error);
-    throw new Error("Failed to transcribe audio");
-  }
-}
-
-// Text-to-speech generation
+// Text-to-speech generation (DEPRECATED - use gemini-audio.ts for TTS with auto language detection)
 export async function generateSpeech(text: string, language = 'en-US', voiceId?: string): Promise<Buffer> {
   try {
     // Valid OpenAI voice IDs
