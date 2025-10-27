@@ -13,13 +13,15 @@ import { CORE_COMPETENCIES } from "@shared/schema";
 /**
  * LangChain Multi-Agent System for OBT Mentor Companion
  * 
- * NEW ARCHITECTURE (Gemini 2.5-powered, 3 specialized agents):
- * 1. Conversational Agent (Gemini 2.5 Pro) - Natural conversations, empathetic guidance, delegates portfolio tasks
- * 2. Portfolio Agent (Gemini 2.5 Flash) - Fast structured data operations, manages competencies/qualifications/activities
- * 3. Report Agent (Gemini 2.5 Pro) - High-quality narrative generation for quarterly reports
+ * ARCHITECTURE (Gemini 2.5 Pro-powered, 2 active agents):
+ * 1. Conversational Agent (Gemini 2.5 Pro) - Natural conversations, portfolio management, competency tracking
+ * 2. Report Agent (Gemini 2.5 Pro) - High-quality narrative generation for quarterly reports
+ * 3. Supervisor/Router - Routes between Conversational and Report agents based on user intent
  * 4. Memory System - Qdrant semantic search and context retrieval
  * 
- * COST OPTIMIZATION: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini (75-98% cost reduction)
+ * Note: Portfolio Agent exists in code but is not actively used - portfolio operations are handled by Conversational Agent's tools
+ * 
+ * COST OPTIMIZATION: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 Pro (75-98% cost reduction)
  */
 
 // Conversational Agent Instructions - Talks with user, delegates to Portfolio Agent
@@ -300,9 +302,9 @@ export function initializeGeminiModels() {
     throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required for Gemini models');
   }
   
-  // Conversational Agent - Gemini 2.5 Flash for fast conversations
+  // Conversational Agent - Gemini 2.5 Pro for natural conversations
   const conversationalModel = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
