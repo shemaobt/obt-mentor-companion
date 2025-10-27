@@ -23,7 +23,7 @@ Preferred communication style: Simple, everyday language.
 - **AI Integration (LangChain Multi-Agent System with Google Gemini 2.5)**:
     - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini 2.5 models.
     - **3-Agent Architecture**:
-        - **Conversational Agent** (Gemini 2.5 Pro): Natural conversations, empathetic guidance, delegates portfolio operations
+        - **Conversational Agent** (Gemini 2.5 Flash): Fast natural conversations with strict OBT-only scope limitation
         - **Portfolio Agent** (Gemini 2.5 Flash): Fast structured data operations, manages competencies/qualifications/activities
         - **Report Agent** (Gemini 2.5 Pro): High-quality narrative generation for quarterly reports
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
@@ -38,6 +38,7 @@ Preferred communication style: Simple, everyday language.
     - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching.
     - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on uploaded documentation. It does not automatically add experiences/qualifications; explicit user request is needed.
     - **Document Citation System**: AI explicitly cites specific document names (e.g., "Segundo o Manual OBT...") instead of generic references, with clear citation rules in the prompt.
+    - **Strict Scope Enforcement**: AI is configured to ONLY respond to OBT-related questions (mentorship, translation, facilitation, competencies). Politely declines all out-of-scope requests (general questions, technical support, personal advice, etc.).
 - **Vector Memory System**: Qdrant Cloud for global memory, using Google `text-embedding-004` (768 dimensions) for embeddings.
     - **Enhanced RAG Document Chunking**: Semantic chunking (~100-word chunks) with automatic competency tagging, rich metadata storage, and backward compatibility.
 - **API Design**: RESTful, secured with session-based authentication, CSRF protection, and authorization checks.
