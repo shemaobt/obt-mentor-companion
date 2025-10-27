@@ -22,10 +22,11 @@ Preferred communication style: Simple, everyday language.
 - **Data Models**: Users, Facilitators, Competencies (11 OBT core competencies with bilingual names and status levels), Qualifications (with mandatory descriptions and optional certificate attachments supporting PDF, JPEG, PNG, DOCX), Activities, Quarterly Reports, Chats, Messages.
 - **AI Integration (LangChain Multi-Agent System with Google Gemini 2.5)**:
     - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini 2.5 models.
-    - **3-Agent Architecture**:
-        - **Conversational Agent** (Gemini 2.5 Flash): Fast natural conversations with strict OBT-only scope limitation
-        - **Portfolio Agent** (Gemini 2.5 Pro): High-quality structured data operations, manages competencies/qualifications/activities
+    - **2-Agent Architecture**:
+        - **Conversational Agent** (Gemini 2.5 Pro): Natural conversations, portfolio management, competency tracking with strict OBT-only scope limitation
         - **Report Agent** (Gemini 2.5 Pro): High-quality narrative generation for quarterly reports
+        - **Supervisor/Router**: Routes between agents based on user intent
+        - Note: Portfolio operations are integrated into Conversational Agent via specialized tools
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction)
     - **Audio Features**:
         - **Transcription**: Gemini 2.5 native audio (supports up to 9.5 hours, speaker diarization, 24+ languages)
