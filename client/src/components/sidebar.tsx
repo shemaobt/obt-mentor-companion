@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -27,7 +26,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
-import { LanguageSelector } from "./LanguageSelector";
 import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
@@ -69,7 +67,6 @@ export default function Sidebar({
   selectedAssistant = 'obtMentor',
   onAssistantChange 
 }: SidebarProps = {}) {
-  const { t } = useTranslation();
   const [location, setLocation] = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [chainsExpanded, setChainsExpanded] = useState(true);
@@ -384,7 +381,7 @@ export default function Sidebar({
           data-testid="button-new-chat"
         >
           <Plus className="h-4 w-4" />
-          <span>{t('chat.newChat')}</span>
+          <span>New Chat</span>
         </Button>
       </div>
 
@@ -394,7 +391,7 @@ export default function Sidebar({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
               <Link2 className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground">{t('chat.chatChains')}</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Chat Chains</h3>
             </div>
             <Button
               variant="ghost"
@@ -451,7 +448,7 @@ export default function Sidebar({
                               data-testid={`button-delete-chain-${chain.id}`}
                             >
                               <Trash className="mr-2 h-4 w-4" />
-                              {t('chat.deleteChain')}
+                              Delete chain
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -464,7 +461,7 @@ export default function Sidebar({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const title = prompt(t('chat.enterChainTitle'));
+                  const title = prompt("Enter chain title:");
                   if (title) createChainMutation.mutate(title);
                 }}
                 className="w-full"
@@ -472,7 +469,7 @@ export default function Sidebar({
                 data-testid="button-new-chain"
               >
                 <Plus className="h-3 w-3 mr-2" />
-                {t('chat.newChain')}
+                New Chain
               </Button>
             </div>
           )}
@@ -481,7 +478,7 @@ export default function Sidebar({
 
       {/* Chat History */}
       <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-1 md:space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">{t('chat.recentChats')}</h3>
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Chats</h3>
         
         {chats.map((chat) => (
           <div key={chat.id} className="relative group">
@@ -525,7 +522,7 @@ export default function Sidebar({
                     data-testid={`button-rename-chat-${chat.id}`}
                   >
                     <Pencil className="mr-2 h-4 w-4" />
-                    {t('common.rename')}
+                    Rename
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -536,7 +533,7 @@ export default function Sidebar({
                     data-testid={`button-delete-chat-${chat.id}`}
                   >
                     <Trash className="mr-2 h-4 w-4" />
-                    {t('chat.deleteChat')}
+                    Delete chat
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -547,8 +544,8 @@ export default function Sidebar({
         {chats.length === 0 && (
           <div className="text-center py-6 md:py-8">
             <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">{t('chat.noChatsYet')}</p>
-            <p className="text-xs text-muted-foreground">{t('chat.startNewConversation')}</p>
+            <p className="text-sm text-muted-foreground">No chats yet</p>
+            <p className="text-xs text-muted-foreground">Start a new conversation</p>
           </div>
         )}
       </div>
@@ -724,11 +721,8 @@ export default function Sidebar({
               }
             />
             
-            {/* Theme and Language Switchers (visible to all users) */}
-            <div className="flex items-center gap-2 px-4 py-2">
-              <ThemeSwitcher />
-              <LanguageSelector />
-            </div>
+            {/* Theme Switcher (visible to all users) */}
+            <ThemeSwitcher />
             
             <Separator className="my-1" />
             
