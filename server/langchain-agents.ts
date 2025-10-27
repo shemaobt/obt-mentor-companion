@@ -261,25 +261,25 @@ export function initializeGeminiModels() {
     throw new Error('GOOGLE_API_KEY is required for Gemini models');
   }
   
-  // Conversational Agent - Gemini 1.5 Pro for natural conversations
+  // Conversational Agent - Gemini 2.5 Pro for natural conversations
   const conversationalModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-pro-latest",
+    model: "gemini-2.5-pro",
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
   });
 
-  // Portfolio Agent - Gemini 1.5 Flash for fast structured operations
+  // Portfolio Agent - Gemini 2.5 Flash for fast structured operations
   const portfolioModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-flash-latest",
+    model: "gemini-2.5-flash",
     temperature: 0.3,
     apiKey,
     maxOutputTokens: 8192,
   });
 
-  // Report Agent - Gemini 1.5 Pro for high-quality narratives
+  // Report Agent - Gemini 2.5 Pro for high-quality narratives
   const reportModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-pro-latest",
+    model: "gemini-2.5-pro",
     temperature: 0.5,
     apiKey,
     maxOutputTokens: 8192,
