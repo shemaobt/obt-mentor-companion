@@ -28,7 +28,9 @@ export function LanguageSelector() {
     localStorage.setItem('i18nextLng', languageCode);
   };
 
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
+  const resolvedLanguage = i18n.resolvedLanguage || i18n.language;
+  const normalizedLanguage = resolvedLanguage.split('-')[0];
+  const currentLanguage = languages.find(lang => lang.code === normalizedLanguage) || languages[0];
 
   return (
     <DropdownMenu>
@@ -47,12 +49,12 @@ export function LanguageSelector() {
           <DropdownMenuItem
             key={language.code}
             onClick={() => changeLanguage(language.code)}
-            className={`cursor-pointer ${i18n.language === language.code ? 'bg-accent' : ''}`}
+            className={`cursor-pointer ${normalizedLanguage === language.code ? 'bg-accent' : ''}`}
             data-testid={`language-option-${language.code}`}
           >
             <span className="mr-2 text-lg">{language.flag}</span>
             <span>{language.name}</span>
-            {i18n.language === language.code && (
+            {normalizedLanguage === language.code && (
               <span className="ml-auto text-xs">✓</span>
             )}
           </DropdownMenuItem>
