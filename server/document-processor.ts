@@ -1,5 +1,5 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
@@ -17,16 +17,14 @@ const qdrant = new QdrantClient({
   apiKey: process.env.QDRANT_API_KEY!,
 });
 
-// Initialize OpenAI client for embeddings
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
-});
+// Initialize Google AI client for embeddings
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '');
 
 // Collection name (same as conversation memory)
 const COLLECTION_NAME = 'obt_global_memory';
 
-// Vector dimension for OpenAI text-embedding-3-small
-const VECTOR_DIM = 1536;
+// Vector dimension for Google text-embedding-004 (768 dimensions)
+const VECTOR_DIM = 768;
 
 /**
  * Parse text from different file types
@@ -189,16 +187,13 @@ export function extractSectionHeader(chunkText: string): string | null {
 }
 
 /**
- * Generate embedding for a text using OpenAI
+ * Generate embedding for a text using Google text-embedding-004
  */
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
-    });
-
-    return response.data[0].embedding;
+    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const result = await model.embedContent(text);
+    return result.embedding.values;
   } catch (error) {
     console.error('Error generating embedding:', error);
     throw error;

@@ -1,8 +1,17 @@
 import OpenAI, { toFile } from "openai";
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "your_openai_api_key"
-});
+// Lazy-loaded OpenAI instance for TTS (deprecated - use gemini-audio.ts)
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is required for text-to-speech features');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 // Text-to-speech generation (DEPRECATED - use gemini-audio.ts for TTS with auto language detection)
 export async function generateSpeech(text: string, language = 'en-US', voiceId?: string): Promise<Buffer> {
@@ -39,7 +48,7 @@ export async function generateSpeech(text: string, language = 'en-US', voiceId?:
       voice = voiceMap[language] || 'alloy';
     }
     
-    const speech = await openai.audio.speech.create({
+    const speech = await getOpenAI().audio.speech.create({
       model: "tts-1",
       voice: voice as any,
       input: text,
@@ -88,7 +97,7 @@ export async function generateSpeechStream(text: string, language = 'en-US', voi
       voice = voiceMap[language] || 'alloy';
     }
     
-    const speech = await openai.audio.speech.create({
+    const speech = await getOpenAI().audio.speech.create({
       model: "tts-1", // Use standard model for faster generation (HD is slower)
       voice: voice as any,
       input: text,

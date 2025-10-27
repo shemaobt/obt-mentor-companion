@@ -128,9 +128,18 @@ Include timestamps if possible.`;
  */
 import OpenAI from "openai";
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || "your_openai_api_key"
-});
+// Lazy-loaded OpenAI instance for TTS
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is required for text-to-speech features');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 /**
  * OpenAI TTS automatically detects language from text and speaks with native pronunciation.
@@ -158,7 +167,7 @@ export async function generateSpeechWithAutoLanguage(text: string): Promise<{
     
     // OpenAI TTS automatically detects language and uses native pronunciation
     // regardless of voice selection. The voice just affects tone/style.
-    const speech = await openai.audio.speech.create({
+    const speech = await getOpenAI().audio.speech.create({
       model: "tts-1-hd",  // Higher quality model
       voice: DEFAULT_VOICE as any,
       input: text,
@@ -190,7 +199,7 @@ export async function generateSpeechStreamWithAutoLanguage(text: string): Promis
     console.log(`[OpenAI TTS Stream] OpenAI automatically uses native pronunciation`);
     
     // OpenAI TTS automatically detects language and uses native pronunciation
-    const speech = await openai.audio.speech.create({
+    const speech = await getOpenAI().audio.speech.create({
       model: "tts-1-hd",  // Higher quality model
       voice: DEFAULT_VOICE as any,
       input: text,
