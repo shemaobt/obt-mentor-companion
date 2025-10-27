@@ -26,6 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { LanguageSelector } from "./LanguageSelector";
 import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
@@ -721,8 +722,11 @@ export default function Sidebar({
               }
             />
             
-            {/* Theme Switcher (visible to all users) */}
-            <ThemeSwitcher />
+            {/* Theme and Language Switchers (visible to all users) */}
+            <div className="flex items-center gap-2 px-4 py-2">
+              <ThemeSwitcher />
+              <LanguageSelector />
+            </div>
             
             <Separator className="my-1" />
             
