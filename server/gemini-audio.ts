@@ -6,10 +6,11 @@ let genAI: GoogleGenerativeAI | null = null;
 
 function getGeminiClient(): GoogleGenerativeAI {
   if (!genAI) {
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new Error('GOOGLE_API_KEY is required for Gemini audio transcription. Please configure it in your environment.');
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required for Gemini audio transcription. Please configure it in your environment.');
     }
-    genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+    genAI = new GoogleGenerativeAI(apiKey);
   }
   return genAI;
 }

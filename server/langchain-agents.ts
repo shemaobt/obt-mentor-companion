@@ -264,14 +264,14 @@ You do NOT engage in conversations. You are called by the Conversational Agent t
  * Initialize Gemini models for all agents
  */
 export function initializeGeminiModels() {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
   
   console.log('[Gemini Init] API key exists:', !!apiKey, 'Length:', apiKey?.length);
   
   if (!apiKey) {
-    console.error('[Gemini Init] GOOGLE_API_KEY not found in environment variables');
-    console.error('[Gemini Init] Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('API')));
-    throw new Error('GOOGLE_API_KEY is required for Gemini models');
+    console.error('[Gemini Init] GOOGLE_API_KEY or GEMINI_API_KEY not found in environment variables');
+    console.error('[Gemini Init] Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('GEMINI') || k.includes('API')));
+    throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required for Gemini models');
   }
   
   // Conversational Agent - Gemini 2.5 Pro for natural conversations
