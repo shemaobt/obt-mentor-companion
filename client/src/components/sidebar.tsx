@@ -26,7 +26,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import FeedbackForm from "./feedback-form";
 import { ThemeSwitcher } from "./ThemeSwitcher";
-import { TranslateWidget } from "./TranslateWidget";
 import LogoWithBackground from "./LogoWithBackground";
 import { 
   Plus, 
@@ -549,11 +548,6 @@ export default function Sidebar({
             <p className="text-xs text-muted-foreground">Start a new conversation</p>
           </div>
         )}
-      </div>
-
-      {/* Translation Widget (always visible) */}
-      <div className="p-3 md:p-4 border-t border-border">
-        <TranslateWidget />
       </div>
 
       {/* User Menu */}
