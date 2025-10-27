@@ -1,6 +1,6 @@
 # Overview
 
-The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, utilizing OpenAI's Assistant API. Key features include user authentication with admin approval, comprehensive facilitator portfolio management (competencies, qualifications, activities), quarterly report generation, and global memory search using Qdrant Cloud for semantic search across all facilitator conversations. The project aims to enhance mentorship effectiveness and facilitate cross-learning among facilitators.
+The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, powered by Google Gemini AI. Key features include user authentication with admin approval, comprehensive facilitator portfolio management (competencies, qualifications, activities), quarterly report generation, and global memory search using Qdrant Cloud for semantic search across all facilitator conversations. The project aims to enhance mentorship effectiveness and facilitate cross-learning among facilitators.
 
 # User Preferences
 
@@ -20,14 +20,20 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Replit Auth (OpenID Connect), Express sessions with PostgreSQL store, Passport.js, HTTP-only cookies, admin approval for new users.
 - **Database**: PostgreSQL (Neon serverless driver), Drizzle ORM for schema management.
 - **Data Models**: Users, Facilitators, Competencies (11 OBT core competencies with bilingual names and status levels), Qualifications (with mandatory descriptions and optional certificate attachments supporting PDF, JPEG, PNG, DOCX), Activities, Quarterly Reports, Chats, Messages.
-- **AI Integration (LangChain Multi-Agent System)**:
-    - **Framework**: LangChain/LangGraph with React Agent pattern, OpenAI GPT-4o for all agents.
+- **AI Integration (LangChain Multi-Agent System with Google Gemini)**:
+    - **Framework**: LangChain/LangGraph with React Agent pattern, powered by Google Gemini models.
+    - **3-Agent Architecture**:
+        - **Conversational Agent** (Gemini 1.5 Pro): Natural conversations, empathetic guidance, delegates portfolio operations
+        - **Portfolio Agent** (Gemini 1.5 Flash): Fast structured data operations, manages competencies/qualifications/activities
+        - **Report Agent** (Gemini 1.5 Pro): High-quality narrative generation for quarterly reports
+    - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini (75-98% cost reduction)
     - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
     - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
     - **Intelligent Competency Evaluation**: Automatic scoring based on qualifications and activities with strict scoring rules, ensuring credit for actual study/work.
     - **Competency Observation System**: AI silently tracks competency signals (`track_competency_evidence`) and proactively suggests level changes (`suggest_competency_update`) based on accumulated evidence, requiring user approval.
     - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates (up to 2000 chars) to verify content matches qualification details before attaching.
     - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on uploaded documentation. It does not automatically add experiences/qualifications; explicit user request is needed.
+    - **Legacy OpenAI Features**: Whisper (audio transcription), TTS (text-to-speech), and embeddings still use OpenAI API (no Gemini equivalents yet)
 - **Vector Memory System**: Qdrant Cloud for global memory, using `text-embedding-3-small` for embeddings.
     - **Enhanced RAG Document Chunking**: Semantic chunking (~100-word chunks) with automatic competency tagging, rich metadata storage, and backward compatibility.
 - **API Design**: RESTful, secured with session-based authentication, CSRF protection, and authorization checks.
@@ -41,7 +47,7 @@ Preferred communication style: Simple, everyday language.
 ## Core Infrastructure
 - **Database**: Neon PostgreSQL
 - **Authentication**: Replit Auth OIDC
-- **AI Service**: OpenAI API (Assistant endpoints, Embeddings API)
+- **AI Service**: Google Gemini API (main agents), OpenAI API (Whisper, TTS, Embeddings)
 - **Vector Database**: Qdrant Cloud
 
 ## Frontend Libraries
@@ -59,7 +65,7 @@ Preferred communication style: Simple, everyday language.
 - **Session Storage**: connect-pg-simple
 - **Password Hashing**: bcryptjs
 - **Vector Database Client**: @qdrant/js-client-rest
-- **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/langgraph)
+- **AI Frameworks**: LangChain (@langchain/core, @langchain/openai, @langchain/google-genai, @langchain/langgraph)
 - **Agent Orchestration**: LangGraph
 
 ## Development Tools
