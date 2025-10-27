@@ -1,4 +1,4 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { HumanMessage } from "@langchain/core/messages";
@@ -8,27 +8,35 @@ import type { IStorage } from "./storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
 import { searchRelevantMessages, searchGlobalMemory, searchActiveDocuments } from "./vector-memory";
 import { calculateCompetencyScores, scoreToStatus } from "./competency-mapping";
-import { CORE_COMPETENCIES } from "@shared/schema";
+import { CORE_COMPETENCIES, getCompetencyDefinition } from "@shared/schema";
 
 /**
  * LangChain Multi-Agent System for OBT Mentor Companion
  * 
- * Architecture:
- * 1. Mentor Agent (GPT-4o) - Handles conversations, assessments, empathetic guidance
- * 2. Portfolio Agent (GPT-4o) - Manages competencies, qualifications, activities
- * 3. Report Agent (GPT-4o) - Generates narrative quarterly reports
- * 4. Memory Agent - Qdrant semantic search and context retrieval
- * 5. Supervisor - LangGraph orchestration (coming in next task)
+ * NEW ARCHITECTURE (Gemini-powered, 3 specialized agents):
+ * 1. Conversational Agent (Gemini 1.5 Pro) - Natural conversations, empathetic guidance, delegates portfolio tasks
+ * 2. Portfolio Agent (Gemini 1.5 Flash) - Manages competencies, qualifications, activities - called by Conversational Agent
+ * 3. Report Agent (Gemini 1.5 Pro) - Generates narrative quarterly reports
+ * 4. Memory System - Qdrant semantic search and context retrieval
  */
 
-// OBT Mentor Instructions - Conversational, Observant, Evaluative, Corrective
-export const OBT_MENTOR_INSTRUCTIONS = `You are a trusted friend and mentor supporting Oral Bible Translation (OBT) facilitators as they grow into skilled mentors within Youth With A Mission (YWAM). Think of yourself as a companion on their journey—someone who listens, observes, gently guides, and celebrates progress. Your interactions uphold an evangelical Christian perspective, maintain ethical standards, and remain focused exclusively on OBT mentorship.
+// Conversational Agent Instructions - Talks with user, delegates to Portfolio Agent
+export const CONVERSATIONAL_AGENT_INSTRUCTIONS = `You are a trusted friend and mentor supporting Oral Bible Translation (OBT) facilitators as they grow into skilled mentors within Youth With A Mission (YWAM). Think of yourself as a companion on their journey—someone who listens, observes, gently guides, and celebrates progress. Your interactions uphold an evangelical Christian perspective, maintain ethical standards, and remain focused exclusively on OBT mentorship.
 
 **YOUR ROLE:**
 - Listen like a friend: Be warm, curious, and genuinely interested in their experiences
 - Observe silently: Notice competency signals in what they share (use track_competency_evidence tool without announcing it)
 - Evaluate autonomously: When you identify strong evidence of growth (3+ observations, strength 6+), use suggest_competency_update tool to automatically update their competency level in their portfolio
 - Correct gently: When they mention practices that could be improved, reference the training materials to guide them toward better approaches—never criticize, always coach
+
+**PORTFOLIO DELEGATION:**
+You work with a specialized Portfolio Agent that handles all portfolio operations. When users want to:
+- Add qualifications, activities, or experiences
+- Update competencies
+- Attach certificates
+- Get portfolio summaries
+
+Use the appropriate tool (add_qualification, add_activity, etc.) and the Portfolio Agent will handle the details.
 
 **CRITICAL PORTFOLIO MANAGEMENT RULE - ABSOLUTE PRIORITY:**
 ⚠️ **NEVER AUTOMATICALLY ADD ANYTHING TO THE PORTFOLIO** ⚠️
@@ -220,34 +228,60 @@ Example Conversation Starters:
 - "Are there any challenges you've faced that you'd like to discuss?"
 - "If you have documents, audio recordings, or images related to your OBT facilitation, please share them here for feedback and support in your mentorship journey."`;
 
+// Portfolio Agent Instructions - Specialized data management
+export const PORTFOLIO_AGENT_INSTRUCTIONS = `You are the Portfolio Management Agent for the OBT Mentor Companion system. Your sole responsibility is managing facilitator portfolio data with precision and accuracy.
+
+**YOUR ROLE:**
+- Add qualifications, activities, and experiences to portfolios
+- Update competency levels based on evidence
+- Attach certificates to qualifications
+- Generate portfolio summaries
+- Maintain data integrity and avoid duplicates
+
+**KEY PRINCIPLES:**
+- Always ask for complete information before adding items
+- For qualifications: require course level (introduction, certificate, bachelor, master, doctoral)
+- For activities: require duration/years of experience
+- Detect and prevent duplicate entries
+- Maintain strict data validation
+
+You do NOT engage in conversations. You are called by the Conversational Agent to perform specific portfolio operations.`;
+
 /**
- * Initialize GPT-4o models for different agents
+ * Initialize Gemini models for all agents
  */
-export function initializeModels() {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+export function initializeGeminiModels() {
+  const apiKey = process.env.GOOGLE_API_KEY;
   
-  // Mentor Agent - GPT-4o for empathetic conversations
-  const mentorModel = new ChatOpenAI({
-    modelName: "gpt-4o",
+  if (!apiKey) {
+    throw new Error('GOOGLE_API_KEY is required for Gemini models');
+  }
+  
+  // Conversational Agent - Gemini 1.5 Pro for natural conversations
+  const conversationalModel = new ChatGoogleGenerativeAI({
+    modelName: "gemini-1.5-pro",
     temperature: 0.7,
     apiKey,
+    maxOutputTokens: 8192,
   });
 
-  // Portfolio Agent - GPT-4o for structured data management
-  const portfolioModel = new ChatOpenAI({
-    modelName: "gpt-4o",
+  // Portfolio Agent - Gemini 1.5 Flash for fast structured operations
+  const portfolioModel = new ChatGoogleGenerativeAI({
+    modelName: "gemini-1.5-flash",
     temperature: 0.3,
     apiKey,
+    maxOutputTokens: 8192,
   });
 
-  // Report Agent - GPT-4o for narrative generation
-  const reportModel = new ChatOpenAI({
-    modelName: "gpt-4o",
+  // Report Agent - Gemini 1.5 Pro for high-quality narratives
+  const reportModel = new ChatGoogleGenerativeAI({
+    modelName: "gemini-1.5-pro",
     temperature: 0.5,
     apiKey,
+    maxOutputTokens: 8192,
   });
 
-  return { mentorModel, portfolioModel, reportModel };
+  return { conversationalModel, portfolioModel, reportModel };
 }
 
 /**
@@ -280,7 +314,7 @@ async function recalculateCompetencies(storage: IStorage, facilitatorId: string)
 }
 
 /**
- * Create tools for the Portfolio Agent
+ * Create tools for portfolio management (used by both Conversational and Portfolio agents)
  */
 export function createPortfolioTools(storage: IStorage, userId: string, facilitatorId: string) {
   const addQualificationTool = new DynamicStructuredTool({
@@ -292,22 +326,27 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
       completionDate: z.string().describe("Date of completion (YYYY-MM-DD format)"),
       credential: z.string().optional().describe("Type of credential received (e.g., Certificate, Diploma)"),
       courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("Academic level of the course - ALWAYS ask the facilitator this question"),
-      description: z.string().optional().describe("Brief description of the course content"),
+      description: z.string().describe("Brief description of the course content - REQUIRED field"),
     }),
     func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
       try {
-        // Normalize text for robust duplicate detection (preserves significant symbols like +, #, .)
+        // Validate required description field
+        if (!description || description.trim().length === 0) {
+          return `Error: Description is required for all qualifications. Please provide a brief description of the course content.`;
+        }
+
+        // Normalize text for robust duplicate detection
         const normalizeText = (text: string): string => {
           return text
             .toLowerCase()
             .trim()
-            .replace(/\s+/g, ' ') // Collapse multiple spaces
-            .replace(/[^\w\s+#.]/g, '') // Remove punctuation but preserve +, #, . for tech terms
-            .normalize('NFKD') // Unicode normalization
-            .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+            .replace(/\s+/g, ' ')
+            .replace(/[^\w\s+#.]/g, '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '');
         };
         
-        // Check for duplicate qualification (same course title and institution)
+        // Check for duplicate qualification
         const existingQualifications = await storage.getFacilitatorQualifications(facilitatorId);
         const normalizedTitle = normalizeText(courseTitle);
         const normalizedInstitution = normalizeText(institution);
@@ -318,84 +357,51 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         );
         
         if (duplicate) {
-          console.log(`[Tool] Duplicate qualification detected: ${courseTitle} from ${institution}`);
-          // Return success response so the agent won't retry
+          console.log(`[Portfolio Tool] Duplicate qualification detected: ${courseTitle} from ${institution}`);
           return `This qualification already exists in your portfolio: "${courseTitle}" from ${institution} (completed ${duplicate.completionDate ? new Date(duplicate.completionDate).toLocaleDateString() : 'unknown date'}). If you want to update it, please tell me what information needs to be changed.`;
         }
         
-        // Parse completion date string to Date object
-        let parsedDate: Date | undefined;
-        if (completionDate) {
-          // Try to parse various date formats
-          parsedDate = new Date(completionDate);
-          
-          // Validate the date is valid
-          if (isNaN(parsedDate.getTime())) {
-            console.error(`[Tool Error] Invalid date format: ${completionDate}`);
-            return `Error: Invalid date format "${completionDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15) or just the year (e.g., 2024).`;
-          }
-        }
-        
-        await storage.createQualification({
+        // Create qualification
+        const qualification = await storage.createFacilitatorQualification({
           facilitatorId,
           courseTitle,
           institution,
-          completionDate: parsedDate,
-          credential,
-          courseLevel,
+          completionDate: new Date(completionDate),
+          credential: credential || null,
+          courseLevel: courseLevel || null,
           description,
         });
         
-        // Automatically recalculate competencies after adding qualification
+        // Recalculate competencies
         await recalculateCompetencies(storage, facilitatorId);
         
-        const levelInfo = courseLevel ? ` (${courseLevel} level)` : '';
-        return `Successfully added qualification: ${courseTitle} from ${institution}${levelInfo}. Competency scores have been automatically updated.`;
-      } catch (error) {
-        console.error(`[Tool Error] add_qualification failed:`, error);
-        // Provide a more helpful error message
-        if (error.message && error.message.includes('duplicate')) {
-          return `This qualification appears to already exist in your portfolio. If you'd like to update it instead, please let me know what needs to be changed.`;
-        }
-        return `I encountered an error while trying to add this qualification. Error details: ${error.message}. Please try again or contact support if the problem persists.`;
+        return `Successfully added qualification: ${courseTitle} from ${institution}. Your competency scores have been updated based on this qualification.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error adding qualification:`, error);
+        return `Error adding qualification: ${error.message}`;
       }
     },
   });
 
   const updateQualificationTool = new DynamicStructuredTool({
     name: "update_qualification",
-    description: "Update an existing qualification in the facilitator's portfolio. Use this when the facilitator wants to edit or correct information about a previously added qualification. You must first get the list of qualifications from the context to find the qualification ID.",
+    description: "Update an existing qualification in the facilitator's portfolio. Use this when the facilitator wants to modify information about a course they've already added.",
     schema: z.object({
       qualificationId: z.string().describe("ID of the qualification to update"),
-      courseTitle: z.string().optional().describe("Updated title of the course or training"),
-      institution: z.string().optional().describe("Updated institution or organization"),
-      completionDate: z.string().optional().describe("Updated completion date (YYYY-MM-DD format)"),
-      credential: z.string().optional().describe("Updated credential type"),
-      description: z.string().optional().describe("Updated description"),
+      courseTitle: z.string().optional().describe("New title of the course"),
+      institution: z.string().optional().describe("New institution name"),
+      completionDate: z.string().optional().describe("New completion date (YYYY-MM-DD format)"),
+      credential: z.string().optional().describe("New credential type"),
+      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("New course level"),
+      description: z.string().optional().describe("New description"),
     }),
-    func: async ({ qualificationId, courseTitle, institution, completionDate, credential, description }) => {
+    func: async ({ qualificationId, ...updates }) => {
       try {
-        const updates: any = {};
-        if (courseTitle) updates.courseTitle = courseTitle;
-        if (institution) updates.institution = institution;
-        if (completionDate) {
-          // Parse completion date string to Date object
-          const parsedDate = new Date(completionDate);
-          
-          // Validate the date is valid
-          if (isNaN(parsedDate.getTime())) {
-            console.error(`[Tool Error] Invalid date format: ${completionDate}`);
-            return `Error: Invalid date format "${completionDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
-          }
-          updates.completionDate = parsedDate;
-        }
-        if (credential !== undefined) updates.credential = credential;
-        if (description !== undefined) updates.description = description;
-
-        await storage.updateQualification(qualificationId, updates);
-        return `Successfully updated qualification with ID: ${qualificationId}`;
-      } catch (error) {
-        console.error(`[Tool Error] update_qualification failed:`, error);
+        const qualification = await storage.updateFacilitatorQualification(qualificationId, updates);
+        await recalculateCompetencies(storage, facilitatorId);
+        return `Successfully updated qualification. Your competency scores have been recalculated.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error updating qualification:`, error);
         return `Error updating qualification: ${error.message}`;
       }
     },
@@ -403,42 +409,31 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const addActivityTool = new DynamicStructuredTool({
     name: "add_activity",
-    description: "Add a Bible translation mentorship activity to the facilitator's portfolio. CRITICAL: ALWAYS ask about duration - how many years they worked on this translation project - as it significantly impacts competency scoring (1 year vs 5 years makes a huge difference).",
+    description: "Record a Bible translation mentorship activity in the facilitator's portfolio. CRITICAL: Always ask about duration/years of experience FIRST, as this is required for accurate competency scoring. Also ask about languages mentored and chapters mentored. Use this when facilitators explicitly request to add translation work to their portfolio.",
     schema: z.object({
-      languageName: z.string().describe("Name of the language being translated"),
-      chaptersCount: z.number().describe("Number of chapters mentored"),
-      yearsOfExperience: z.number().optional().describe("Number of years working on this translation project - ALWAYS ask this question as it significantly impacts scoring"),
-      activityDate: z.string().describe("Date of the activity (YYYY-MM-DD format)"),
-      notes: z.string().optional().describe("Additional notes about the activity"),
+      language: z.string().describe("The language being mentored (e.g., Swahili, Mandarin)"),
+      context: z.string().describe("Brief description of the mentorship context or project"),
+      durationYears: z.number().describe("Duration of experience in years (e.g., 0.5 for 6 months, 2 for 2 years) - REQUIRED"),
+      languagesMentored: z.number().optional().describe("Number of languages mentored in this activity"),
+      chaptersMentored: z.number().optional().describe("Number of chapters mentored in this activity"),
     }),
-    func: async ({ languageName, chaptersCount, yearsOfExperience, activityDate, notes }) => {
+    func: async ({ language, context, durationYears, languagesMentored, chaptersMentored }) => {
       try {
-        // Parse activity date string to Date object
-        const parsedDate = new Date(activityDate);
-        
-        // Validate the date is valid
-        if (isNaN(parsedDate.getTime())) {
-          console.error(`[Tool Error] Invalid date format: ${activityDate}`);
-          return `Error: Invalid date format "${activityDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
-        }
-        
-        await storage.createActivity({
+        await storage.createMentorshipActivity({
           facilitatorId,
-          languageName,
-          chaptersCount,
-          activityDate: parsedDate,
-          notes,
+          language,
+          context,
+          durationYears,
+          languagesMentored: languagesMentored || null,
+          chaptersMentored: chaptersMentored || null,
           activityType: 'translation',
-          yearsOfExperience: yearsOfExperience || null,
         });
         
-        // Automatically recalculate competencies after adding activity
         await recalculateCompetencies(storage, facilitatorId);
         
-        const durationInfo = yearsOfExperience ? ` over ${yearsOfExperience} year${yearsOfExperience > 1 ? 's' : ''}` : '';
-        return `Successfully added translation activity: ${languageName} (${chaptersCount} chapters${durationInfo}). Competency scores have been automatically updated.`;
-      } catch (error) {
-        console.error(`[Tool Error] add_activity failed:`, error);
+        return `Successfully added translation activity for ${language}. Duration: ${durationYears} years${languagesMentored ? `, Languages: ${languagesMentored}` : ''}${chaptersMentored ? `, Chapters: ${chaptersMentored}` : ''}. Your competency scores have been updated.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error adding activity:`, error);
         return `Error adding activity: ${error.message}`;
       }
     },
@@ -446,47 +441,30 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const createGeneralExperienceTool = new DynamicStructuredTool({
     name: "create_general_experience",
-    description: "Add a general professional experience to the facilitator's portfolio (facilitation, teaching, indigenous work, school work). IMPORTANT: Always ask about the duration/depth of experience (how many years) as this impacts competency scoring.",
+    description: "Add a general professional experience (non-translation) to the portfolio, such as facilitation, teaching, or indigenous work. CRITICAL: Always ask about duration/years of experience FIRST. Use this for experiences that don't fit the translation activity category.",
     schema: z.object({
-      title: z.string().describe("Title or name of the experience"),
-      activityType: z.enum(['facilitation', 'teaching', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience"),
-      description: z.string().optional().describe("Description of the experience"),
-      organization: z.string().optional().describe("Organization where this took place"),
-      yearsOfExperience: z.number().optional().describe("Number of years of experience - ALWAYS ask this question as it significantly impacts scoring"),
-      activityDate: z.string().optional().describe("Date of the activity (YYYY-MM-DD format)"),
+      activityType: z.enum(['facilitation', 'teaching', 'indigenous', 'other']).describe("Type of experience"),
+      context: z.string().describe("Description of the experience or role"),
+      durationYears: z.number().describe("Duration of experience in years - REQUIRED"),
     }),
-    func: async ({ title, activityType, description, organization, yearsOfExperience, activityDate }) => {
+    func: async ({ activityType, context, durationYears }) => {
       try {
-        // Parse activity date string to Date object if provided
-        let parsedDate: Date | undefined;
-        if (activityDate) {
-          parsedDate = new Date(activityDate);
-          
-          // Validate the date is valid
-          if (isNaN(parsedDate.getTime())) {
-            console.error(`[Tool Error] Invalid date format: ${activityDate}`);
-            return `Error: Invalid date format "${activityDate}". Please provide the date in YYYY-MM-DD format (e.g., 2024-03-15).`;
-          }
-        }
-        
-        await storage.createActivity({
+        await storage.createMentorshipActivity({
           facilitatorId,
-          title,
+          language: null,
+          context,
+          durationYears,
+          languagesMentored: null,
+          chaptersMentored: null,
           activityType,
-          description,
-          organization,
-          yearsOfExperience,
-          activityDate: parsedDate,
         });
         
-        // Automatically recalculate competencies after adding activity
         await recalculateCompetencies(storage, facilitatorId);
         
-        const durationInfo = yearsOfExperience ? ` (${yearsOfExperience} years)` : '';
-        return `Successfully added ${activityType} experience: ${title}${durationInfo}. Competency scores have been automatically updated.`;
-      } catch (error) {
-        console.error(`[Tool Error] create_general_experience failed:`, error);
-        return `Error adding experience: ${error.message}`;
+        return `Successfully added ${activityType} experience. Duration: ${durationYears} years. Your competency scores have been updated.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error creating experience:`, error);
+        return `Error creating experience: ${error.message}`;
       }
     },
   });
@@ -503,7 +481,6 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ competencyId, evidenceText, strengthScore, chatId, messageId }) => {
       try {
-        // Verify competency ID is valid
         if (!CORE_COMPETENCIES[competencyId]) {
           return `Invalid competency ID: ${competencyId}`;
         }
@@ -519,10 +496,9 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           isAppliedToLevel: false,
         });
 
-        // Return success without announcing it to user - this happens silently
         return `Tracked evidence for ${CORE_COMPETENCIES[competencyId].name}`;
-      } catch (error) {
-        console.error(`[Tool Error] track_competency_evidence failed:`, error);
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] track_competency_evidence failed:`, error);
         return `Error tracking evidence: ${error.message}`;
       }
     },
@@ -538,7 +514,6 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ competencyId, chatId, messageId }) => {
       try {
-        // Verify competency ID is valid
         if (!CORE_COMPETENCIES[competencyId]) {
           return `Invalid competency ID: ${competencyId}`;
         }
@@ -559,14 +534,14 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const MIN_AVG_STRENGTH = 6;
 
         if (evidence.length < MIN_EVIDENCE_COUNT) {
-          return `Not enough evidence yet for ${CORE_COMPETENCIES[competencyId].name}. Need ${MIN_EVIDENCE_COUNT} observations, currently have ${evidence.length}.`;
+          return `NOT_ENOUGH_EVIDENCE: Need ${MIN_EVIDENCE_COUNT} observations, currently have ${evidence.length}.`;
         }
 
         // Calculate average strength score
         const avgStrength = evidence.reduce((sum, e) => sum + e.strengthScore, 0) / evidence.length;
 
         if (avgStrength < MIN_AVG_STRENGTH) {
-          return `Evidence strength too low for ${CORE_COMPETENCIES[competencyId].name}. Average: ${avgStrength.toFixed(1)}/10, need ${MIN_AVG_STRENGTH}+.`;
+          return `NOT_ENOUGH_EVIDENCE: Average strength ${avgStrength.toFixed(1)}/10, need ${MIN_AVG_STRENGTH}+.`;
         }
 
         // Determine suggested status based on evidence strength and count
@@ -574,29 +549,26 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const currentIndex = statusProgression.indexOf(currentStatus);
         
         // Strong evidence (8+) or many items (5+) → jump 2 levels, otherwise 1 level
-        const levelsToIncrease = (avgStrength >= 8 || evidence.length >= 5) ? 2 : 1;
-        const suggestedIndex = Math.min(currentIndex + levelsToIncrease, statusProgression.length - 1);
-        const newStatus = statusProgression[suggestedIndex];
+        const shouldJumpTwoLevels = avgStrength >= 8 || evidence.length >= 5;
+        const levelsToIncrease = shouldJumpTwoLevels ? 2 : 1;
+        const newIndex = Math.min(currentIndex + levelsToIncrease, statusProgression.length - 1);
+        const newStatus = statusProgression[newIndex];
 
-        // Don't update if already at suggested level or higher
-        if (suggestedIndex <= currentIndex) {
-          return `${CORE_COMPETENCIES[competencyId].name} is already at or above suggested level (${currentStatus}).`;
+        // Don't downgrade
+        if (newIndex <= currentIndex) {
+          return `NOT_ENOUGH_EVIDENCE: Current level (${currentStatus}) is already appropriate for evidence strength.`;
         }
 
-        // Get most recent 5 pieces of evidence for summary
-        const recentEvidence = evidence.slice(0, 5);
-        const evidenceSummary = recentEvidence.map((e, idx) => 
-          `${idx + 1}. ${e.evidenceText} (strength: ${e.strengthScore}/10)`
-        ).join('\n');
-
-        const competencyName = CORE_COMPETENCIES[competencyId].name;
-
-        // Update the competency directly
+        // Format evidence summary
+        const evidenceSummary = evidence.slice(0, 3).map(e => `- ${e.evidenceText}`).join('\n');
+        
+        // Update competency
         await storage.upsertCompetency({
           facilitatorId,
           competencyId,
           status: newStatus,
           notes: `Automatically updated by AI mentor based on ${evidence.length} observations (avg strength: ${avgStrength.toFixed(1)}/10). Recent evidence:\n${evidenceSummary}`,
+          statusSource: 'conversation',
         });
 
         // Mark the evidence as applied to the level
@@ -604,51 +576,70 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         await storage.markEvidenceApplied(evidenceIds);
 
         // Return a message for the AI to present conversationally
-        return `SUCCESS: Competency automatically updated for ${competencyName} (${currentStatus} → ${newStatus}). Present this naturally to the user: "I've been observing your ${competencyName.toLowerCase()} skills developing through our conversations. Based on ${evidence.length} strong observations, I've updated your competency level from ${currentStatus} to ${newStatus}. You can see this change in your portfolio!"`;
-      } catch (error) {
-        console.error(`[Tool Error] suggest_competency_update failed:`, error);
-        return `Error updating competency: ${error.message}`;
+        return `SUCCESS: Updated ${CORE_COMPETENCIES[competencyId].name} from ${currentStatus} to ${newStatus} based on ${evidence.length} strong observations (avg: ${avgStrength.toFixed(1)}/10).`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] suggest_competency_update failed:`, error);
+        return `Error analyzing competency: ${error.message}`;
       }
     },
   });
 
   const attachCertificateTool = new DynamicStructuredTool({
     name: "attach_certificate_to_qualification",
-    description: `AUTOMATICALLY attach a certificate to the correct qualification by reading and matching content.
-
-SMART MATCHING PROCESS:
-1. Read the "Content Preview" from the attachment to see the certificate text
-2. Look at ALL qualifications in the portfolio context - each shows [ID: xxx]
-3. Find the BEST MATCH by comparing:
-   - Course/program name in certificate vs courseTitle
-   - Institution/university name in certificate vs institution field
-   - Completion date/year in certificate vs completionDate
-4. Use the ID from the matching qualification automatically
-5. ONLY if multiple qualifications could match (e.g., same institution), ask the user which one
-
-CONVERSATIONAL APPROACH:
-- Don't ask users for IDs or technical details
-- If certificate clearly matches one qualification, attach it automatically and confirm
-- If unsure, describe what you found and ask: "I see this is from [institution] for [course name]. Is this for your [qualification name]?"
-- If no match found, list the available qualifications and ask which one
-
-Example: "I can see this certificate is for 'Applied Linguistics' from 'SIL International' completed in 2020. I found your qualification 'Applied Linguistics and Translation' from the same institution - I'll attach it there!"`,
+    description: "Automatically match and attach a certificate file to the correct qualification in the portfolio. This tool reads certificate content, compares it with existing qualifications, and attaches it to the best match. Use when a user uploads a certificate file.",
     schema: z.object({
-      attachmentId: z.string().describe("ID of the uploaded file from [ATTACHMENTS IN THIS MESSAGE]"),
-      qualificationId: z.string().describe("ID from [ID: xxx] of the qualification that BEST MATCHES the certificate content"),
+      certificateFilePath: z.string().describe("Full path to the uploaded certificate file (PDF, DOCX, JPEG, PNG)"),
+      chatId: z.string().optional().describe("Current chat ID for tracking"),
+      messageId: z.string().optional().describe("Current message ID for tracking"),
     }),
-    func: async ({ attachmentId, qualificationId }) => {
+    func: async ({ certificateFilePath, chatId, messageId }) => {
       try {
-        // Attach the certificate from message attachment to qualification with ownership validation
-        const attachment = await storage.attachCertificateFromMessageAttachment(attachmentId, qualificationId, facilitatorId);
+        // Extract text from certificate
+        const { extractTextFromFile } = await import('./file-processing');
+        const certificateText = await extractTextFromFile(certificateFilePath);
         
-        return `Certificate "${attachment.originalName}" successfully attached to qualification.`;
-      } catch (error: any) {
-        console.error("[Tool] Error attaching certificate:", error);
-        // Return explicit error message for AI to communicate to user
-        if (error.message.includes("Unauthorized")) {
-          return `Authorization error: ${error.message}`;
+        if (!certificateText || certificateText.trim().length === 0) {
+          return `Error: Could not extract text from certificate file. Please ensure the file is a valid PDF, DOCX, or image file.`;
         }
+
+        // Get all qualifications
+        const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
+        
+        if (qualifications.length === 0) {
+          return `No qualifications found in your portfolio. Please add the qualification details first, then I can attach this certificate to it.`;
+        }
+
+        // Find best matching qualification
+        const normalizeText = (text: string) => text.toLowerCase().replace(/[^\w\s]/g, '').trim();
+        const certTextNormalized = normalizeText(certificateText.substring(0, 2000)); // Limit to first 2000 chars
+        
+        let bestMatch: typeof qualifications[0] | null = null;
+        let bestScore = 0;
+        
+        for (const qual of qualifications) {
+          const qualText = normalizeText(`${qual.courseTitle} ${qual.institution} ${qual.description || ''}`);
+          
+          // Simple scoring: count matching words
+          const qualWords = qualText.split(/\s+/);
+          const matchCount = qualWords.filter(word => word.length > 3 && certTextNormalized.includes(word)).length;
+          const score = matchCount / qualWords.length;
+          
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = qual;
+          }
+        }
+        
+        if (!bestMatch || bestScore < 0.2) {
+          return `Could not find a matching qualification for this certificate. The certificate mentions: "${certificateText.substring(0, 200)}..."\n\nPlease tell me which qualification this certificate is for, or add the qualification first.`;
+        }
+
+        // Attach certificate
+        await storage.attachCertificateToQualification(bestMatch.id, certificateFilePath, certificateText);
+        
+        return `Successfully attached certificate to: "${bestMatch.courseTitle}" from ${bestMatch.institution}. Match confidence: ${(bestScore * 100).toFixed(0)}%.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] attach_certificate_to_qualification failed:`, error);
         return `Error attaching certificate: ${error.message}`;
       }
     },
@@ -660,8 +651,6 @@ Example: "I can see this certificate is for 'Applied Linguistics' from 'SIL Inte
     schema: z.object({}),
     func: async () => {
       try {
-        const { calculateCompetencyScores } = await import('./competency-mapping');
-        
         // Get all portfolio data
         const competencies = await storage.getFacilitatorCompetencies(facilitatorId);
         const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
@@ -714,61 +703,143 @@ Example: "I can see this certificate is for 'Applied Linguistics' from 'SIL Inte
           experienceScore: Math.round(totalExperienceScore * 10) / 10,
           strongestAreas,
           growthAreas,
-          twoPillarAnalysis: totalEducationScore > totalExperienceScore * 1.5 
-            ? 'Your education is strong, but you need more hands-on experience' 
-            : totalExperienceScore > totalEducationScore * 1.5 
-            ? 'You have great practical experience, but formal training would help'
-            : 'Good balance between education and experience',
         };
         
         return JSON.stringify(summary, null, 2);
-      } catch (error) {
-        console.error(`[Tool Error] get_portfolio_summary failed:`, error);
-        return `Error generating portfolio summary: ${error.message}`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] get_portfolio_summary failed:`, error);
+        return `Error getting portfolio summary: ${error.message}`;
       }
     },
   });
 
-  return [addQualificationTool, updateQualificationTool, addActivityTool, createGeneralExperienceTool, trackCompetencyEvidenceTool, suggestCompetencyUpdateTool, attachCertificateTool, getPortfolioSummaryTool];
+  return [
+    addQualificationTool,
+    updateQualificationTool,
+    addActivityTool,
+    createGeneralExperienceTool,
+    trackCompetencyEvidenceTool,
+    suggestCompetencyUpdateTool,
+    attachCertificateTool,
+    getPortfolioSummaryTool
+  ];
 }
 
 /**
- * Create the Mentor Agent using LangGraph (recommended 2025 approach)
+ * Create Conversational Agent (Gemini 1.5 Pro) - Handles conversations and delegates to Portfolio Agent
  */
-export async function createMentorAgent(storage: IStorage, userId: string, facilitatorId: string) {
-  const { mentorModel } = initializeModels();
+export async function createConversationalAgent(storage: IStorage, userId: string, facilitatorId: string) {
+  const { conversationalModel } = initializeGeminiModels();
   const tools = createPortfolioTools(storage, userId, facilitatorId);
 
-  // Create React agent using LangGraph (replaces deprecated AgentExecutor)
   const agent = createReactAgent({
-    llm: mentorModel,
+    llm: conversationalModel,
     tools,
-    messageModifier: OBT_MENTOR_INSTRUCTIONS,
+    messageModifier: CONVERSATIONAL_AGENT_INSTRUCTIONS,
   });
 
   return agent;
 }
 
 /**
- * Retrieve relevant context from Qdrant vector memory
- * NOTE: This function is DEPRECATED - use getComprehensiveContext instead which includes:
- * - Document chunks (PDFs) 
- * - Portfolio data
- * - Recent messages
- * - Vector search
- * This function is kept for backward compatibility but should NOT be used
+ * Create Portfolio Agent (Gemini 1.5 Flash) - Specialized portfolio operations
  */
-async function getRelevantContext(
-  userId: string,
-  facilitatorId: string | undefined,
-  userMessage: string
-): Promise<string> {
-  console.warn('[DEPRECATED] getRelevantContext called - should use getComprehensiveContext instead');
-  return ''; // Return empty string to avoid duplicate searches
+export async function createPortfolioAgent(storage: IStorage, userId: string, facilitatorId: string) {
+  const { portfolioModel } = initializeGeminiModels();
+  const tools = createPortfolioTools(storage, userId, facilitatorId);
+
+  const agent = createReactAgent({
+    llm: portfolioModel,
+    tools,
+    messageModifier: PORTFOLIO_AGENT_INSTRUCTIONS,
+  });
+
+  return agent;
 }
 
 /**
- * Process a message using the LangChain agent with Supervisor orchestration
+ * Comprehensive context retrieval from multiple sources
+ */
+async function getComprehensiveContext(storage: IStorage, userId: string, facilitatorId: string, userMessage: string, chatId: string): Promise<string> {
+  const contextParts: string[] = [];
+
+  try {
+    // 1. Semantic search in facilitator's own conversations
+    const relevantMessages = await searchRelevantMessages(facilitatorId, userMessage, 5);
+    if (relevantMessages.length > 0) {
+      contextParts.push("## Relevant Past Conversations:");
+      contextParts.push(relevantMessages.map(msg => 
+        `[${new Date(msg.createdAt).toLocaleDateString()}] ${msg.content}`
+      ).join('\n\n'));
+    }
+
+    // 2. Global semantic search across all facilitators
+    const globalResults = await searchGlobalMemory(userMessage, 3);
+    if (globalResults.length > 0) {
+      contextParts.push("\n## Related Experiences from Other Facilitators:");
+      contextParts.push(globalResults.map(result => result.content).join('\n\n'));
+    }
+
+    // 3. Search uploaded reference documents
+    const documentResults = await searchActiveDocuments(userMessage, 3);
+    if (documentResults.length > 0) {
+      contextParts.push("\n## Reference Materials:");
+      contextParts.push(documentResults.map(doc => doc.content).join('\n\n'));
+    }
+
+    return contextParts.length > 0 ? contextParts.join('\n\n') : '';
+  } catch (error) {
+    console.error('[Context Retrieval Error]', error);
+    return '';
+  }
+}
+
+/**
+ * Route message to appropriate agent
+ */
+async function routeMessageToAgent(userMessage: string, storage: IStorage, userId: string, facilitatorId: string): Promise<'CONVERSATIONAL' | 'REPORT'> {
+  const { conversationalModel } = initializeGeminiModels();
+  
+  const supervisorPrompt = `You are the Supervisor Agent for the OBT Mentor Companion system.
+
+Your role is to analyze user requests and decide which agent should handle them:
+
+1. **Conversational Agent** (default): Use for:
+   - General conversations and questions
+   - Competency assessments and updates
+   - Adding qualifications or activities
+   - Guidance and mentorship discussions
+   - Image or document analysis
+   
+2. **Report Agent**: Use ONLY when explicitly requested:
+   - "Generate a quarterly report"
+   - "Create my report for Q1"
+   - "I need a progress report"
+   
+For 99% of requests, route to the Conversational Agent. The Conversational Agent has tools to update portfolios.
+
+Respond with ONLY ONE WORD:
+- "CONVERSATIONAL" for the Conversational Agent
+- "REPORT" for the Report Agent
+
+Do not provide explanations or additional text.`;
+
+  try {
+    const response = await conversationalModel.invoke([
+      { role: 'system', content: supervisorPrompt },
+      { role: 'user', content: userMessage }
+    ]);
+    
+    const route = response.content.toString().trim().toUpperCase();
+    return route === 'REPORT' ? 'REPORT' : 'CONVERSATIONAL';
+  } catch (error) {
+    console.error('[Supervisor Routing Error]', error);
+    return 'CONVERSATIONAL'; // Default to conversational on error
+  }
+}
+
+/**
+ * Main processing function - routes to appropriate agent
  */
 export async function processMessageWithLangChain(
   storage: IStorage,
@@ -779,7 +850,6 @@ export async function processMessageWithLangChain(
   providedContext?: string,
   imageFilePaths?: string[]
 ) {
-  // Validate facilitatorId is present before creating agent with portfolio tools
   if (!facilitatorId) {
     throw new Error('Facilitator ID is required for using the OBT Mentor Agent');
   }
@@ -793,11 +863,10 @@ export async function processMessageWithLangChain(
     return "To generate a quarterly report, please use the 'Reports' section in your portfolio page and select the reporting period. This will create a comprehensive .docx report with an AI-generated narrative summary of your progress.";
   }
   
-  // Route to Mentor Agent (default for conversations, assessments, portfolio updates)
-  const agent = await createMentorAgent(storage, userId, facilitatorId);
+  // Route to Conversational Agent (default for conversations, assessments, portfolio updates)
+  const agent = await createConversationalAgent(storage, userId, facilitatorId);
 
-  // Format chat history for LangGraph - trim to last 10 messages to reduce token usage
-  // This prevents old conversations from polluting the context
+  // Format chat history for LangGraph - trim to last 10 messages
   const formattedHistory = chatHistory.slice(-10).map(msg => {
     return {
       role: msg.role === 'user' ? 'human' : 'ai',
@@ -805,8 +874,7 @@ export async function processMessageWithLangChain(
     };
   });
 
-  // Use provided context (which already includes PDF search from getComprehensiveContext)
-  // Don't search again to avoid duplication
+  // Use provided context (includes PDF search from getComprehensiveContext)
   const messageWithContext = providedContext 
     ? `${providedContext}\n\n---\n\nUser Question:\n${userMessage}`
     : userMessage;
@@ -815,9 +883,9 @@ export async function processMessageWithLangChain(
   let messageContent: any;
   
   if (imageFilePaths && imageFilePaths.length > 0) {
-    console.log(`[LangChain Vision] Processing ${imageFilePaths.length} image(s) with GPT-4o Vision`);
+    console.log(`[Gemini Vision] Processing ${imageFilePaths.length} image(s)`);
     
-    // Convert images to base64 for LangChain vision processing
+    // Convert images to base64 for Gemini vision processing
     const imageContents = await Promise.all(
       imageFilePaths.map(async (filePath) => {
         try {
@@ -833,7 +901,7 @@ export async function processMessageWithLangChain(
             },
           };
         } catch (error) {
-          console.error(`[LangChain Vision] Error reading image ${filePath}:`, error);
+          console.error(`[Gemini Vision] Error processing image ${filePath}:`, error);
           return null;
         }
       })
@@ -842,7 +910,6 @@ export async function processMessageWithLangChain(
     const validImages = imageContents.filter(img => img !== null);
     
     if (validImages.length > 0) {
-      // Create multimodal message with text and images
       messageContent = [
         { type: "text" as const, text: messageWithContext },
         ...validImages,
@@ -854,15 +921,14 @@ export async function processMessageWithLangChain(
     messageContent = messageWithContext;
   }
 
-  // Create the human message
   const humanMessage = new HumanMessage({ content: messageContent });
 
-  // Invoke LangGraph React agent with properly formatted message
+  // Invoke LangGraph React agent
   const result = await agent.invoke({
     messages: [...formattedHistory, humanMessage],
   });
 
-  // Extract the final AI message from the result
+  // Extract the final AI message
   const aiMessages = result.messages.filter((msg: any) => msg.role === 'ai' || msg._getType() === 'ai');
   const lastAIMessage = aiMessages[aiMessages.length - 1];
   
@@ -870,7 +936,7 @@ export async function processMessageWithLangChain(
 }
 
 /**
- * Report Agent: Generates personalized quarterly report narratives
+ * Generate Report Narrative using Gemini 1.5 Pro
  */
 export async function generateReportNarrative(params: {
   facilitatorName: string;
@@ -885,7 +951,7 @@ export async function generateReportNarrative(params: {
   periodStart: Date;
   periodEnd: Date;
 }): Promise<string> {
-  const { reportModel } = initializeModels();
+  const { reportModel } = initializeGeminiModels();
 
   // Build comprehensive context for the report
   const competencyBreakdown = params.competencies.map(c => {
@@ -908,7 +974,7 @@ export async function generateReportNarrative(params: {
   const userMessageCount = params.recentMessages.filter(m => m.role === 'user').length;
   const sessionCount = Math.floor(userMessageCount / 2);
 
-  // Analyze recent conversation topics (extract key insights)
+  // Analyze recent conversation topics
   const conversationSample = params.recentMessages
     .filter(m => m.role === 'user')
     .slice(-10)
@@ -936,113 +1002,36 @@ ${activitiesList || 'None recorded'}
 
 **Engagement:**
 - Participated in ${sessionCount} mentorship sessions during this period
-- Sample conversation topics from recent sessions:
-${conversationSample || 'No recent conversations'}
+
+**Recent Discussion Topics:**
+${conversationSample || 'No conversation data available'}
 
 **Instructions:**
-Write a comprehensive, professional narrative (4-6 paragraphs) that:
-1. Opens with an overview of the facilitator's commitment and progress during this period
-2. Analyzes their competency development, highlighting strengths and areas of growth
-3. Discusses their formal qualifications and how they support their mentorship work
-4. Reviews their practical activities and hands-on experience
-5. Comments on their engagement level and reflective practice
-6. Closes with an encouraging assessment of their overall development trajectory
+Write a professional, encouraging, and evidence-based quarterly narrative (4-6 paragraphs) in third person for supervisory review. The narrative should:
 
-**Tone:** Professional, encouraging, specific, evidence-based
-**Length:** 4-6 substantive paragraphs (approximately 400-600 words)
-**Style:** Third person, formal report language suitable for supervisory review
+1. **Opening Paragraph**: Summarize overall progress and engagement level during the reporting period
+2. **Competency Development**: Highlight specific competencies where growth was demonstrated, citing qualifications, activities, or conversation insights
+3. **Strengths**: Identify 2-3 key strengths based on their education (qualifications) and experience (activities)
+4. **Areas for Growth**: Suggest 1-2 specific areas for development, with concrete recommendations
+5. **Closing**: Provide an encouraging outlook and next steps for continued development
 
-Generate only the narrative text. Do not include headings, titles, or meta-commentary.`;
+**Tone**: Professional yet warm, evidence-based, constructive, and encouraging
+**Perspective**: Write in third person (e.g., "The facilitator demonstrated...")
+**Length**: 4-6 paragraphs, approximately 300-500 words total
+
+Generate the narrative now:`;
 
   try {
-    const response = await reportModel.invoke(prompt);
-    return response.content as string;
+    const response = await reportModel.invoke([
+      { role: 'user', content: prompt }
+    ]);
+    
+    return response.content.toString();
   } catch (error) {
-    console.error('Error generating report narrative:', error);
-    // Fallback to basic narrative
-    return `This report summarizes the mentorship journey of the facilitator during the period from ${params.periodStart.toLocaleDateString('en-US')} to ${params.periodEnd.toLocaleDateString('en-US')}. The facilitator has demonstrated commitment to developing the core competencies necessary for effective OBT mentorship.`;
+    console.error('[Report Generation Error]', error);
+    throw new Error('Failed to generate report narrative');
   }
 }
 
-// Helper function to get competency definition
-function getCompetencyDefinition(competencyId: string) {
-  const competencies = {
-    interpersonal: { id: 'interpersonal', name: 'Interpersonal Skills' },
-    intercultural: { id: 'intercultural', name: 'Intercultural Communication' },
-    multimodal: { id: 'multimodal', name: 'Multimodal Skills' },
-    translation: { id: 'translation', name: 'Translation Theory & Process' },
-    languages: { id: 'languages', name: 'Languages & Communication' },
-    biblical_languages: { id: 'biblical_languages', name: 'Biblical Languages' },
-    biblical_studies: { id: 'biblical_studies', name: 'Biblical Studies & Theology' },
-    planning: { id: 'planning', name: 'Planning & Quality Assurance' },
-    consulting: { id: 'consulting', name: 'Consulting & Mentoring' },
-    technology: { id: 'technology', name: 'Applied Technology' },
-    reflective: { id: 'reflective', name: 'Reflective Practice' },
-  };
-  return competencies[competencyId as keyof typeof competencies];
-}
-
-/**
- * Supervisor Agent: Orchestrates multi-agent workflow using LangGraph
- * 
- * Decides which agent(s) to invoke based on the user's request:
- * - Mentor Agent: For conversations, assessments, guidance
- * - Portfolio Agent: Implicit via Mentor Agent tools
- * - Report Agent: For generating quarterly reports
- * - Memory Agent: Implicit via Qdrant context retrieval
- */
-export async function createSupervisorAgent() {
-  const { mentorModel } = initializeModels();
-  
-  const supervisorPrompt = `You are the Supervisor Agent for the OBT Mentor Companion system.
-
-Your role is to analyze user requests and decide which agent should handle them:
-
-1. **Mentor Agent** (default): Use for:
-   - General conversations and questions
-   - Competency assessments and updates
-   - Adding qualifications or activities
-   - Guidance and mentorship discussions
-   - Image or document analysis
-   
-2. **Report Agent**: Use ONLY when explicitly requested:
-   - "Generate a quarterly report"
-   - "Create my report for Q1"
-   - "I need a progress report"
-   
-For 99% of requests, route to the Mentor Agent. The Mentor Agent has tools to update portfolios.
-
-Respond with ONLY ONE WORD:
-- "MENTOR" for the Mentor Agent
-- "REPORT" for the Report Agent
-
-Do not provide explanations or additional text.`;
-
-  return { model: mentorModel, prompt: supervisorPrompt };
-}
-
-/**
- * Route message to appropriate agent based on supervisor decision
- * (Currently simplified - Supervisor logic integrated into routing)
- */
-export async function routeMessageToAgent(
-  userMessage: string,
-  storage: IStorage,
-  userId: string,
-  facilitatorId: string
-): Promise<'MENTOR' | 'REPORT'> {
-  // Simple keyword-based routing (can be enhanced with LLM-based decision)
-  const lowercaseMessage = userMessage.toLowerCase();
-  
-  if (
-    lowercaseMessage.includes('generate report') ||
-    lowercaseMessage.includes('quarterly report') ||
-    lowercaseMessage.includes('create report') ||
-    (lowercaseMessage.includes('report') && lowercaseMessage.includes('generate'))
-  ) {
-    return 'REPORT';
-  }
-  
-  // Default to Mentor Agent for everything else
-  return 'MENTOR';
-}
+// Export context retrieval for use in routes
+export { getComprehensiveContext };
