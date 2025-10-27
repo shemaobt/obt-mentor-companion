@@ -310,9 +310,9 @@ export function initializeGeminiModels() {
     maxRetries: 2,
   });
 
-  // Portfolio Agent - Gemini 2.5 Flash for fast structured operations
+  // Portfolio Agent - Gemini 2.5 Pro for high-quality structured operations
   const portfolioModel = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     temperature: 0.3,
     apiKey,
     maxOutputTokens: 8192,
