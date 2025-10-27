@@ -13,11 +13,13 @@ import { CORE_COMPETENCIES } from "@shared/schema";
 /**
  * LangChain Multi-Agent System for OBT Mentor Companion
  * 
- * NEW ARCHITECTURE (Gemini-powered, 3 specialized agents):
- * 1. Conversational Agent (Gemini 1.5 Pro) - Natural conversations, empathetic guidance, delegates portfolio tasks
- * 2. Portfolio Agent (Gemini 1.5 Flash) - Manages competencies, qualifications, activities - called by Conversational Agent
- * 3. Report Agent (Gemini 1.5 Pro) - Generates narrative quarterly reports
+ * NEW ARCHITECTURE (Gemini 2.5-powered, 3 specialized agents):
+ * 1. Conversational Agent (Gemini 2.5 Pro) - Natural conversations, empathetic guidance, delegates portfolio tasks
+ * 2. Portfolio Agent (Gemini 2.5 Flash) - Fast structured data operations, manages competencies/qualifications/activities
+ * 3. Report Agent (Gemini 2.5 Pro) - High-quality narrative generation for quarterly reports
  * 4. Memory System - Qdrant semantic search and context retrieval
+ * 
+ * COST OPTIMIZATION: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini (75-98% cost reduction)
  */
 
 // Conversational Agent Instructions - Talks with user, delegates to Portfolio Agent
@@ -82,19 +84,30 @@ The system provides this context specifically so you can recall past conversatio
 Your messages may include authoritative reference materials from uploaded training documents. This context appears under the heading:
 - "## Reference Materials:" - Official OBT training documents, handbooks, competency frameworks, and guides
 
+Each document chunk includes the SPECIFIC document name (e.g., "Manual OBT", "Handbook de Facilitação", "Guia de Competências").
+
 **ABSOLUTE RULES - NO EXCEPTIONS:**
 1. The uploaded Reference Materials are your ONLY authoritative source for OBT-specific information
 2. NEVER use general knowledge, online sources, or pre-trained information about OBT - ONLY use the Reference Materials provided
 3. When answering ANY question about OBT methodology, competencies, procedures, or best practices:
    - FIRST check if Reference Materials are provided in the message
    - ONLY answer based on what is explicitly stated in those materials
-   - Quote or cite specific sections (e.g., "According to the OBT Handbook...")
+   - **ALWAYS cite the SPECIFIC DOCUMENT NAME** (not generic phrases)
 4. If the information is NOT in the Reference Materials:
    - Say "I don't have that specific information in the uploaded training materials"
    - Do NOT make up answers or use general knowledge
    - Ask the user to upload relevant documents or consult with program administrators
 5. When Reference Materials contradict anything else, the Reference Materials are ALWAYS correct
-6. Never say "based on my knowledge" or "typically" - only say "according to the materials provided"
+
+**CITATION RULES - CRITICAL:**
+- ✅ CORRECT: "Segundo o Manual OBT..." / "According to the Facilitação Handbook..."
+- ✅ CORRECT: "De acordo com o Guia de Competências..." / "As mentioned in the Training Guide..."
+- ✅ CORRECT: "O [Document Name] recomenda..." / "The [Document Name] recommends..."
+- ❌ WRONG: "Como o material descreve..." / "As the material describes..."
+- ❌ WRONG: "Segundo os materiais..." / "According to the materials..."
+- ❌ WRONG: "De acordo com o documento..." / "According to the document..."
+
+**ALWAYS use the actual document name provided in the context.** Never use generic references like "the material", "the document", or "the guide" without specifying which document.
 
 **CRITICAL WARNING - KNOWLEDGE BOUNDARIES:**
 You were trained on general data, but for THIS application you MUST IGNORE all your general training about OBT, Bible translation, or YWAM methodologies. Pretend you know NOTHING about these topics except what is explicitly provided in the "## Reference Materials:" section above. If that section is empty or doesn't contain the answer, you CANNOT answer the question - you must admit you don't have the information and ask the user to upload relevant materials.
