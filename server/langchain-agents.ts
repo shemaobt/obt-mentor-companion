@@ -253,13 +253,17 @@ You do NOT engage in conversations. You are called by the Conversational Agent t
 export function initializeGeminiModels() {
   const apiKey = process.env.GOOGLE_API_KEY;
   
+  console.log('[Gemini Init] API key exists:', !!apiKey, 'Length:', apiKey?.length);
+  
   if (!apiKey) {
+    console.error('[Gemini Init] GOOGLE_API_KEY not found in environment variables');
+    console.error('[Gemini Init] Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('API')));
     throw new Error('GOOGLE_API_KEY is required for Gemini models');
   }
   
   // Conversational Agent - Gemini 1.5 Pro for natural conversations
   const conversationalModel = new ChatGoogleGenerativeAI({
-    modelName: "gemini-1.5-pro",
+    model: "gemini-1.5-pro",
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
@@ -267,7 +271,7 @@ export function initializeGeminiModels() {
 
   // Portfolio Agent - Gemini 1.5 Flash for fast structured operations
   const portfolioModel = new ChatGoogleGenerativeAI({
-    modelName: "gemini-1.5-flash",
+    model: "gemini-1.5-flash",
     temperature: 0.3,
     apiKey,
     maxOutputTokens: 8192,
@@ -275,7 +279,7 @@ export function initializeGeminiModels() {
 
   // Report Agent - Gemini 1.5 Pro for high-quality narratives
   const reportModel = new ChatGoogleGenerativeAI({
-    modelName: "gemini-1.5-pro",
+    model: "gemini-1.5-pro",
     temperature: 0.5,
     apiKey,
     maxOutputTokens: 8192,
