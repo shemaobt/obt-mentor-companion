@@ -58,15 +58,32 @@ export function TranslateWidget() {
   };
 
   useEffect(() => {
+    console.log('[TranslateWidget] Component mounted, checking for Google Translate...');
+    
+    // Check if Google Translate script is loaded
+    if (typeof (window as any).google === 'undefined' || typeof (window as any).google.translate === 'undefined') {
+      console.log('[TranslateWidget] Google Translate script not loaded yet');
+    }
+    
     // Monitor Google Translate initialization status
     const checkInterval = setInterval(() => {
       const combo = document.querySelector('.goog-te-combo');
+      const translateElement = document.getElementById('google_translate_element');
+      
+      console.log('[TranslateWidget] Checking...', {
+        comboFound: !!combo,
+        elementFound: !!translateElement,
+        elementChildren: translateElement?.children.length || 0
+      });
+      
       if (combo) {
+        console.log('[TranslateWidget] Google Translate is ready!');
         setIsGoogleReady(true);
         clearInterval(checkInterval);
         
         // If there's a pending language selection, apply it now
         if (pendingLang) {
+          console.log('[TranslateWidget] Applying pending language:', pendingLang);
           const googleTranslateElement = combo as HTMLSelectElement;
           googleTranslateElement.value = pendingLang;
           googleTranslateElement.dispatchEvent(new Event('change'));
