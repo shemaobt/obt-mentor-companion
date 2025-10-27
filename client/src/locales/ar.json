@@ -21,6 +21,7 @@
     "download": "تحميل",
     "upload": "رفع",
     "view": "عرض",
+    "rename": "إعادة تسمية",
     "selectLanguage": "اختر اللغة"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "جاري التسجيل...",
     "stopRecording": "إيقاف",
     "playAudio": "تشغيل الصوت",
-    "thinking": "التفكير..."
+    "thinking": "التفكير...",
+    "chatChains": "سلاسل المحادثة",
+    "recentChats": "المحادثات الأخيرة",
+    "noChatsYet": "لا توجد محادثات بعد",
+    "startNewConversation": "بدء محادثة جديدة",
+    "deleteChain": "حذف السلسلة",
+    "newChain": "سلسلة جديدة",
+    "continueChain": "متابعة",
+    "enterChainTitle": "أدخل عنوان السلسلة:"
   },
   "portfolio": {
     "title": "الملف الشخصي",

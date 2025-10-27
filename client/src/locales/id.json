@@ -21,6 +21,7 @@
     "download": "Unduh",
     "upload": "Unggah",
     "view": "Lihat",
+    "rename": "Ganti Nama",
     "selectLanguage": "Pilih bahasa"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "Merekam...",
     "stopRecording": "Berhenti",
     "playAudio": "Putar audio",
-    "thinking": "Berpikir..."
+    "thinking": "Berpikir...",
+    "chatChains": "Rantai Obrolan",
+    "recentChats": "Obrolan Terkini",
+    "noChatsYet": "Belum ada obrolan",
+    "startNewConversation": "Mulai percakapan baru",
+    "deleteChain": "Hapus rantai",
+    "newChain": "Rantai Baru",
+    "continueChain": "Lanjutkan",
+    "enterChainTitle": "Masukkan judul rantai:"
   },
   "portfolio": {
     "title": "Portofolio",

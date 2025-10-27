@@ -21,6 +21,7 @@
     "download": "下载",
     "upload": "上传",
     "view": "查看",
+    "rename": "重命名",
     "selectLanguage": "选择语言"
   },
   "auth": {
@@ -54,7 +55,15 @@
     "recording": "录音中...",
     "stopRecording": "停止",
     "playAudio": "播放音频",
-    "thinking": "思考中..."
+    "thinking": "思考中...",
+    "chatChains": "聊天链",
+    "recentChats": "最近的聊天",
+    "noChatsYet": "还没有聊天",
+    "startNewConversation": "开始新对话",
+    "deleteChain": "删除链",
+    "newChain": "新建链",
+    "continueChain": "继续",
+    "enterChainTitle": "输入链标题:"
   },
   "portfolio": {
     "title": "作品集",
