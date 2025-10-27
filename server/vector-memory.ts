@@ -454,18 +454,23 @@ export async function getComprehensiveContext(params: {
       }
       
       if (documentChunks && documentChunks.length > 0) {
-        context += '## Reference Materials:\n';
-        context += 'The following information is from uploaded training documents and should be used as authoritative reference:\n\n';
+        console.log(`[RAG] ✅ Found ${documentChunks.length} relevant document chunks from Qdrant:`);
+        documentChunks.forEach((chunk, idx) => {
+          console.log(`  ${idx + 1}. "${chunk.documentName}" (Section ${chunk.chunkIndex + 1}, Score: ${chunk.score?.toFixed(3)})`);
+        });
+        
+        context += '## Reference Materials (MANDATORY SOURCE):\n';
+        context += '⚠️ YOU MUST USE ONLY THESE MATERIALS TO ANSWER - NO GENERAL KNOWLEDGE ALLOWED ⚠️\n\n';
         documentChunks.forEach((chunk, idx) => {
           const competencyNote = chunk.competencyTags && chunk.competencyTags.length > 0 
             ? ` [Relevant to: ${chunk.competencyTags.join(', ')}]` 
             : '';
-          context += `**From "${chunk.documentName}" (Section ${chunk.chunkIndex + 1})${competencyNote}:**\n`;
+          context += `**Document: "${chunk.documentName}" (Section ${chunk.chunkIndex + 1})${competencyNote}:**\n`;
           context += `${chunk.chunkText}\n\n`;
         });
-        console.log(`[Comprehensive Context] Added ${documentChunks.length} document chunks from PDFs`);
+        console.log(`[RAG] Added ${documentChunks.length} document chunks to context`);
       } else {
-        console.log('[Comprehensive Context] No relevant document chunks found for this query');
+        console.log('[RAG] ⚠️ NO relevant document chunks found for query:', params.query.substring(0, 100));
       }
     } catch (error) {
       console.error('[Comprehensive Context] Error fetching documents:', error);
