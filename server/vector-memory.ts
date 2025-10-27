@@ -1,5 +1,5 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage } from './storage';
 import type { Message } from '@shared/schema';
 
@@ -9,16 +9,14 @@ const qdrant = new QdrantClient({
   apiKey: process.env.QDRANT_API_KEY!,
 });
 
-// Initialize OpenAI client for embeddings
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
-});
+// Initialize Google Gemini client for embeddings
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 // Collection name for OBT conversations
 const COLLECTION_NAME = 'obt_global_memory';
 
-// Vector dimension for OpenAI text-embedding-3-small
-const VECTOR_DIM = 1536;
+// Vector dimension for Google text-embedding-004 (768 dimensions)
+const VECTOR_DIM = 768;
 
 /**
  * Initialize Qdrant collection if it doesn't exist
@@ -31,19 +29,51 @@ export async function initializeQdrantCollection() {
       (col) => col.name === COLLECTION_NAME
     );
 
+    // Check if we need to recreate the collection due to dimension change
+    if (collectionExists) {
+      try {
+        const collectionInfo = await qdrant.getCollection(COLLECTION_NAME);
+        const currentDim = typeof collectionInfo.config.params.vectors === 'object' && 'size' in collectionInfo.config.params.vectors
+          ? collectionInfo.config.params.vectors.size
+          : 0;
+        
+        if (currentDim !== VECTOR_DIM) {
+          console.log(`[Qdrant Migration] Collection dimension mismatch: ${currentDim} -> ${VECTOR_DIM}`);
+          console.log(`[Qdrant Migration] Dropping and recreating collection ${COLLECTION_NAME}...`);
+          await qdrant.deleteCollection(COLLECTION_NAME);
+          console.log(`[Qdrant Migration] Old collection deleted. Creating new collection with ${VECTOR_DIM} dimensions...`);
+          await createCollection();
+          return;
+        }
+      } catch (error) {
+        console.error('[Qdrant] Error checking collection dimension:', error);
+      }
+    }
+
     if (!collectionExists) {
       console.log(`Creating Qdrant collection: ${COLLECTION_NAME}`);
-      
-      await qdrant.createCollection(COLLECTION_NAME, {
-        vectors: {
-          size: VECTOR_DIM,
-          distance: 'Cosine',
-        },
-        optimizers_config: {
-          default_segment_number: 2,
-        },
-        replication_factor: 1,
-      });
+      await createCollection();
+    } else {
+      console.log(`Qdrant collection ${COLLECTION_NAME} already exists`);
+      await ensureIndexes();
+    }
+  } catch (error) {
+    console.error('Error initializing Qdrant collection:', error);
+    throw error;
+  }
+}
+
+async function createCollection() {
+  await qdrant.createCollection(COLLECTION_NAME, {
+    vectors: {
+      size: VECTOR_DIM,
+      distance: 'Cosine',
+    },
+    optimizers_config: {
+      default_segment_number: 2,
+    },
+    replication_factor: 1,
+  });
 
       // Create payload indexes for efficient filtering
       await qdrant.createPayloadIndex(COLLECTION_NAME, {
@@ -76,60 +106,59 @@ export async function initializeQdrantCollection() {
         field_schema: 'keyword',
       });
 
-      console.log(`Qdrant collection ${COLLECTION_NAME} created successfully`);
-    } else {
-      console.log(`Qdrant collection ${COLLECTION_NAME} already exists`);
-      
-      // Ensure critical indexes exist (safe to call even if they already exist)
-      try {
-        await qdrant.createPayloadIndex(COLLECTION_NAME, {
-          field_name: 'type',
-          field_schema: 'keyword',
-        });
-        console.log('Created/verified index for type field');
-      } catch (e) {
-        // Index might already exist, which is fine
-      }
+  console.log(`Qdrant collection ${COLLECTION_NAME} created successfully with ${VECTOR_DIM} dimensions`);
+}
 
-      try {
-        await qdrant.createPayloadIndex(COLLECTION_NAME, {
-          field_name: 'isActive',
-          field_schema: 'bool',
-        });
-        console.log('Created/verified index for isActive field');
-      } catch (e) {
-        // Index might already exist, which is fine
-      }
+async function ensureIndexes() {
+  // Ensure critical indexes exist (safe to call even if they already exist)
+  try {
+    await qdrant.createPayloadIndex(COLLECTION_NAME, {
+      field_name: 'type',
+      field_schema: 'keyword',
+    });
+    console.log('Created/verified index for type field');
+  } catch (e) {
+    // Index might already exist, which is fine
+  }
 
-      try {
-        await qdrant.createPayloadIndex(COLLECTION_NAME, {
-          field_name: 'documentId',
-          field_schema: 'keyword',
-        });
-        console.log('Created/verified index for documentId field');
-      } catch (e) {
-        // Index might already exist, which is fine
-      }
-    }
-  } catch (error) {
-    console.error('Error initializing Qdrant collection:', error);
-    throw error;
+  try {
+    await qdrant.createPayloadIndex(COLLECTION_NAME, {
+      field_name: 'isActive',
+      field_schema: 'bool',
+    });
+    console.log('Created/verified index for isActive field');
+  } catch (e) {
+    // Index might already exist, which is fine
+  }
+
+  try {
+    await qdrant.createPayloadIndex(COLLECTION_NAME, {
+      field_name: 'documentId',
+      field_schema: 'keyword',
+    });
+    console.log('Created/verified index for documentId field');
+  } catch (e) {
+    // Index might already exist, which is fine
   }
 }
 
 /**
- * Generate embedding for a text using OpenAI
+ * Generate embedding for a text using Google Gemini
  */
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
-    });
+    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    
+    const result = await model.embedContent(text);
+    const embedding = result.embedding;
+    
+    if (!embedding || !embedding.values) {
+      throw new Error('No embedding values returned from Google API');
+    }
 
-    return response.data[0].embedding;
+    return embedding.values;
   } catch (error) {
-    console.error('Error generating embedding:', error);
+    console.error('Error generating embedding with Google:', error);
     throw error;
   }
 }

@@ -118,46 +118,29 @@ Include timestamps if possible.`;
 }
 
 /**
- * For TTS, we'll use OpenAI for now as Gemini's Live API is more complex
- * and designed for real-time conversations. However, we'll add automatic
- * language detection to select the appropriate voice.
+ * For TTS, we use OpenAI TTS with automatic language detection for now.
+ * OpenAI's TTS models automatically detect the language and speak with
+ * native pronunciation for all supported languages.
  * 
- * Note: This can be migrated to Gemini Live API in the future if needed.
+ * Note: Migrating to Google Cloud TTS would require service account credentials,
+ * which is more complex than simple API key authentication.
  */
 import OpenAI from "openai";
 
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "your_openai_api_key"
+  apiKey: process.env.OPENAI_API_KEY || "your_openai_api_key"
 });
 
 /**
- * Language to voice mapping for OpenAI TTS
- * NOTE: OpenAI TTS models automatically pronounce text in the correct language
- * regardless of voice selection. The voice just affects tone/style, not accent.
- * We map voices based on which sounds most natural for each language family.
+ * OpenAI TTS automatically detects language from text and speaks with native pronunciation.
+ * The voice selection just affects tone/style, not the accent or language.
+ * We use 'alloy' as the default voice as it sounds most neutral across all languages.
  */
-const LANGUAGE_TO_VOICE: Record<string, string> = {
-  'pt-BR': 'nova',     // Portuguese - warm, feminine (sounds more natural for Portuguese)
-  'en-US': 'alloy',    // English - neutral, balanced
-  'es-ES': 'nova',     // Spanish - warm (Romance language, similar to Portuguese)
-  'fr-FR': 'shimmer',  // French - expressive (Romance language)
-  'de-DE': 'onyx',     // German - deep, clear (Germanic language)
-  'it-IT': 'shimmer',  // Italian - expressive (Romance language)
-  'ru-RU': 'echo',     // Russian - resonant (Slavic language)
-  'zh-CN': 'alloy',    // Chinese - neutral
-  'ar-SA': 'fable',    // Arabic - expressive
-  'ja-JP': 'alloy',    // Japanese - neutral
-  'ko-KR': 'alloy',    // Korean - neutral
-  'hi-IN': 'fable',    // Hindi - expressive
-  'id-ID': 'nova',     // Indonesian - warm
-  'nl-NL': 'alloy',    // Dutch - neutral (Germanic)
-  'sv-SE': 'alloy',    // Swedish - neutral (Germanic)
-  'da-DK': 'alloy',    // Danish - neutral (Germanic)
-};
+const DEFAULT_VOICE = 'alloy';
 
 /**
  * Generate speech with automatic language detection
- * Detects the language of the text and selects the appropriate voice
+ * OpenAI TTS automatically detects the language and speaks with native pronunciation
  * Returns both the audio buffer and the detected language/voice for caching
  */
 export async function generateSpeechWithAutoLanguage(text: string): Promise<{
@@ -166,50 +149,52 @@ export async function generateSpeechWithAutoLanguage(text: string): Promise<{
   voice: string;
 }> {
   try {
-    // Detect language from text
+    // Detect language from text (for logging purposes)
     const detectedLanguage = detectLanguage(text);
-    const voice = LANGUAGE_TO_VOICE[detectedLanguage] || 'alloy';
     
-    console.log(`[TTS] Generating speech for language ${detectedLanguage} with voice '${voice}'`);
+    console.log(`[OpenAI TTS] Generating speech for detected language: ${detectedLanguage}`);
+    console.log(`[OpenAI TTS] Note: OpenAI TTS automatically uses native pronunciation for all languages`);
     
-    // Use tts-1-hd for higher quality and better pronunciation
+    // OpenAI TTS automatically detects language and uses native pronunciation
+    // regardless of voice selection. The voice just affects tone/style.
     const speech = await openai.audio.speech.create({
-      model: "tts-1-hd",
-      voice: voice as any,
+      model: "tts-1-hd",  // Higher quality model
+      voice: DEFAULT_VOICE as any,
       input: text,
-      speed: 1.0, // Normal speed for natural pronunciation
+      speed: 1.0,
     });
 
     const buffer = Buffer.from(await speech.arrayBuffer());
     return {
       buffer,
       language: detectedLanguage,
-      voice
+      voice: DEFAULT_VOICE
     };
   } catch (error) {
-    console.error("Error generating speech:", error);
+    console.error("Error generating speech with OpenAI TTS:", error);
     throw new Error("Failed to generate speech");
   }
 }
 
 /**
  * Generate streaming speech with automatic language detection
+ * OpenAI TTS automatically detects the language and speaks with native pronunciation
  */
 export async function generateSpeechStreamWithAutoLanguage(text: string): Promise<ReadableStream> {
   try {
-    // Detect language from text
+    // Detect language from text (for logging purposes)
     const detectedLanguage = detectLanguage(text);
-    const voice = LANGUAGE_TO_VOICE[detectedLanguage] || 'alloy';
     
-    console.log(`[TTS Stream] Generating speech for language ${detectedLanguage} with voice '${voice}'`);
+    console.log(`[OpenAI TTS Stream] Generating speech for detected language: ${detectedLanguage}`);
+    console.log(`[OpenAI TTS Stream] OpenAI automatically uses native pronunciation`);
     
-    // Use tts-1-hd for higher quality and better pronunciation across all languages
+    // OpenAI TTS automatically detects language and uses native pronunciation
     const speech = await openai.audio.speech.create({
-      model: "tts-1-hd",
-      voice: voice as any,
+      model: "tts-1-hd",  // Higher quality model
+      voice: DEFAULT_VOICE as any,
       input: text,
       response_format: "mp3",
-      speed: 1.0  // Normal speed ensures natural pronunciation
+      speed: 1.0
     });
 
     if (!speech.body) {
@@ -218,7 +203,7 @@ export async function generateSpeechStreamWithAutoLanguage(text: string): Promis
 
     return speech.body;
   } catch (error) {
-    console.error("Error generating speech stream:", error);
+    console.error("Error generating speech stream with OpenAI TTS:", error);
     throw new Error("Failed to generate speech stream");
   }
 }
