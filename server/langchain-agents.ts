@@ -263,7 +263,7 @@ export function initializeGeminiModels() {
   
   // Conversational Agent - Gemini 1.5 Pro for natural conversations
   const conversationalModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-pro",
+    model: "gemini-1.5-pro-latest",
     temperature: 0.7,
     apiKey,
     maxOutputTokens: 8192,
@@ -271,7 +271,7 @@ export function initializeGeminiModels() {
 
   // Portfolio Agent - Gemini 1.5 Flash for fast structured operations
   const portfolioModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-latest",
     temperature: 0.3,
     apiKey,
     maxOutputTokens: 8192,
@@ -279,7 +279,7 @@ export function initializeGeminiModels() {
 
   // Report Agent - Gemini 1.5 Pro for high-quality narratives
   const reportModel = new ChatGoogleGenerativeAI({
-    model: "gemini-1.5-pro",
+    model: "gemini-1.5-pro-latest",
     temperature: 0.5,
     apiKey,
     maxOutputTokens: 8192,
