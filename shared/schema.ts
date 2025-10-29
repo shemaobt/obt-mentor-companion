@@ -276,7 +276,7 @@ export const mentorshipActivities = pgTable("mentorship_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
   activityType: varchar("activity_type", {
-    enum: ["translation", "facilitation", "teaching", "indigenous_work", "school_work", "general_experience"]
+    enum: ["translation", "facilitation", "teaching", "biblical_teaching", "long_term_mentoring", "oral_facilitation", "indigenous_work", "school_work", "general_experience"]
   }).notNull().default("translation"),
   // Translation-specific fields (optional for other types)
   languageName: varchar("language_name"),
