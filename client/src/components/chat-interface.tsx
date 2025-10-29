@@ -114,7 +114,9 @@ export default function ChatInterface({
     resetTranscript,
     isSupported: isSpeechRecognitionSupported,
     lastError,
-    permissionDenied
+    permissionDenied,
+    volumeLevel,
+    elapsedTime
   } = useOpenAISpeechRecognition({ lang: selectedLanguage });
   
   
@@ -833,6 +835,63 @@ export default function ChatInterface({
               </div>
             </div>
           )}
+          
+          {/* Audio Recording Waveform Visualization - WhatsApp style */}
+          {isListening && (
+            <div 
+              className="mb-3 p-4 bg-destructive/10 dark:bg-destructive/20 rounded-lg border border-destructive/30 backdrop-blur-sm" 
+              data-testid="audio-recording-indicator"
+              role="status"
+              aria-live="polite"
+              aria-label={`Recording audio. Duration: ${Math.floor(elapsedTime / 60)} minutes and ${elapsedTime % 60} seconds`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="h-3 w-3 bg-destructive rounded-full animate-pulse" aria-hidden="true" />
+                  <span className="text-sm font-medium text-destructive">Recording</span>
+                </div>
+                <span 
+                  className="text-sm font-mono text-muted-foreground" 
+                  data-testid="text-recording-time"
+                  aria-label={`Recording time: ${Math.floor(elapsedTime / 60)} minutes and ${elapsedTime % 60} seconds`}
+                >
+                  {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              
+              {/* Waveform Bars */}
+              <div 
+                className="flex items-center justify-center space-x-1 h-16" 
+                data-testid="audio-waveform"
+                role="img"
+                aria-label={`Audio waveform showing volume level at ${Math.round(volumeLevel)} percent`}
+              >
+                {[...Array(20)].map((_, i) => {
+                  // Create randomized wave pattern based on volume level
+                  const baseHeight = 20 + (volumeLevel * 0.6);
+                  const variation = Math.sin((i + elapsedTime) * 0.5) * 15;
+                  const height = Math.max(8, Math.min(60, baseHeight + variation));
+                  
+                  return (
+                    <div
+                      key={i}
+                      className="bg-destructive rounded-full transition-all duration-75 ease-out"
+                      style={{
+                        width: '4px',
+                        height: `${height}%`,
+                        opacity: 0.3 + (volumeLevel / 150)
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              
+              <p className="text-xs text-center text-muted-foreground mt-3">
+                Click the stop button to finish recording
+              </p>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'space-x-2 phone-xs:space-x-1 phone-sm:space-x-2' : 'space-x-3'}`} data-testid="form-message">
             <input
               ref={fileInputRef}
