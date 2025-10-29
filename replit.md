@@ -29,9 +29,11 @@ Preferred communication style: Simple, everyday language.
         - Note: Portfolio operations are integrated into Conversational Agent via specialized tools
     - **Cost Optimization**: Migrated from OpenAI GPT-4o ($5/M tokens) to Gemini 2.5 (75-98% cost reduction). All AI features (chat, transcription, TTS, embeddings) now use Google Gemini exclusively.
     - **Audio Features**:
-        - **Transcription**: Gemini 2.5 Pro native audio (supports up to 9.5 hours, speaker diarization, 24+ languages)
+        - **Transcription**: Gemini 2.5 Pro native audio (supports up to 9.5 hours, speaker diarization, 24+ languages) with post-processing to remove timestamps for cleaner output
         - **TTS**: Gemini 2.5 Flash TTS with automatic multilingual native pronunciation (supports 24+ languages with automatic language detection, PCM to WAV conversion)
         - **Embeddings**: Google text-embedding-004 (768 dimensions) for vector memory
+        - **Voice Recording UI**: WhatsApp-style waveform visualization with Web Audio API, showing real-time sound waves (20 animated bars), recording duration timer, pulsing indicator, and full accessibility support (aria-live, aria-labels for screen readers)
+        - **Recording Optimization**: MediaRecorder with 1000ms timeslice chunking and 100ms post-stop delay to prevent audio truncation at end of recordings
     - **Tools**: DynamicStructuredTool for managing qualifications, activities, competencies, and certificate attachments. Features robust duplicate detection.
     - **Context System**: Four-layer injection including portfolio data, recent message history, Qdrant-powered semantic vector search, conversation analysis for competency detection, and awareness of message attachments.
     - **Intelligent Competency Evaluation**: Automatic scoring based on qualifications and activities with strict scoring rules, ensuring credit for actual study/work.
