@@ -108,7 +108,14 @@ Do not include timestamps.`;
     ]);
     
     const response = result.response;
-    const transcription = response.text();
+    let transcription = response.text();
+    
+    // Post-process to remove timestamps (format: [00:00:00], [00:03:30], etc.)
+    // Gemini sometimes includes these even when instructed not to
+    transcription = transcription.replace(/\[\d{2}:\d{2}:\d{2}\]/g, '');
+    
+    // Clean up any multiple spaces left after removing timestamps
+    transcription = transcription.replace(/\s{2,}/g, ' ').trim();
     
     console.log(`[Gemini Audio] Transcription complete (${transcription.length} characters)`);
     return transcription;
