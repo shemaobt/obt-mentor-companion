@@ -532,11 +532,12 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ language, context, durationYears, languagesMentored, chaptersMentored }) => {
       try {
-        await storage.createMentorshipActivity({
+        await storage.createActivity({
           facilitatorId,
           language,
           context,
           durationYears,
+          durationMonths: 0,
           languagesMentored: languagesMentored || null,
           chaptersMentored: chaptersMentored || null,
           activityType: 'translation',
@@ -562,11 +563,12 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ activityType, context, durationYears }) => {
       try {
-        await storage.createMentorshipActivity({
+        await storage.createActivity({
           facilitatorId,
           language: null,
           context,
           durationYears,
+          durationMonths: 0,
           languagesMentored: null,
           chaptersMentored: null,
           activityType,
