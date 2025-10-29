@@ -1201,18 +1201,17 @@ Review EVERY message and extract competency evidence. For EACH competency mentio
 - Score the evidence strength (1-10)
 
 **STRENGTH SCORING (1-10):**
-- **8-10**: Specific experience with details and timeframe (e.g., "13 years teaching Bible studies", "worked with 160 communities implementing AI")
-- **6-7**: Clear demonstration without specifics (e.g., "I help teams with AI", "I teach about technology")
-- **4-5**: General mention (e.g., "I work with technology", "I've done some teaching")
+- **8-10**: Specific experience with details and timeframe (e.g., "13 years teaching Bible studies", "worked with 160 communities implementing AI", "facilitated 3 OBT workshops in Southeast Asia")
+- **6-7**: Clear demonstration without specifics (e.g., "I mentor new facilitators", "I work with indigenous communities", "I do Bible translation consulting")
+- **4-5**: General mention (e.g., "I work with communities", "I've done some Bible study", "I help with technology")
 - **2-3**: Weak or unclear mention
 
-**SPECIAL FOCUS ON APPLIED_TECHNOLOGY:**
-Look for ANY mention of:
-- AI work, ChatGPT, Gemini, OpenAI, machine learning, LLMs
-- Programming, coding, software development, databases, APIs
-- Technology training, tech for communities, digital literacy, digital tools
-- Automation, workflow automation
-- Technology implementation for low-resource communities
+**IMPORTANT GUIDELINES:**
+- Look for BOTH explicit and implicit evidence of competencies
+- Consider the CONTEXT of what they share, not just keywords
+- Value quality over quantity - strong evidence is better than many weak mentions
+- Be balanced across ALL 11 competencies - don't favor any specific one
+- Recognize practical experience, formal training, and informal learning equally
 
 **RETURN FORMAT (JSON):**
 Return ONLY a JSON array of objects, nothing else. Each object must have:
