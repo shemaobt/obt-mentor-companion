@@ -8,6 +8,15 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+## October 29, 2025 - Evidence-Based Competency Persistence System
+- **CRITICAL FIX: Three-Way StatusSource Architecture** - Implemented proper distinction between competency update sources by expanding `statusSource` enum to include 'auto', 'manual', AND 'evidence'. This prevents evidence-based competencies from being overwritten by auto-recalculations.
+- **SCHEMA UPDATE**: Added 'evidence' to `facilitatorCompetencies.statusSource` enum to distinguish conversation-based updates from calculation-based ('auto') and supervisor-edited ('manual') competencies.
+- **PRESERVATION LOGIC**: Modified `recalculateCompetencies()` to preserve BOTH 'manual' and 'evidence' statusSource types (not just 'manual'). Only competencies with statusSource='auto' are overwritten during recalculation.
+- **EVIDENCE APPLICATION**: Updated `applyPendingEvidence()` to set `statusSource: 'evidence'` when promoting competencies based on conversation observations, ensuring persistence across qualification/activity changes.
+- **FUNCTION ENHANCEMENT**: Enhanced `updateCompetencyStatus()` to accept optional statusSource parameter for proper source tracking across all competency update pathways.
+- **VERIFIED END-TO-END**: Database confirms competencies updated with statusSource='evidence' (reflective_practice and planning_quality → proficient) persist correctly across recalculations.
+- **IMPACT**: Evidence-based competency updates now permanently preserve facilitator growth observed through conversations, creating durable competency progression independent of auto-calculations.
+
 ## October 29, 2025 - Bug Fix: Evidence Application Function Error
 - **FIXED: Critical Runtime Error in applyPendingEvidence()** - Fixed "storage.getFacilitator is not a function" error that prevented automatic competency updates from persisting to database. Root cause: called non-existent `getFacilitator()` method.
 - **SOLUTION: Optimized User Lookup** - Replaced inefficient `getAllFacilitators().find()` approach with direct `getUserByFacilitatorId()` call that performs efficient database JOIN to retrieve user context.
