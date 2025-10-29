@@ -1316,12 +1316,18 @@ export async function applyPendingEvidence(
   storage: IStorage,
   facilitatorId: string
 ): Promise<{ updatedCompetencies: string[]; totalEvidence: number }> {
+  console.log(`[Apply Evidence] START for facilitator ${facilitatorId}`);
   try {
     // Get all unapplied evidence for this facilitator
+    console.log(`[Apply Evidence] Calling storage.getCompetencyEvidence...`);
     const allEvidence = await storage.getCompetencyEvidence(facilitatorId);
+    console.log(`[Apply Evidence] Got ${allEvidence.length} total evidence pieces`);
+    
     const pendingEvidence = allEvidence.filter(e => !e.isAppliedToLevel);
+    console.log(`[Apply Evidence] Filtered to ${pendingEvidence.length} pending evidence pieces`);
 
     if (pendingEvidence.length === 0) {
+      console.log(`[Apply Evidence] No pending evidence, returning early`);
       return { updatedCompetencies: [], totalEvidence: 0 };
     }
 
