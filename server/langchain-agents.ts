@@ -1383,18 +1383,23 @@ export async function applyPendingEvidence(
       // Only update if new status is higher than current
       const statusOrder = { 'not_started': 0, 'developing': 1, 'proficient': 2, 'advanced': 3, 'expert': 4 };
       if (statusOrder[newStatus] > statusOrder[currentStatus]) {
+        if (!currentComp) {
+          console.log(`[Apply Evidence] ERROR: Competency record not found for ${competencyId}`);
+          continue;
+        }
+
         // Update competency
-        await storage.updateFacilitatorCompetency({
-          facilitatorId,
-          competencyId,
-          status: newStatus,
-          notes: `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`
-        });
+        await storage.updateCompetencyStatus(
+          currentComp.id,
+          newStatus,
+          `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
+          'AI Assistant',
+          facilitatorId
+        );
 
         // Mark all evidence as applied
-        for (const evidence of evidences) {
-          await storage.updateCompetencyEvidence(evidence.id, { isAppliedToLevel: true });
-        }
+        const evidenceIds = evidences.map(e => e.id);
+        await storage.markEvidenceApplied(evidenceIds);
 
         updatedCompetencies.push(competencyId);
         console.log(`[Apply Evidence] ✓ Updated ${competencyId} from ${currentStatus} to ${newStatus}`);
