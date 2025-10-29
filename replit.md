@@ -8,6 +8,12 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+## October 29, 2025 - Bug Fix: Evidence Application Function Error
+- **FIXED: Critical Runtime Error in applyPendingEvidence()** - Fixed "storage.getFacilitator is not a function" error that prevented automatic competency updates from persisting to database. Root cause: called non-existent `getFacilitator()` method.
+- **SOLUTION: Optimized User Lookup** - Replaced inefficient `getAllFacilitators().find()` approach with direct `getUserByFacilitatorId()` call that performs efficient database JOIN to retrieve user context.
+- **VERIFIED**: System now successfully updates competencies automatically (tested: reflective_practice and planning_quality promoted from not_started → proficient with 35 evidence pieces marked as applied).
+- **IMPACT**: Automatic evidence application system now fully operational end-to-end without errors.
+
 ## October 29, 2025 - Automatic Evidence Application System
 - **NEW FEATURE: Autonomous Evidence Application** - Implemented `applyPendingEvidence()` function that automatically applies accumulated competency evidence to facilitator profiles during conversations. System groups evidence by competency, calculates average strength scores, and promotes competency levels when 3+ observations with 6+ average strength are detected.
 - **AUTOMATIC INTEGRATION** - Evidence application now runs automatically before every chat message (both text and voice), eliminating need for manual button clicks. Uses non-blocking error handling to prevent chat failures.
