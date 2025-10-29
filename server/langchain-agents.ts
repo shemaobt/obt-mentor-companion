@@ -1398,17 +1398,34 @@ export async function applyPendingEvidence(
         }
 
         // Update competency
-        await storage.updateCompetencyStatus(
+        console.log(`[Apply Evidence] DEBUG: About to call updateCompetencyStatus with:`, {
+          competencyRecordId: currentComp.id,
+          newStatus,
+          currentStatus,
+          notes: `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
+          changedBy: 'AI Assistant',
+          userId
+        });
+        
+        const updatedComp = await storage.updateCompetencyStatus(
           currentComp.id,
           newStatus,
           `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
           'AI Assistant',
           userId
         );
+        
+        console.log(`[Apply Evidence] DEBUG: updateCompetencyStatus returned:`, {
+          id: updatedComp.id,
+          competencyId: updatedComp.competencyId,
+          status: updatedComp.status,
+          lastUpdated: updatedComp.lastUpdated
+        });
 
         // Mark all evidence as applied
         const evidenceIds = evidences.map(e => e.id);
         await storage.markEvidenceApplied(evidenceIds);
+        console.log(`[Apply Evidence] DEBUG: Marked ${evidenceIds.length} evidence pieces as applied`);
 
         updatedCompetencies.push(competencyId);
         console.log(`[Apply Evidence] ✓ Updated ${competencyId} from ${currentStatus} to ${newStatus}`);
