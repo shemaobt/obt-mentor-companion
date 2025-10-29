@@ -1308,5 +1308,105 @@ Extract ALL competency evidence now (return JSON only):`;
   }
 }
 
+/**
+ * Apply pending evidence to competency levels automatically
+ * This function runs automatically during conversations to update competencies
+ * based on accumulated evidence without user intervention
+ */
+export async function applyPendingEvidence(
+  storage: IStorage,
+  facilitatorId: string
+): Promise<{ updatedCompetencies: string[]; totalEvidence: number }> {
+  try {
+    // Get all unapplied evidence for this facilitator
+    const allEvidence = await storage.getCompetencyEvidence(facilitatorId);
+    const pendingEvidence = allEvidence.filter(e => !e.isAppliedToLevel);
+
+    if (pendingEvidence.length === 0) {
+      return { updatedCompetencies: [], totalEvidence: 0 };
+    }
+
+    console.log(`[Apply Evidence] Found ${pendingEvidence.length} pending evidence pieces for facilitator ${facilitatorId}`);
+
+    // Group evidence by competency
+    const evidenceByCompetency = new Map<string, typeof pendingEvidence>();
+    for (const evidence of pendingEvidence) {
+      const existing = evidenceByCompetency.get(evidence.competencyId) || [];
+      existing.push(evidence);
+      evidenceByCompetency.set(evidence.competencyId, existing);
+    }
+
+    const updatedCompetencies: string[] = [];
+
+    // Process each competency
+    for (const [competencyId, evidences] of evidenceByCompetency.entries()) {
+      // Need at least 3 pieces of evidence
+      if (evidences.length < 3) {
+        console.log(`[Apply Evidence] ${competencyId}: only ${evidences.length} evidence pieces (need 3+)`);
+        continue;
+      }
+
+      // Calculate average strength
+      const avgStrength = evidences.reduce((sum, e) => sum + e.strengthScore, 0) / evidences.length;
+
+      // Need average strength of 6+
+      if (avgStrength < 6) {
+        console.log(`[Apply Evidence] ${competencyId}: avg strength ${avgStrength.toFixed(1)} (need 6+)`);
+        continue;
+      }
+
+      console.log(`[Apply Evidence] ${competencyId}: ${evidences.length} evidence pieces, avg strength ${avgStrength.toFixed(1)} - UPDATING`);
+
+      // Get current competency status
+      const competencies = await storage.getFacilitatorCompetencies(facilitatorId);
+      const currentComp = competencies.find(c => c.competencyId === competencyId);
+      const currentStatus = currentComp?.status || 'not_started';
+
+      // Determine new status based on evidence strength
+      let newStatus: 'not_started' | 'developing' | 'proficient' | 'advanced' | 'expert';
+      
+      if (avgStrength >= 9) {
+        newStatus = 'expert';
+      } else if (avgStrength >= 8) {
+        newStatus = 'advanced';
+      } else if (avgStrength >= 7) {
+        newStatus = 'proficient';
+      } else {
+        newStatus = 'developing';
+      }
+
+      // Only update if new status is higher than current
+      const statusOrder = { 'not_started': 0, 'developing': 1, 'proficient': 2, 'advanced': 3, 'expert': 4 };
+      if (statusOrder[newStatus] > statusOrder[currentStatus]) {
+        // Update competency
+        await storage.updateFacilitatorCompetency({
+          facilitatorId,
+          competencyId,
+          status: newStatus,
+          notes: `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`
+        });
+
+        // Mark all evidence as applied
+        for (const evidence of evidences) {
+          await storage.updateCompetencyEvidence(evidence.id, { isAppliedToLevel: true });
+        }
+
+        updatedCompetencies.push(competencyId);
+        console.log(`[Apply Evidence] ✓ Updated ${competencyId} from ${currentStatus} to ${newStatus}`);
+      } else {
+        console.log(`[Apply Evidence] ${competencyId}: current status ${currentStatus} already >= ${newStatus}, keeping current`);
+      }
+    }
+
+    return { 
+      updatedCompetencies, 
+      totalEvidence: pendingEvidence.length 
+    };
+  } catch (error) {
+    console.error('[Apply Evidence] Error applying pending evidence:', error);
+    return { updatedCompetencies: [], totalEvidence: 0 };
+  }
+}
+
 // Export context retrieval for use in routes
 export { getComprehensiveContext };
