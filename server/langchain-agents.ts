@@ -534,12 +534,11 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
       try {
         await storage.createActivity({
           facilitatorId,
-          language,
-          context,
+          languageName: language,
+          description: context,
           durationYears,
           durationMonths: 0,
-          languagesMentored: languagesMentored || null,
-          chaptersMentored: chaptersMentored || null,
+          chaptersCount: chaptersMentored || null,
           activityType: 'translation',
         });
         
@@ -565,12 +564,9 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
       try {
         await storage.createActivity({
           facilitatorId,
-          language: null,
-          context,
+          description: context,
           durationYears,
           durationMonths: 0,
-          languagesMentored: null,
-          chaptersMentored: null,
           activityType,
         });
         
