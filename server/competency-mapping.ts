@@ -391,8 +391,16 @@ const CONVERSATION_COMPETENCY_KEYWORDS: Record<string, string[]> = {
     'training', 'disciple', 'apprentice', 'servant-leader', 'feedback', 'development'
   ],
   'applied_technology': [
-    'technology', 'tech', 'software', 'tool', 'app', 'recording', 'digital', 'online',
-    'computer', 'mobile', 'platform', 'audio', 'video', 'collaboration tools'
+    'software development', 'app development', 'programming', 'coding', 'developer',
+    'database', 'api', 'automation', 'workflow automation',
+    'artificial intelligence', 'machine learning', 'chatgpt', 'gemini', 'openai',
+    'llm', 'llms', 'large language model', 'prompt engineering',
+    'ai tools', 'ai training', 'ai implementation', 'ai project',
+    'tech training', 'digital literacy training', 'technology training',
+    'inteligência artificial', 'ferramentas de ia', 'projeto de ia',
+    'programação', 'desenvolvedor', 'desenvolvimento de software',
+    'automação', 'banco de dados', 'treinamento em tecnologia', 'treinamento de ia',
+    'digital technology', 'software', 'computer', 'tecnologia digital', 'computador'
   ],
   'reflective_practice': [
     'reflection', 'self-awareness', 'feedback', 'learning', 'growth', 'evaluation',
