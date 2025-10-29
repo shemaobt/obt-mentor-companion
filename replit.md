@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
     - **Certificate Verification**: AI extracts and reads text from uploaded PDF/DOCX certificates for content verification.
     - **Conversational System Prompt**: AI acts as a trusted mentor, observing, evaluating, and correcting based on documentation, with strict OBT-only scope enforcement and explicit document citation.
     - **Agent Behavioral Improvements**: Agent proactively asks targeted questions, prohibits auto-promotion requests, enforces advanced level requirements (education + experience), maintains transparency boundaries, and directs technical issues to app feedback.
+    - **Visual Competency Formatting**: Agent displays competencies with colored emoji indicators (🟢 Advanced, 🟡 Proficient, 🔵 Developing, ⚪ Not Started) and proper translations, eliminating technical jargon and code-style formatting for improved user experience.
     - **Evidence-Based Competency Persistence**: Implemented a `statusSource` enum ('auto', 'manual', 'evidence') to ensure evidence-based and manual competency updates persist across recalculations.
     - **Automatic Evidence Application**: `applyPendingEvidence()` function automatically applies accumulated competency evidence during conversations, promoting competency levels based on observations.
 - **Vector Memory System**: Qdrant Cloud for global memory, using Google `text-embedding-004` (768 dimensions) for embeddings. Enhanced RAG document chunking with semantic chunking and competency tagging.
