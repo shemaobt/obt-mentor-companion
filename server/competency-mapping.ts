@@ -179,7 +179,7 @@ export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
   ],
   // NEW: Quality assurance work (trabalho de garantia de qualidade)
   'quality_assurance_work': [
-    { competencyId: 'planning_quality', weight: 6 },
+    { competencyId: 'planning_quality', weight: 5 },
     { competencyId: 'translation_theory', weight: 3 },
   ],
   // NEW: Community engagement (engajamento comunitário)
