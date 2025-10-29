@@ -1318,8 +1318,9 @@ export async function applyPendingEvidence(
 ): Promise<{ updatedCompetencies: string[]; totalEvidence: number }> {
   console.log(`[Apply Evidence] START for facilitator ${facilitatorId}`);
   try {
-    // Get facilitator to retrieve userId
-    const facilitator = await storage.getFacilitator(facilitatorId);
+    // Get facilitator's userId by querying getAllFacilitators and finding the match
+    const allFacilitators = await storage.getAllFacilitators();
+    const facilitator = allFacilitators.find(f => f.id === facilitatorId);
     if (!facilitator) {
       console.log(`[Apply Evidence] ERROR: Facilitator ${facilitatorId} not found`);
       return { updatedCompetencies: [], totalEvidence: 0 };
