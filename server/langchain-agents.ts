@@ -1318,14 +1318,13 @@ export async function applyPendingEvidence(
 ): Promise<{ updatedCompetencies: string[]; totalEvidence: number }> {
   console.log(`[Apply Evidence] START for facilitator ${facilitatorId}`);
   try {
-    // Get facilitator's userId by querying getAllFacilitators and finding the match
-    const allFacilitators = await storage.getAllFacilitators();
-    const facilitator = allFacilitators.find(f => f.id === facilitatorId);
-    if (!facilitator) {
-      console.log(`[Apply Evidence] ERROR: Facilitator ${facilitatorId} not found`);
+    // Get facilitator's user to retrieve userId for change history
+    const user = await storage.getUserByFacilitatorId(facilitatorId);
+    if (!user) {
+      console.log(`[Apply Evidence] ERROR: User not found for facilitator ${facilitatorId}`);
       return { updatedCompetencies: [], totalEvidence: 0 };
     }
-    const userId = facilitator.userId;
+    const userId = user.id;
     
     // Get all unapplied evidence for this facilitator
     console.log(`[Apply Evidence] Calling storage.getFacilitatorEvidence...`);
@@ -1398,34 +1397,17 @@ export async function applyPendingEvidence(
         }
 
         // Update competency
-        console.log(`[Apply Evidence] DEBUG: About to call updateCompetencyStatus with:`, {
-          competencyRecordId: currentComp.id,
-          newStatus,
-          currentStatus,
-          notes: `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
-          changedBy: 'AI Assistant',
-          userId
-        });
-        
-        const updatedComp = await storage.updateCompetencyStatus(
+        await storage.updateCompetencyStatus(
           currentComp.id,
           newStatus,
           `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
           'AI Assistant',
           userId
         );
-        
-        console.log(`[Apply Evidence] DEBUG: updateCompetencyStatus returned:`, {
-          id: updatedComp.id,
-          competencyId: updatedComp.competencyId,
-          status: updatedComp.status,
-          lastUpdated: updatedComp.lastUpdated
-        });
 
         // Mark all evidence as applied
         const evidenceIds = evidences.map(e => e.id);
         await storage.markEvidenceApplied(evidenceIds);
-        console.log(`[Apply Evidence] DEBUG: Marked ${evidenceIds.length} evidence pieces as applied`);
 
         updatedCompetencies.push(competencyId);
         console.log(`[Apply Evidence] ✓ Updated ${competencyId} from ${currentStatus} to ${newStatus}`);
