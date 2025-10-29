@@ -333,12 +333,12 @@ export function calculateCompetencyScores(
   if (activities) {
     for (const activity of activities) {
       const impacts = calculateActivityImpacts(
-        activity.activityType || null,
-        activity.yearsOfExperience || null,
-        activity.description || null,
-        activity.chaptersCount || null,
-        activity.durationYears || null,
-        activity.durationMonths || null
+        activity.activityType ?? null,
+        activity.yearsOfExperience ?? null,
+        activity.description ?? null,
+        activity.chaptersCount ?? null,
+        activity.durationYears ?? null,
+        activity.durationMonths ?? null
       );
       
       // Accumulate impacts into experience scores
