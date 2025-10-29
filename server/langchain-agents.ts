@@ -724,9 +724,9 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const createGeneralExperienceTool = new DynamicStructuredTool({
     name: "create_general_experience",
-    description: "Add a general professional experience (non-translation) to the portfolio, such as facilitation, teaching, or indigenous work. CRITICAL: Always ask about duration/years of experience FIRST. Use this for experiences that don't fit the translation activity category.",
+    description: "Add a general professional experience (non-translation) to the portfolio. NEW TYPES: 'biblical_teaching' for Bible teaching/training, 'long_term_mentoring' for mentorship work, 'oral_facilitation' for OBT/oral translation facilitation. CRITICAL: Always ask about duration/years of experience FIRST. Choose the most specific type that matches the experience.",
     schema: z.object({
-      activityType: z.enum(['facilitation', 'teaching', 'indigenous', 'other']).describe("Type of experience"),
+      activityType: z.enum(['facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience - choose most specific match"),
       context: z.string().describe("Description of the experience or role"),
       durationYears: z.number().describe("Duration of experience in years - REQUIRED"),
     }),
