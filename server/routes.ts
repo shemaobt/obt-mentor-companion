@@ -3151,6 +3151,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/facilitator/analyze-chat-history', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+
+      console.log(`[Chat Analysis] Starting chat history analysis for facilitator ${facilitator.id}`);
+
+      // Get all chats for this user
+      const chats = await storage.getUserChats(req.userId);
+      
+      if (chats.length === 0) {
+        return res.json({
+          message: "No chat history found",
+          evidenceCount: 0,
+          competenciesTracked: []
+        });
+      }
+
+      // Get all messages from all chats
+      let allMessages: any[] = [];
+      for (const chat of chats) {
+        const messages = await storage.getChatMessages(chat.id, req.userId);
+        allMessages = allMessages.concat(messages);
+      }
+
+      if (allMessages.length === 0) {
+        return res.json({
+          message: "No messages found in chat history",
+          evidenceCount: 0,
+          competenciesTracked: []
+        });
+      }
+
+      console.log(`[Chat Analysis] Found ${allMessages.length} total messages across ${chats.length} chats`);
+
+      // Import necessary functions
+      const { analyzeConversationsForEvidence } = await import('./langchain-agents');
+      
+      // Analyze conversations for competency evidence
+      const evidenceResults = await analyzeConversationsForEvidence(
+        storage,
+        facilitator.id,
+        allMessages
+      );
+
+      console.log(`[Chat Analysis] Extracted ${evidenceResults.length} pieces of evidence`);
+
+      res.json({
+        message: "Chat history analyzed successfully",
+        evidenceCount: evidenceResults.length,
+        competenciesTracked: Array.from(new Set(evidenceResults.map(e => e.competencyId))),
+        evidence: evidenceResults
+      });
+    } catch (error) {
+      console.error("Error analyzing chat history:", error);
+      res.status(500).json({ message: "Failed to analyze chat history" });
+    }
+  });
+
   // Qualification Routes
   app.get('/api/facilitator/qualifications', requireAuth, async (req: any, res) => {
     try {

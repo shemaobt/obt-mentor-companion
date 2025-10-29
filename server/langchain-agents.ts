@@ -1155,5 +1155,148 @@ Generate the narrative now:`;
   }
 }
 
+/**
+ * Analyze all chat history and extract competency evidence
+ * This allows retrospective analysis of past conversations to find competency demonstrations
+ */
+export async function analyzeConversationsForEvidence(
+  storage: IStorage,
+  facilitatorId: string,
+  messages: Message[]
+): Promise<Array<{competencyId: string, evidenceText: string, strengthScore: number}>> {
+  const { mainModel } = initializeGeminiModels();
+
+  // Filter to user messages only (facilitator's own words)
+  const userMessages = messages
+    .filter(m => m.role === 'user')
+    .map(m => m.content)
+    .join('\n\n---\n\n');
+
+  if (!userMessages) {
+    return [];
+  }
+
+  const prompt = `You are analyzing a facilitator's chat history to identify competency evidence they've shared. Review their messages and extract EVERY instance where they demonstrate competencies.
+
+**THE 11 COMPETENCIES:**
+1. **interpersonal_skills** - Team work, leadership, conflict resolution, group dynamics, listening, empathy
+2. **intercultural_communication** - Cultural sensitivity, adapting to cultures, indigenous work, cross-cultural ministry
+3. **multimodal_skills** - Storytelling, oral methods, drama, gestures, embodied learning, visual communication
+4. **translation_theory** - Translation work, meaning-based translation, consultant checking, back-translation
+5. **languages_communication** - Linguistics, language analysis, discourse, grammar, semantics
+6. **biblical_languages** - Hebrew, Greek, biblical language study, exegesis
+7. **biblical_studies** - Bible study, theology, hermeneutics, biblical interpretation
+8. **planning_quality** - Project management, quality assurance, planning, scheduling, assessment
+9. **consulting_mentoring** - Teaching, mentoring, coaching, guiding others, training, discipleship
+10. **applied_technology** - AI, programming, digital tools, tech training, software, automation, databases, technology for communities, digital literacy, AI implementation
+11. **reflective_practice** - Self-reflection, growth, learning, accountability, self-awareness
+
+**CHAT HISTORY:**
+${userMessages}
+
+**YOUR TASK:**
+Review EVERY message and extract competency evidence. For EACH competency mentioned:
+- Identify WHICH competency (use exact ID from list above)
+- Describe WHAT they said (brief quote or summary)
+- Score the evidence strength (1-10)
+
+**STRENGTH SCORING (1-10):**
+- **8-10**: Specific experience with details and timeframe (e.g., "13 years teaching Bible studies", "worked with 160 communities implementing AI")
+- **6-7**: Clear demonstration without specifics (e.g., "I help teams with AI", "I teach about technology")
+- **4-5**: General mention (e.g., "I work with technology", "I've done some teaching")
+- **2-3**: Weak or unclear mention
+
+**SPECIAL FOCUS ON APPLIED_TECHNOLOGY:**
+Look for ANY mention of:
+- AI work, ChatGPT, Gemini, OpenAI, machine learning, LLMs
+- Programming, coding, software development, databases, APIs
+- Technology training, tech for communities, digital literacy, digital tools
+- Automation, workflow automation
+- Technology implementation for low-resource communities
+
+**RETURN FORMAT (JSON):**
+Return ONLY a JSON array of objects, nothing else. Each object must have:
+{
+  "competencyId": "exact_id_from_list",
+  "evidenceText": "brief description of what they said",
+  "strengthScore": number_1_to_10
+}
+
+Example:
+[
+  {"competencyId": "applied_technology", "evidenceText": "Worked 13 years teaching AI to communities", "strengthScore": 9},
+  {"competencyId": "consulting_mentoring", "evidenceText": "Teaching and training people on technology", "strengthScore": 7}
+]
+
+Extract ALL competency evidence now (return JSON only):`;
+
+  try {
+    const response = await mainModel.invoke([
+      { role: 'user', content: prompt }
+    ]);
+    
+    const responseText = response.content.toString().trim();
+    
+    // Extract JSON from response (may be wrapped in markdown code blocks)
+    let jsonText = responseText;
+    if (responseText.includes('```json')) {
+      const match = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      jsonText = match ? match[1] : responseText;
+    } else if (responseText.includes('```')) {
+      const match = responseText.match(/```\s*([\s\S]*?)\s*```/);
+      jsonText = match ? match[1] : responseText;
+    }
+    
+    const evidenceItems = JSON.parse(jsonText);
+    
+    if (!Array.isArray(evidenceItems)) {
+      console.error('[Chat Analysis] Response was not an array:', evidenceItems);
+      return [];
+    }
+
+    // Store each piece of evidence in the database
+    const results: Array<{competencyId: string, evidenceText: string, strengthScore: number}> = [];
+    
+    for (const item of evidenceItems) {
+      if (!item.competencyId || !item.evidenceText || !item.strengthScore) {
+        console.warn('[Chat Analysis] Skipping invalid evidence item:', item);
+        continue;
+      }
+
+      if (!CORE_COMPETENCIES[item.competencyId]) {
+        console.warn(`[Chat Analysis] Invalid competency ID: ${item.competencyId}`);
+        continue;
+      }
+
+      try {
+        await storage.createCompetencyEvidence({
+          facilitatorId,
+          competencyId: item.competencyId,
+          evidenceText: item.evidenceText,
+          source: 'conversation_history',
+          strengthScore: item.strengthScore,
+          chatId: null,
+          messageId: null,
+          isAppliedToLevel: false,
+        });
+
+        results.push({
+          competencyId: item.competencyId,
+          evidenceText: item.evidenceText,
+          strengthScore: item.strengthScore
+        });
+      } catch (error) {
+        console.error(`[Chat Analysis] Error storing evidence:`, error);
+      }
+    }
+
+    console.log(`[Chat Analysis] Successfully stored ${results.length} pieces of evidence`);
+    return results;
+  } catch (error) {
+    console.error('[Chat Analysis] Error analyzing conversations:', error);
+    throw new Error('Failed to analyze chat history for competency evidence');
+  }
+}
+
 // Export context retrieval for use in routes
 export { getComprehensiveContext };
