@@ -3266,6 +3266,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Evidence Debug Endpoint - for diagnosing competency update issues
+  app.get('/api/facilitator/evidence-debug', requireAuth, async (req: any, res) => {
+    try {
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+
+      console.log(`[Evidence Debug] Generating diagnostic report for facilitator ${facilitator.id}`);
+
+      // Get all competencies
+      const competencies = await storage.getFacilitatorCompetencies(facilitator.id);
+      
+      // Get all evidence
+      const allEvidence = await storage.getFacilitatorEvidence(facilitator.id);
+      
+      // Group evidence by competency
+      const evidenceByCompetency = new Map<string, typeof allEvidence>();
+      for (const evidence of allEvidence) {
+        const existing = evidenceByCompetency.get(evidence.competencyId) || [];
+        existing.push(evidence);
+        evidenceByCompetency.set(evidence.competencyId, existing);
+      }
+
+      // Build diagnostic report
+      const diagnosticReport = Array.from(evidenceByCompetency.entries()).map(([competencyId, evidences]) => {
+        const currentComp = competencies.find(c => c.competencyId === competencyId);
+        const pendingEvidence = evidences.filter(e => !e.isAppliedToLevel);
+        const appliedEvidence = evidences.filter(e => e.isAppliedToLevel);
+        
+        const avgStrength = pendingEvidence.length > 0
+          ? pendingEvidence.reduce((sum, e) => sum + e.strengthScore, 0) / pendingEvidence.length
+          : 0;
+        
+        const MIN_EVIDENCE_COUNT = 3;
+        const MIN_AVG_STRENGTH = 6;
+        
+        const meetsUpdateCriteria = 
+          pendingEvidence.length >= MIN_EVIDENCE_COUNT && 
+          avgStrength >= MIN_AVG_STRENGTH;
+
+        return {
+          competencyId,
+          competencyName: CORE_COMPETENCIES[competencyId]?.name || competencyId,
+          currentStatus: currentComp?.status || 'not_started',
+          statusSource: currentComp?.statusSource || 'auto',
+          pendingEvidenceCount: pendingEvidence.length,
+          appliedEvidenceCount: appliedEvidence.length,
+          totalEvidenceCount: evidences.length,
+          averageStrength: avgStrength.toFixed(1),
+          meetsUpdateCriteria,
+          updateBlockedReason: !meetsUpdateCriteria
+            ? pendingEvidence.length < MIN_EVIDENCE_COUNT
+              ? `Need ${MIN_EVIDENCE_COUNT} evidence (have ${pendingEvidence.length})`
+              : `Need avg strength ${MIN_AVG_STRENGTH}+ (have ${avgStrength.toFixed(1)})`
+            : null,
+          pendingEvidence: pendingEvidence.map(e => ({
+            id: e.id,
+            text: e.evidenceText,
+            strength: e.strengthScore,
+            source: e.source,
+            createdAt: e.createdAt,
+            chatId: e.chatId,
+            messageId: e.messageId
+          })),
+          appliedEvidence: appliedEvidence.slice(0, 3).map(e => ({
+            id: e.id,
+            text: e.evidenceText,
+            strength: e.strengthScore,
+            source: e.source,
+            createdAt: e.createdAt
+          }))
+        };
+      });
+
+      // Sort by competencies that meet criteria first
+      diagnosticReport.sort((a, b) => {
+        if (a.meetsUpdateCriteria && !b.meetsUpdateCriteria) return -1;
+        if (!a.meetsUpdateCriteria && b.meetsUpdateCriteria) return 1;
+        return b.pendingEvidenceCount - a.pendingEvidenceCount;
+      });
+
+      const summary = {
+        facilitatorId: facilitator.id,
+        facilitatorName: `${facilitator.firstName} ${facilitator.lastName}`,
+        totalCompetenciesWithEvidence: diagnosticReport.length,
+        competenciesMeetingCriteria: diagnosticReport.filter(c => c.meetsUpdateCriteria).length,
+        totalPendingEvidence: allEvidence.filter(e => !e.isAppliedToLevel).length,
+        totalAppliedEvidence: allEvidence.filter(e => e.isAppliedToLevel).length,
+      };
+
+      res.json({
+        summary,
+        competencies: diagnosticReport,
+        thresholds: {
+          minEvidenceCount: 3,
+          minAverageStrength: 6
+        }
+      });
+    } catch (error) {
+      console.error("Error generating evidence debug report:", error);
+      res.status(500).json({ message: "Failed to generate debug report" });
+    }
+  });
+
   // Qualification Routes
   app.get('/api/facilitator/qualifications', requireAuth, async (req: any, res) => {
     try {
