@@ -95,7 +95,7 @@ export async function transcribeAudioWithGemini(audioBuffer: Buffer, filename: s
     
 If there are multiple speakers, use speaker diarization (Speaker A, Speaker B, etc.).
 Preserve the original language - do not translate.
-Include timestamps if possible.`;
+Do not include timestamps.`;
     
     const result = await model.generateContent([
       {
