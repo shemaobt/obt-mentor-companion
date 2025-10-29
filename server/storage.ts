@@ -179,7 +179,7 @@ export interface IStorage {
   // Competency operations
   getFacilitatorCompetencies(facilitatorId: string): Promise<FacilitatorCompetency[]>;
   upsertCompetency(competency: InsertFacilitatorCompetency): Promise<FacilitatorCompetency>;
-  updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string): Promise<FacilitatorCompetency>;
+  updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence'): Promise<FacilitatorCompetency>;
   recalculateCompetencies(facilitatorId: string): Promise<void>;
   recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}>;
   getCompetencyChangeHistory(competencyRecordId: string): Promise<CompetencyChangeHistory[]>;
@@ -1115,7 +1115,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string): Promise<FacilitatorCompetency> {
+  async updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence'): Promise<FacilitatorCompetency> {
     // First, fetch the current competency to get the old status
     const [current] = await db
       .select()
@@ -1142,13 +1142,20 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Update the competency
+    const updateData: any = { 
+      status: status as any,
+      notes,
+      lastUpdated: new Date(),
+    };
+    
+    // Only set statusSource if provided (for evidence-based and manual updates)
+    if (statusSource) {
+      updateData.statusSource = statusSource;
+    }
+    
     const [updated] = await db
       .update(facilitatorCompetencies)
-      .set({ 
-        status: status as any,
-        notes,
-        lastUpdated: new Date(),
-      })
+      .set(updateData)
       .where(eq(facilitatorCompetencies.id, competencyId))
       .returning();
     
@@ -1204,12 +1211,13 @@ export class DatabaseStorage implements IStorage {
       const notes = `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${totalScore.toFixed(1)}`;
       
       if (existing) {
-        // Check if competency is manually set
+        // Check if competency is manually set or evidence-based
         const isManual = existing.statusSource === 'manual';
+        const isEvidence = existing.statusSource === 'evidence';
         
-        if (isManual) {
-          // For manual competencies, update only autoScore and suggestedStatus
-          // Preserve the manually-set status and notes
+        if (isManual || isEvidence) {
+          // For manual or evidence-based competencies, update only autoScore and suggestedStatus
+          // Preserve the manually-set or evidence-based status and notes
           await db
             .update(facilitatorCompetencies)
             .set({
