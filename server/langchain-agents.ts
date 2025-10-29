@@ -1319,8 +1319,8 @@ export async function applyPendingEvidence(
   console.log(`[Apply Evidence] START for facilitator ${facilitatorId}`);
   try {
     // Get all unapplied evidence for this facilitator
-    console.log(`[Apply Evidence] Calling storage.getCompetencyEvidence...`);
-    const allEvidence = await storage.getCompetencyEvidence(facilitatorId);
+    console.log(`[Apply Evidence] Calling storage.getFacilitatorEvidence...`);
+    const allEvidence = await storage.getFacilitatorEvidence(facilitatorId);
     console.log(`[Apply Evidence] Got ${allEvidence.length} total evidence pieces`);
     
     const pendingEvidence = allEvidence.filter(e => !e.isAppliedToLevel);
