@@ -128,29 +128,58 @@ export const QUALIFICATION_PATTERNS: QualificationPattern[] = [
 
 /**
  * Activity type mappings to competencies
- * STRICT FOCUS: Each activity type impacts only 1-2 primary competencies
- * Removed secondary impacts to prevent over-crediting
+ * 
+ * PHILOSOPHY (based on "De Facilitador a Mentor"):
+ * - "Diplomas, cursos e certificações ajudam, mas não bastam"
+ * - "O critério decisivo é competência demonstrada em serviço"
+ * - Practical experience should be weighted heavily to reflect this philosophy
+ * 
+ * WEIGHT GUIDELINES:
+ * - Base weights: 8-12 points (enough to reach Proficient with 13+ years experience)
+ * - With 13 years: multiplier ~3.4x = 27-40 points (Advanced level)
+ * - This ensures long-term practitioners are properly recognized
  */
 export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
   'translation': [
-    { competencyId: 'translation_theory', weight: 4 },
-    { competencyId: 'multimodal_skills', weight: 2 },
+    { competencyId: 'translation_theory', weight: 10 },
+    { competencyId: 'multimodal_skills', weight: 6 },
   ],
   'facilitation': [
-    { competencyId: 'interpersonal_skills', weight: 4 },
-    { competencyId: 'consulting_mentoring', weight: 3 },
+    { competencyId: 'interpersonal_skills', weight: 9 },
+    { competencyId: 'consulting_mentoring', weight: 10 },
+    { competencyId: 'reflective_practice', weight: 7 },
   ],
   'teaching': [
-    { competencyId: 'consulting_mentoring', weight: 4 },
+    { competencyId: 'consulting_mentoring', weight: 10 },
+    { competencyId: 'interpersonal_skills', weight: 6 },
+  ],
+  // NEW: Biblical teaching (ensino bíblico) - impacts Biblical Studies heavily
+  'biblical_teaching': [
+    { competencyId: 'biblical_studies', weight: 12 },
+    { competencyId: 'consulting_mentoring', weight: 7 },
+    { competencyId: 'interpersonal_skills', weight: 5 },
+  ],
+  // NEW: Long-term mentoring (mentoria de longo prazo)
+  'long_term_mentoring': [
+    { competencyId: 'consulting_mentoring', weight: 12 },
+    { competencyId: 'reflective_practice', weight: 10 },
+    { competencyId: 'interpersonal_skills', weight: 8 },
+  ],
+  // NEW: Oral facilitation/TBO work (facilitação oral)
+  'oral_facilitation': [
+    { competencyId: 'multimodal_skills', weight: 12 },
+    { competencyId: 'consulting_mentoring', weight: 9 },
+    { competencyId: 'interpersonal_skills', weight: 7 },
   ],
   'indigenous_work': [
-    { competencyId: 'intercultural_communication', weight: 5 },
+    { competencyId: 'intercultural_communication', weight: 11 },
+    { competencyId: 'multimodal_skills', weight: 6 },
   ],
   'school_work': [
-    { competencyId: 'interpersonal_skills', weight: 2 },
+    { competencyId: 'interpersonal_skills', weight: 8 },
   ],
   'general_experience': [
-    { competencyId: 'reflective_practice', weight: 1 },
+    { competencyId: 'reflective_practice', weight: 6 },
   ],
 };
 
@@ -261,8 +290,10 @@ export function calculateActivityImpacts(
   }
   
   if (totalYears > 0) {
-    // Scale: 1 year = 1.0x, 2 years = 1.2x, 3 years = 1.4x, 5+ years = 2.0x
-    multiplier = Math.min(1 + (totalYears - 1) * 0.2, 2.0);
+    // UPDATED SCALE (reflecting "competência demonstrada em serviço"):
+    // 1 year = 1.0x, 3 years = 1.6x, 5 years = 2.2x, 10 years = 3.7x, 13+ years = 4.0x (max)
+    // This ensures long-term practitioners reach Advanced level (21+ points)
+    multiplier = Math.min(1 + (totalYears - 1) * 0.3, 4.0);
   }
   
   // Apply base impacts with years multiplier
