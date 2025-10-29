@@ -8,6 +8,13 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+## October 29, 2025 - Automatic Evidence Application System
+- **NEW FEATURE: Autonomous Evidence Application** - Implemented `applyPendingEvidence()` function that automatically applies accumulated competency evidence to facilitator profiles during conversations. System groups evidence by competency, calculates average strength scores, and promotes competency levels when 3+ observations with 6+ average strength are detected.
+- **AUTOMATIC INTEGRATION** - Evidence application now runs automatically before every chat message (both text and voice), eliminating need for manual button clicks. Uses non-blocking error handling to prevent chat failures.
+- **BACKUP MANUAL TRIGGER** - Added POST `/api/facilitator/apply-pending-evidence` route and "Apply Evidence" button in Portfolio UI for manual forcing when needed. Button shows update results in toast notifications.
+- **BALANCED CHAT ANALYSIS PROMPT** - Removed "SPECIAL FOCUS ON APPLIED_TECHNOLOGY" bias from `analyzeConversationsForEvidence()` prompt. Added balanced guidelines emphasizing all 11 competencies equally, with instructions to recognize both explicit and implicit evidence.
+- **IMPACT**: System now autonomously updates competencies based on conversations without user intervention. Database shows 209 pending evidence pieces across all 11 competencies ready for automatic application (avg strengths 7.1-9.4).
+
 ## October 29, 2025 - Critical Bug Fixes for Activity Duration Scoring & Chat Analysis
 - **FIXED: Activity Duration Field Mapping** - Corrected competency scoring system to properly read `durationYears` and `durationMonths` fields from database. Previously used deprecated `yearsOfExperience` field which was NULL for all activities.
 - **FIXED: Nullish Coalescing for Zero Values** - Changed from `|| null` to `?? null` when passing activity fields to prevent zero-valued durations from being discarded. Now activities with "0 years, 6 months" calculate correctly as 0.5 years instead of being lost.
