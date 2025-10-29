@@ -1737,10 +1737,16 @@ export async function applyPendingEvidence(
       const currentStatus = currentComp?.status || 'not_started';
 
       // Determine new status based on evidence strength
+      // CRITICAL RULE: Evidence-based updates (from conversations) can ONLY reach Proficient
+      // Advanced requires BOTH education (qualifications) AND experience
+      // This aligns with "De Facilitador a Mentor" philosophy:
+      // "Diplomas ajudam, mas não bastam. Competência demonstrada em serviço é decisiva."
       let newStatus: 'not_started' | 'emerging' | 'growing' | 'proficient' | 'advanced';
       
       if (avgStrength >= 8) {
-        newStatus = 'advanced';
+        // Strong evidence (8+) suggests proficient level
+        // NOTE: Cannot promote to Advanced via evidence alone - requires formal education
+        newStatus = 'proficient';
       } else if (avgStrength >= 7) {
         newStatus = 'proficient';
       } else if (avgStrength >= 6.5) {
