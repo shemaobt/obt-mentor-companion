@@ -1231,7 +1231,17 @@ Example:
 Extract ALL competency evidence now (return JSON only):`;
 
   try {
-    const response = await mainModel.invoke([
+    // Use conversationalModel for analyzing chat history
+    const analysisModel = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-pro",
+      temperature: 0.3,
+      apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
+      maxOutputTokens: 8192,
+      timeout: 60000, // 60 second timeout for analysis
+      maxRetries: 2,
+    });
+    
+    const response = await analysisModel.invoke([
       { role: 'user', content: prompt }
     ]);
     
