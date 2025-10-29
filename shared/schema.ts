@@ -233,7 +233,7 @@ export const facilitatorCompetencies = pgTable("facilitator_competencies", {
   notes: text("notes"), // Comments on progress
   // Auto-competency fields
   autoScore: integer("auto_score").default(0), // Calculated score based on qualifications (0-10)
-  statusSource: varchar("status_source", { enum: ["auto", "manual"] }).notNull().default("auto"), // How status was set
+  statusSource: varchar("status_source", { enum: ["auto", "manual", "evidence"] }).notNull().default("auto"), // How status was set (auto=calculated from quals/activities, manual=supervisor override, evidence=conversation evidence)
   suggestedStatus: varchar("suggested_status", { 
     enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
   }), // System-suggested status (shown when manual)

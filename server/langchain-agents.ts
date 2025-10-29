@@ -1396,13 +1396,14 @@ export async function applyPendingEvidence(
           continue;
         }
 
-        // Update competency
+        // Update competency with statusSource='evidence' to prevent recalculateCompetencies() from overwriting
         await storage.updateCompetencyStatus(
           currentComp.id,
           newStatus,
           `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
           'AI Assistant',
-          userId
+          userId,
+          'evidence' // Mark as evidence-based to preserve during auto-recalculation
         );
 
         // Mark all evidence as applied
