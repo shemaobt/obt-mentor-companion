@@ -1318,6 +1318,14 @@ export async function applyPendingEvidence(
 ): Promise<{ updatedCompetencies: string[]; totalEvidence: number }> {
   console.log(`[Apply Evidence] START for facilitator ${facilitatorId}`);
   try {
+    // Get facilitator to retrieve userId
+    const facilitator = await storage.getFacilitator(facilitatorId);
+    if (!facilitator) {
+      console.log(`[Apply Evidence] ERROR: Facilitator ${facilitatorId} not found`);
+      return { updatedCompetencies: [], totalEvidence: 0 };
+    }
+    const userId = facilitator.userId;
+    
     // Get all unapplied evidence for this facilitator
     console.log(`[Apply Evidence] Calling storage.getFacilitatorEvidence...`);
     const allEvidence = await storage.getFacilitatorEvidence(facilitatorId);
@@ -1394,7 +1402,7 @@ export async function applyPendingEvidence(
           newStatus,
           `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
           'AI Assistant',
-          facilitatorId
+          userId
         );
 
         // Mark all evidence as applied
