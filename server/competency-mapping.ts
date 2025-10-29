@@ -231,7 +231,9 @@ export function calculateActivityImpacts(
   activityType: string | null,
   yearsOfExperience?: number | null,
   description?: string | null,
-  chaptersCount?: number | null
+  chaptersCount?: number | null,
+  durationYears?: number | null,
+  durationMonths?: number | null
 ): Map<string, number> {
   const impacts = new Map<string, number>();
   
@@ -244,11 +246,23 @@ export function calculateActivityImpacts(
   const baseImpacts = ACTIVITY_TYPE_IMPACTS[type] || ACTIVITY_TYPE_IMPACTS['general_experience'];
   
   // Calculate multiplier based on YEARS OF EXPERIENCE (primary measure)
+  // Support BOTH old field (yearsOfExperience) and new fields (durationYears + durationMonths)
   // Chapters are NOT used as a general multiplier for all competencies
   let multiplier = 1;
-  if (yearsOfExperience && yearsOfExperience > 0) {
+  
+  // Calculate total years from EITHER yearsOfExperience OR durationYears/Months
+  let totalYears = 0;
+  if (durationYears !== null && durationYears !== undefined) {
+    // NEW format: Use durationYears + (durationMonths/12) for precise calculation
+    totalYears = durationYears + ((durationMonths || 0) / 12);
+  } else if (yearsOfExperience && yearsOfExperience > 0) {
+    // OLD format: Fallback to yearsOfExperience for backwards compatibility
+    totalYears = yearsOfExperience;
+  }
+  
+  if (totalYears > 0) {
     // Scale: 1 year = 1.0x, 2 years = 1.2x, 3 years = 1.4x, 5+ years = 2.0x
-    multiplier = Math.min(1 + (yearsOfExperience - 1) * 0.2, 2.0);
+    multiplier = Math.min(1 + (totalYears - 1) * 0.2, 2.0);
   }
   
   // Apply base impacts with years multiplier
@@ -288,6 +302,8 @@ export function calculateCompetencyScores(
     yearsOfExperience?: number | null;
     description?: string | null;
     chaptersCount?: number | null;
+    durationYears?: number | null;
+    durationMonths?: number | null;
   }>
 ): {
   total: Map<string, number>;
@@ -320,7 +336,9 @@ export function calculateCompetencyScores(
         activity.activityType || null,
         activity.yearsOfExperience || null,
         activity.description || null,
-        activity.chaptersCount || null
+        activity.chaptersCount || null,
+        activity.durationYears || null,
+        activity.durationMonths || null
       );
       
       // Accumulate impacts into experience scores
