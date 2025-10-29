@@ -42,7 +42,8 @@ import {
   X,
   Upload,
   File,
-  Eye
+  Eye,
+  MessageSquare
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -301,6 +302,28 @@ export default function Portfolio() {
       toast({
         title: "Error",
         description: "Failed to recalculate competencies",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Analyze chat history mutation
+  const analyzeChatHistoryMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/facilitator/analyze-chat-history", {});
+      return response as { evidenceCount: number; competenciesTracked: string[] };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competencies'] });
+      toast({
+        title: "Chat History Analyzed",
+        description: `Found ${data.evidenceCount} pieces of competency evidence in your conversations. Competencies tracked: ${data.competenciesTracked.length}`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to analyze chat history",
         variant: "destructive",
       });
     },
@@ -904,16 +927,28 @@ export default function Portfolio() {
                         Track the development of your OBT facilitation competencies
                       </CardDescription>
                     </div>
-                    <Button
-                      onClick={() => recalculateCompetenciesMutation.mutate()}
-                      disabled={recalculateCompetenciesMutation.isPending}
-                      variant="outline"
-                      size={isMobile ? "sm" : "default"}
-                      data-testid="button-recalculate-competencies"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${recalculateCompetenciesMutation.isPending ? 'animate-spin' : ''}`} />
-                      {!isMobile && "Recalculate"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => analyzeChatHistoryMutation.mutate()}
+                        disabled={analyzeChatHistoryMutation.isPending}
+                        variant="default"
+                        size={isMobile ? "sm" : "default"}
+                        data-testid="button-analyze-chat-history"
+                      >
+                        <MessageSquare className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${analyzeChatHistoryMutation.isPending ? 'animate-spin' : ''}`} />
+                        {!isMobile && "Analyze Chats"}
+                      </Button>
+                      <Button
+                        onClick={() => recalculateCompetenciesMutation.mutate()}
+                        disabled={recalculateCompetenciesMutation.isPending}
+                        variant="outline"
+                        size={isMobile ? "sm" : "default"}
+                        data-testid="button-recalculate-competencies"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${recalculateCompetenciesMutation.isPending ? 'animate-spin' : ''}`} />
+                        {!isMobile && "Recalculate"}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
