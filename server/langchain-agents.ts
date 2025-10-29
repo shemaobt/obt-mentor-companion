@@ -1737,20 +1737,20 @@ export async function applyPendingEvidence(
       const currentStatus = currentComp?.status || 'not_started';
 
       // Determine new status based on evidence strength
-      let newStatus: 'not_started' | 'developing' | 'proficient' | 'advanced' | 'expert';
+      let newStatus: 'not_started' | 'emerging' | 'growing' | 'proficient' | 'advanced';
       
-      if (avgStrength >= 9) {
-        newStatus = 'expert';
-      } else if (avgStrength >= 8) {
+      if (avgStrength >= 8) {
         newStatus = 'advanced';
       } else if (avgStrength >= 7) {
         newStatus = 'proficient';
+      } else if (avgStrength >= 6.5) {
+        newStatus = 'growing';
       } else {
-        newStatus = 'developing';
+        newStatus = 'emerging';
       }
 
       // Only update if new status is higher than current
-      const statusOrder = { 'not_started': 0, 'developing': 1, 'proficient': 2, 'advanced': 3, 'expert': 4 };
+      const statusOrder = { 'not_started': 0, 'emerging': 1, 'growing': 2, 'proficient': 3, 'advanced': 4 };
       if (statusOrder[newStatus] > statusOrder[currentStatus]) {
         if (!currentComp) {
           console.log(`[Apply Evidence] ERROR: Competency record not found for ${competencyId}`);
