@@ -198,8 +198,8 @@ export default function MessageComponent({ message, speechSynthesis, selectedLan
                     li: ({node, ...props}) => <li className="mb-1" {...props} />,
                     code: ({node, inline, ...props}) => 
                       inline 
-                        ? <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono" {...props} />
-                        : <pre className="bg-muted p-2 rounded overflow-x-auto"><code className="text-sm font-mono whitespace-pre" {...props} /></pre>,
+                        ? <code className="bg-muted text-foreground px-1 py-0.5 rounded text-sm font-mono" {...props} />
+                        : <pre className="bg-muted p-2 rounded overflow-x-auto"><code className="text-foreground text-sm font-mono whitespace-pre" {...props} /></pre>,
                     blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-2" {...props} />,
                   }}
                 >
