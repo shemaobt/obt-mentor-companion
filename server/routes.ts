@@ -1010,9 +1010,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AUTOMATICALLY apply any pending evidence to competencies before loading context
       // This runs silently in background - no user action required
       if (facilitatorId) {
-        applyPendingEvidence(storage, facilitatorId).catch(err => 
-          console.error('[Auto Evidence] Error applying pending evidence:', err)
-        );
+        console.log(`[Auto Evidence] Calling applyPendingEvidence for facilitator ${facilitatorId}`);
+        await applyPendingEvidence(storage, facilitatorId).catch(err => {
+          console.error('[Auto Evidence] Error applying pending evidence:', err);
+          return { updatedCompetencies: [], totalEvidence: 0 };
+        });
+      } else {
+        console.log('[Auto Evidence] No facilitatorId found, skipping evidence application');
       }
 
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
@@ -1269,9 +1273,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AUTOMATICALLY apply any pending evidence to competencies before loading context
       // This runs silently in background - no user action required
       if (facilitatorId) {
-        applyPendingEvidence(storage, facilitatorId).catch(err => 
-          console.error('[Auto Evidence] Error applying pending evidence:', err)
-        );
+        console.log(`[Auto Evidence] Calling applyPendingEvidence for facilitator ${facilitatorId}`);
+        await applyPendingEvidence(storage, facilitatorId).catch(err => {
+          console.error('[Auto Evidence] Error applying pending evidence:', err);
+          return { updatedCompetencies: [], totalEvidence: 0 };
+        });
+      } else {
+        console.log('[Auto Evidence] No facilitatorId found, skipping evidence application');
       }
 
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
