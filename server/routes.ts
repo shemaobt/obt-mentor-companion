@@ -3230,6 +3230,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/facilitator/apply-pending-evidence', requireAuth, requireCSRFHeader, async (req: any, res) => {
+    try {
+      const facilitator = await storage.getFacilitatorByUserId(req.userId);
+      
+      if (!facilitator) {
+        return res.status(404).json({ message: "Facilitator profile not found" });
+      }
+
+      console.log(`[Apply Evidence] Manual trigger for facilitator ${facilitator.id}`);
+
+      // Apply pending evidence to competencies
+      const result = await applyPendingEvidence(storage, facilitator.id);
+
+      console.log(`[Apply Evidence] Updated ${result.updatedCompetencies.length} competencies from ${result.totalEvidence} evidence pieces`);
+
+      res.json({
+        message: result.updatedCompetencies.length > 0 
+          ? `Successfully updated ${result.updatedCompetencies.length} competencies`
+          : "No competencies met the criteria for automatic updates (need 3+ evidence with 6+ avg strength)",
+        updatedCompetencies: result.updatedCompetencies,
+        totalEvidence: result.totalEvidence
+      });
+    } catch (error) {
+      console.error("Error applying pending evidence:", error);
+      res.status(500).json({ message: "Failed to apply pending evidence" });
+    }
+  });
+
   // Qualification Routes
   app.get('/api/facilitator/qualifications', requireAuth, async (req: any, res) => {
     try {

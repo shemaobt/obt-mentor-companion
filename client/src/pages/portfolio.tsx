@@ -329,6 +329,28 @@ export default function Portfolio() {
     },
   });
 
+  // Apply pending evidence mutation
+  const applyPendingEvidenceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/facilitator/apply-pending-evidence", {});
+      return await response.json() as { updatedCompetencies: string[]; totalEvidence: number; message: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competencies'] });
+      toast({
+        title: data.updatedCompetencies.length > 0 ? "Competencies Updated" : "No Updates",
+        description: data.message,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to apply pending evidence",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Create qualification mutation
   const createQualificationMutation = useMutation({
     mutationFn: async (data: { courseTitle: string; institution: string; completionDate: string; courseLevel: CourseLevel; description: string }) => {
@@ -937,6 +959,16 @@ export default function Portfolio() {
                       >
                         <MessageSquare className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${analyzeChatHistoryMutation.isPending ? 'animate-spin' : ''}`} />
                         {!isMobile && "Analyze Chats"}
+                      </Button>
+                      <Button
+                        onClick={() => applyPendingEvidenceMutation.mutate()}
+                        disabled={applyPendingEvidenceMutation.isPending}
+                        variant="secondary"
+                        size={isMobile ? "sm" : "default"}
+                        data-testid="button-apply-evidence"
+                      >
+                        <Zap className={`h-4 w-4 ${isMobile ? '' : 'mr-2'} ${applyPendingEvidenceMutation.isPending ? 'animate-spin' : ''}`} />
+                        {!isMobile && "Apply Evidence"}
                       </Button>
                       <Button
                         onClick={() => recalculateCompetenciesMutation.mutate()}
