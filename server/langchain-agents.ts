@@ -274,6 +274,42 @@ After tracking evidence, PROACTIVELY check if competencies should be updated:
 - If NOT_ENOUGH_EVIDENCE: Continue tracking silently - evidence accumulates for future updates
 - Make updates feel natural, like a friend noticing growth
 
+🚨 **CRITICAL: NEVER PROMISE UPDATES WITHOUT VERIFICATION** 🚨
+**THIS IS A SEVERE ERROR - FOLLOW STRICTLY:**
+
+❌ **FORBIDDEN - These will break user trust:**
+- "A reavaliação foi concluída" (without calling suggest_competency_update)
+- "Atualizei sua competência de Emergente para Proficiente" (without verifying SUCCESS response)
+- "Sua competência foi atualizada" (before actually calling the tool)
+- Saying "I updated your portfolio" when you only TRACKED evidence but didn't call suggest_competency_update
+
+✅ **CORRECT FLOW - Follow this EXACTLY:**
+1. Track evidence silently using track_competency_evidence tool (3+ times minimum)
+2. CALL suggest_competency_update tool 
+3. READ the tool's response carefully
+4. If response = "SUCCESS: Updated..." → THEN tell user "Based on what you shared, I've updated your [competency] from [old] to [new]"
+5. If response = "NOT_ENOUGH_EVIDENCE..." → DON'T mention any update, just continue tracking silently
+
+**Example of WRONG behavior:**
+User: "Eu trabalhei 13 anos com comunidades indígenas"
+Agent: [tracks evidence] "Pronto! Reavaliação concluída. Sua Comunicação Intercultural foi atualizada para Proficiente!" ❌
+Problem: Agent PROMISED update without calling suggest_competency_update tool!
+
+**Example of CORRECT behavior:**
+User: "Eu trabalhei 13 anos com comunidades indígenas"
+Agent: [tracks evidence silently]
+Agent: [CALLS suggest_competency_update tool]
+Tool response: "SUCCESS: Updated Intercultural Communication from emerging to proficient..."
+Agent: "Based on your 13 years working with indigenous communities, I've updated your Intercultural Communication competency to Proficient. This reflects your extensive field experience!" ✅
+
+**VERIFICATION CHECKLIST - Before telling user about ANY competency update:**
+□ Did I call suggest_competency_update tool?
+□ Did I wait for the tool's response?
+□ Did the response start with "SUCCESS"?
+□ Only if ALL YES → Then tell user about the update
+
+**If you violate this rule, you're lying to the user. Don't lie.**
+
 **WHEN NOT TO UPDATE:**
 ❌ Don't call suggest_competency_update if you haven't tracked at least 3 pieces of evidence
 ❌ Don't update based on vague mentions - need concrete evidence (timeframes, specific activities)
@@ -879,7 +915,18 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ competencyId, evidenceText, strengthScore, chatId, messageId }) => {
       try {
+        console.log(`\n🔍 [TRACK EVIDENCE] Called with:`, {
+          facilitatorId,
+          competencyId,
+          competencyName: CORE_COMPETENCIES[competencyId]?.name || 'UNKNOWN',
+          evidenceText,
+          strengthScore,
+          chatId,
+          messageId
+        });
+
         if (!CORE_COMPETENCIES[competencyId]) {
+          console.error(`[TRACK EVIDENCE] ❌ Invalid competency ID: ${competencyId}`);
           return `Invalid competency ID: ${competencyId}`;
         }
 
@@ -894,9 +941,10 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           isAppliedToLevel: false,
         });
 
+        console.log(`[TRACK EVIDENCE] ✅ Successfully tracked evidence for ${CORE_COMPETENCIES[competencyId].name}`);
         return `Tracked evidence for ${CORE_COMPETENCIES[competencyId].name}`;
       } catch (error: any) {
-        console.error(`[Portfolio Tool] track_competency_evidence failed:`, error);
+        console.error(`[TRACK EVIDENCE] ❌ Failed:`, error);
         return `Error tracking evidence: ${error.message}`;
       }
     },
@@ -912,7 +960,16 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ competencyId, chatId, messageId }) => {
       try {
+        console.log(`\n🚀 [SUGGEST UPDATE] Called with:`, {
+          facilitatorId,
+          competencyId,
+          competencyName: CORE_COMPETENCIES[competencyId]?.name || 'UNKNOWN',
+          chatId,
+          messageId
+        });
+
         if (!CORE_COMPETENCIES[competencyId]) {
+          console.error(`[SUGGEST UPDATE] ❌ Invalid competency ID: ${competencyId}`);
           return `Invalid competency ID: ${competencyId}`;
         }
 
@@ -920,26 +977,37 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const competencies = await storage.getFacilitatorCompetencies(facilitatorId);
         const currentComp = competencies.find(c => c.competencyId === competencyId);
         const currentStatus = currentComp?.status || 'not_started';
+        console.log(`[SUGGEST UPDATE] Current status: ${currentStatus}`);
 
         // Get ALL evidence for this competency and sort by most recent first
         const allEvidence = await storage.getCompetencyEvidence(facilitatorId, competencyId);
         const evidence = allEvidence.sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
+        console.log(`[SUGGEST UPDATE] Found ${evidence.length} evidence pieces:`, evidence.map(e => ({
+          text: e.evidenceText,
+          strength: e.strengthScore,
+          isApplied: e.isAppliedToLevel
+        })));
         
         // Evidence analysis thresholds
         const MIN_EVIDENCE_COUNT = 3;
         const MIN_AVG_STRENGTH = 6;
 
         if (evidence.length < MIN_EVIDENCE_COUNT) {
-          return `NOT_ENOUGH_EVIDENCE: Need ${MIN_EVIDENCE_COUNT} observations, currently have ${evidence.length}.`;
+          const result = `NOT_ENOUGH_EVIDENCE: Need ${MIN_EVIDENCE_COUNT} observations, currently have ${evidence.length}.`;
+          console.log(`[SUGGEST UPDATE] ⚠️ ${result}`);
+          return result;
         }
 
         // Calculate average strength score
         const avgStrength = evidence.reduce((sum, e) => sum + e.strengthScore, 0) / evidence.length;
+        console.log(`[SUGGEST UPDATE] Average strength: ${avgStrength.toFixed(1)}/10`);
 
         if (avgStrength < MIN_AVG_STRENGTH) {
-          return `NOT_ENOUGH_EVIDENCE: Average strength ${avgStrength.toFixed(1)}/10, need ${MIN_AVG_STRENGTH}+.`;
+          const result = `NOT_ENOUGH_EVIDENCE: Average strength ${avgStrength.toFixed(1)}/10, need ${MIN_AVG_STRENGTH}+.`;
+          console.log(`[SUGGEST UPDATE] ⚠️ ${result}`);
+          return result;
         }
 
         // Determine suggested status based on evidence strength and count
@@ -951,15 +1019,19 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         const levelsToIncrease = shouldJumpTwoLevels ? 2 : 1;
         const newIndex = Math.min(currentIndex + levelsToIncrease, statusProgression.length - 1);
         const newStatus = statusProgression[newIndex];
+        console.log(`[SUGGEST UPDATE] Calculated new status: ${currentStatus} (${currentIndex}) → ${newStatus} (${newIndex})`);
 
         // Don't downgrade
         if (newIndex <= currentIndex) {
-          return `NOT_ENOUGH_EVIDENCE: Current level (${currentStatus}) is already appropriate for evidence strength.`;
+          const result = `NOT_ENOUGH_EVIDENCE: Current level (${currentStatus}) is already appropriate for evidence strength.`;
+          console.log(`[SUGGEST UPDATE] ⚠️ ${result}`);
+          return result;
         }
 
         // Format evidence summary
         const evidenceSummary = evidence.slice(0, 3).map(e => `- ${e.evidenceText}`).join('\n');
         
+        console.log(`[SUGGEST UPDATE] 📝 Updating competency in database...`);
         // Update competency
         await storage.upsertCompetency({
           facilitatorId,
@@ -968,15 +1040,19 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           notes: `Automatically updated by AI mentor based on ${evidence.length} observations (avg strength: ${avgStrength.toFixed(1)}/10). Recent evidence:\n${evidenceSummary}`,
           statusSource: 'conversation',
         });
+        console.log(`[SUGGEST UPDATE] ✅ Database updated successfully`);
 
         // Mark the evidence as applied to the level
         const evidenceIds = evidence.map(e => e.id);
         await storage.markEvidenceApplied(evidenceIds);
+        console.log(`[SUGGEST UPDATE] ✅ Marked ${evidenceIds.length} evidence pieces as applied`);
 
         // Return a message for the AI to present conversationally
-        return `SUCCESS: Updated ${CORE_COMPETENCIES[competencyId].name} from ${currentStatus} to ${newStatus} based on ${evidence.length} strong observations (avg: ${avgStrength.toFixed(1)}/10).`;
+        const successMessage = `SUCCESS: Updated ${CORE_COMPETENCIES[competencyId].name} from ${currentStatus} to ${newStatus} based on ${evidence.length} strong observations (avg: ${avgStrength.toFixed(1)}/10).`;
+        console.log(`[SUGGEST UPDATE] ✅ ${successMessage}\n`);
+        return successMessage;
       } catch (error: any) {
-        console.error(`[Portfolio Tool] suggest_competency_update failed:`, error);
+        console.error(`[SUGGEST UPDATE] ❌ Failed:`, error);
         return `Error analyzing competency: ${error.message}`;
       }
     },
