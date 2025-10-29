@@ -5,6 +5,7 @@ import { generateChatTitle } from "./openai";
 import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage } from "./gemini-audio";
 import OpenAI from "openai";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext, deleteChatEmbeddings } from "./vector-memory";
+import { applyPendingEvidence } from "./langchain-agents";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
 import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcryptjs";
@@ -1006,6 +1007,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateChatTitle(chatId, title, userId);
       }
 
+      // AUTOMATICALLY apply any pending evidence to competencies before loading context
+      // This runs silently in background - no user action required
+      if (facilitatorId) {
+        applyPendingEvidence(storage, facilitatorId).catch(err => 
+          console.error('[Auto Evidence] Error applying pending evidence:', err)
+        );
+      }
+
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
       const relevantContext = await getComprehensiveContext({
         query: content,
@@ -1255,6 +1264,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         attachmentContext = "\n\n[ATTACHMENTS IN THIS MESSAGE]:\n" + attachmentDetails.join("\n") + "\n";
         console.log('[Attachment Context] Processed', attachments.length, 'attachments with text extraction');
+      }
+
+      // AUTOMATICALLY apply any pending evidence to competencies before loading context
+      // This runs silently in background - no user action required
+      if (facilitatorId) {
+        applyPendingEvidence(storage, facilitatorId).catch(err => 
+          console.error('[Auto Evidence] Error applying pending evidence:', err)
+        );
       }
 
       // Retrieve comprehensive context (portfolio + recent messages + vector search)
