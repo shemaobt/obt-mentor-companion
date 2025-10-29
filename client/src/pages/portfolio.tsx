@@ -311,7 +311,7 @@ export default function Portfolio() {
   const analyzeChatHistoryMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/facilitator/analyze-chat-history", {});
-      return response as { evidenceCount: number; competenciesTracked: string[] };
+      return await response.json() as { evidenceCount: number; competenciesTracked: string[] };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/facilitator/competencies'] });

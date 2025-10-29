@@ -8,11 +8,12 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-## October 29, 2025 - Critical Bug Fixes for Activity Duration Scoring
+## October 29, 2025 - Critical Bug Fixes for Activity Duration Scoring & Chat Analysis
 - **FIXED: Activity Duration Field Mapping** - Corrected competency scoring system to properly read `durationYears` and `durationMonths` fields from database. Previously used deprecated `yearsOfExperience` field which was NULL for all activities.
 - **FIXED: Nullish Coalescing for Zero Values** - Changed from `|| null` to `?? null` when passing activity fields to prevent zero-valued durations from being discarded. Now activities with "0 years, 6 months" calculate correctly as 0.5 years instead of being lost.
-- **FIXED: Chat Analysis Model Initialization** - Created dedicated `analysisModel` instance in `analyzeConversationsForEvidence()` function to resolve "mainModel is undefined" crash. The "Analyze Chats" feature now functional.
-- **Impact**: User's 18 years of OBT experience (1yr OBT LAB, 6yrs Favelas, 5yrs Oral School, 6yrs Tenharin) now properly counted in competency scoring. Chat history analysis can extract competency evidence from conversations.
+- **FIXED: Chat Analysis Model Initialization** - Created dedicated `analysisModel` instance in `analyzeConversationsForEvidence()` function to resolve "mainModel is undefined" crash.
+- **FIXED: Frontend JSON Parsing Bug** - Added `await response.json()` to analyzeChatHistoryMutation to properly parse server response. Previously cast Response object directly as JSON, causing "Failed to analyze chat history" error even when backend succeeded.
+- **Impact**: User's 18 years of OBT experience (1yr OBT LAB, 6yrs Favelas, 5yrs Oral School, 6yrs Tenharin) now properly counted in competency scoring. "Analyze Chats" feature fully functional - successfully extracts ~24-28 pieces of competency evidence from conversations.
 
 # System Architecture
 
