@@ -132,54 +132,70 @@ export const QUALIFICATION_PATTERNS: QualificationPattern[] = [
  * PHILOSOPHY (based on "De Facilitador a Mentor"):
  * - "Diplomas, cursos e certificações ajudam, mas não bastam"
  * - "O critério decisivo é competência demonstrada em serviço"
- * - Practical experience should be weighted heavily to reflect this philosophy
+ * - Practical experience should be weighted to reach Proficient, but NOT Advanced
  * 
  * WEIGHT GUIDELINES:
- * - Base weights: 8-12 points (enough to reach Proficient with 13+ years experience)
- * - With 13 years: multiplier ~3.4x = 27-40 points (Advanced level)
- * - This ensures long-term practitioners are properly recognized
+ * - Base weights: 4-6 points (calibrated for experience-only path)
+ * - With 13 years: multiplier 4.0x → 16-24 points
+ * - Target: Experience alone → Proficient (13-20 points)
+ * - Advanced (21+) requires BOTH education + experience
+ * - Supervisor can manually override if needed
+ * 
+ * CALCULATIONS:
+ * - 13 years biblical_teaching: 5 × 4.0 = 20 points (Proficient - top end)
+ * - 13 years + Bachelor (15): 20 + 15 = 35 points (Advanced)
  */
 export const ACTIVITY_TYPE_IMPACTS: Record<string, CompetencyImpact[]> = {
   'translation': [
-    { competencyId: 'translation_theory', weight: 10 },
-    { competencyId: 'multimodal_skills', weight: 6 },
+    { competencyId: 'translation_theory', weight: 4 },
+    { competencyId: 'multimodal_skills', weight: 3 },
   ],
   'facilitation': [
-    { competencyId: 'interpersonal_skills', weight: 9 },
-    { competencyId: 'consulting_mentoring', weight: 10 },
-    { competencyId: 'reflective_practice', weight: 7 },
+    { competencyId: 'interpersonal_skills', weight: 4 },
+    { competencyId: 'consulting_mentoring', weight: 4 },
+    { competencyId: 'reflective_practice', weight: 3 },
   ],
   'teaching': [
-    { competencyId: 'consulting_mentoring', weight: 10 },
-    { competencyId: 'interpersonal_skills', weight: 6 },
+    { competencyId: 'consulting_mentoring', weight: 4 },
+    { competencyId: 'interpersonal_skills', weight: 3 },
   ],
   // NEW: Biblical teaching (ensino bíblico) - impacts Biblical Studies heavily
   'biblical_teaching': [
-    { competencyId: 'biblical_studies', weight: 12 },
-    { competencyId: 'consulting_mentoring', weight: 7 },
-    { competencyId: 'interpersonal_skills', weight: 5 },
+    { competencyId: 'biblical_studies', weight: 5 },
+    { competencyId: 'consulting_mentoring', weight: 3 },
+    { competencyId: 'interpersonal_skills', weight: 2 },
   ],
   // NEW: Long-term mentoring (mentoria de longo prazo)
   'long_term_mentoring': [
-    { competencyId: 'consulting_mentoring', weight: 12 },
-    { competencyId: 'reflective_practice', weight: 10 },
-    { competencyId: 'interpersonal_skills', weight: 8 },
+    { competencyId: 'consulting_mentoring', weight: 5 },
+    { competencyId: 'reflective_practice', weight: 4 },
+    { competencyId: 'interpersonal_skills', weight: 3 },
   ],
   // NEW: Oral facilitation/TBO work (facilitação oral)
   'oral_facilitation': [
-    { competencyId: 'multimodal_skills', weight: 12 },
-    { competencyId: 'consulting_mentoring', weight: 9 },
-    { competencyId: 'interpersonal_skills', weight: 7 },
+    { competencyId: 'multimodal_skills', weight: 5 },
+    { competencyId: 'consulting_mentoring', weight: 4 },
+    { competencyId: 'interpersonal_skills', weight: 3 },
+  ],
+  // NEW: Quality assurance work (trabalho de garantia de qualidade)
+  'quality_assurance_work': [
+    { competencyId: 'planning_quality', weight: 6 },
+    { competencyId: 'translation_theory', weight: 3 },
+  ],
+  // NEW: Community engagement (engajamento comunitário)
+  'community_engagement': [
+    { competencyId: 'intercultural_communication', weight: 5 },
+    { competencyId: 'interpersonal_skills', weight: 3 },
   ],
   'indigenous_work': [
-    { competencyId: 'intercultural_communication', weight: 11 },
-    { competencyId: 'multimodal_skills', weight: 6 },
+    { competencyId: 'intercultural_communication', weight: 5 },
+    { competencyId: 'multimodal_skills', weight: 3 },
   ],
   'school_work': [
-    { competencyId: 'interpersonal_skills', weight: 8 },
+    { competencyId: 'interpersonal_skills', weight: 3 },
   ],
   'general_experience': [
-    { competencyId: 'reflective_practice', weight: 6 },
+    { competencyId: 'reflective_practice', weight: 2 },
   ],
 };
 
