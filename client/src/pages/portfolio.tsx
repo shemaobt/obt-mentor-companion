@@ -761,26 +761,26 @@ export default function Portfolio() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="profile" data-testid="tab-profile">
-                <User className="h-4 w-4 mr-2" />
-                {!isMobile && "Profile"}
+            <TabsList className="grid w-full grid-cols-3 mp:grid-cols-5 sm:grid-cols-5">
+              <TabsTrigger value="profile" data-testid="tab-profile" className={isMobile ? 'px-2 mp:px-3' : ''}>
+                <User className="h-4 w-4 mp:mr-2" />
+                <span className="hidden mp:inline">Profile</span>
               </TabsTrigger>
-              <TabsTrigger value="competencies" data-testid="tab-competencies">
-                <Target className="h-4 w-4 mr-2" />
-                {!isMobile && "Competencies"}
+              <TabsTrigger value="competencies" data-testid="tab-competencies" className={isMobile ? 'px-2 mp:px-3' : ''}>
+                <Target className="h-4 w-4 mp:mr-2" />
+                <span className="hidden mp:inline">Competencies</span>
               </TabsTrigger>
-              <TabsTrigger value="qualifications" data-testid="tab-qualifications">
-                <GraduationCap className="h-4 w-4 mr-2" />
-                {!isMobile && "Qualifications"}
+              <TabsTrigger value="qualifications" data-testid="tab-qualifications" className={isMobile ? 'px-2 mp:px-3' : ''}>
+                <GraduationCap className="h-4 w-4 mp:mr-2" />
+                <span className="hidden mp:inline">Qualifications</span>
               </TabsTrigger>
-              <TabsTrigger value="activities" data-testid="tab-activities">
-                <Activity className="h-4 w-4 mr-2" />
-                {!isMobile && "Activities"}
+              <TabsTrigger value="activities" data-testid="tab-activities" className={isMobile ? 'px-2 mp:px-3' : ''}>
+                <Activity className="h-4 w-4 mp:mr-2" />
+                <span className="hidden mp:inline">Activities</span>
               </TabsTrigger>
-              <TabsTrigger value="reports" data-testid="tab-reports">
-                <FileText className="h-4 w-4 mr-2" />
-                {!isMobile && "Reports"}
+              <TabsTrigger value="reports" data-testid="tab-reports" className={isMobile ? 'px-2 mp:px-3' : ''}>
+                <FileText className="h-4 w-4 mp:mr-2" />
+                <span className="hidden mp:inline">Reports</span>
               </TabsTrigger>
             </TabsList>
 
