@@ -761,26 +761,26 @@ export default function Portfolio() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mp:grid-cols-5 sm:grid-cols-5">
-              <TabsTrigger value="profile" data-testid="tab-profile" className={isMobile ? 'px-2 mp:px-3' : ''}>
-                <User className="h-4 w-4 mp:mr-2" />
-                <span className="hidden mp:inline">Profile</span>
+            <TabsList className="w-full inline-flex md:grid md:grid-cols-5 overflow-x-auto scrollbar-hide justify-start md:justify-center">
+              <TabsTrigger value="profile" data-testid="tab-profile" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <User className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Profile</span>
               </TabsTrigger>
-              <TabsTrigger value="competencies" data-testid="tab-competencies" className={isMobile ? 'px-2 mp:px-3' : ''}>
-                <Target className="h-4 w-4 mp:mr-2" />
-                <span className="hidden mp:inline">Competencies</span>
+              <TabsTrigger value="competencies" data-testid="tab-competencies" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <Target className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Competencies</span>
               </TabsTrigger>
-              <TabsTrigger value="qualifications" data-testid="tab-qualifications" className={isMobile ? 'px-2 mp:px-3' : ''}>
-                <GraduationCap className="h-4 w-4 mp:mr-2" />
-                <span className="hidden mp:inline">Qualifications</span>
+              <TabsTrigger value="qualifications" data-testid="tab-qualifications" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <GraduationCap className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Qualifications</span>
               </TabsTrigger>
-              <TabsTrigger value="activities" data-testid="tab-activities" className={isMobile ? 'px-2 mp:px-3' : ''}>
-                <Activity className="h-4 w-4 mp:mr-2" />
-                <span className="hidden mp:inline">Activities</span>
+              <TabsTrigger value="activities" data-testid="tab-activities" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <Activity className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Activities</span>
               </TabsTrigger>
-              <TabsTrigger value="reports" data-testid="tab-reports" className={isMobile ? 'px-2 mp:px-3' : ''}>
-                <FileText className="h-4 w-4 mp:mr-2" />
-                <span className="hidden mp:inline">Reports</span>
+              <TabsTrigger value="reports" data-testid="tab-reports" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <FileText className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Reports</span>
               </TabsTrigger>
             </TabsList>
 
