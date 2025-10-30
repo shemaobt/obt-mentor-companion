@@ -330,8 +330,8 @@ export default function AdminFeedback() {
                 <div className="space-y-4">
                   {filteredFeedbacks.map((feedback) => (
                     <Card key={feedback.id} className="relative" data-testid={`card-feedback-${feedback.id}`}>
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
+                      <CardContent className={isMobile ? "p-4" : "p-6"}>
+                        <div className={isMobile ? "space-y-4" : "flex items-start justify-between"}>
                           <div className="flex-1 space-y-3">
                             {/* Header with status and category */}
                             <div className="flex items-center gap-3 flex-wrap">
@@ -379,16 +379,19 @@ export default function AdminFeedback() {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-2">
+                          <div className={isMobile ? "flex gap-2 w-full" : "flex items-center gap-2"}>
                             {/* Status Update Dropdown */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button 
                                   variant="outline" 
-                                  size="sm"
+                                  size={isMobile ? "default" : "sm"}
+                                  className={isMobile ? "flex-1 min-h-[44px]" : ""}
                                   data-testid={`button-status-menu-${feedback.id}`}
                                 >
-                                  Update Status
+                                  <MoreHorizontal className={isMobile ? "h-4 w-4 mr-2" : "h-4 w-4"} />
+                                  {isMobile && "Status"}
+                                  {!isMobile && "Update Status"}
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -424,8 +427,8 @@ export default function AdminFeedback() {
                               <AlertDialogTrigger asChild>
                                 <Button 
                                   variant="outline" 
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive"
+                                  size={isMobile ? "default" : "sm"}
+                                  className={isMobile ? "min-h-[44px] min-w-[44px] px-3" : "text-destructive hover:text-destructive"}
                                   data-testid={`button-delete-${feedback.id}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
