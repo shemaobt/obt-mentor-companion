@@ -13,6 +13,7 @@ Preferred communication style: Simple, everyday language.
 - **UI Framework**: Radix UI primitives with shadcn/ui and Tailwind CSS, maintaining a consistent olive-green palette across light and dark modes.
 - **Typography**: Inter font family with English UI labels.
 - **Logo System**: Unified white logo icon with theme-colored backgrounds, dynamic favicon updates.
+- **Mobile Responsiveness**: Fully responsive design with mobile-first breakpoints (xs: 320px, sp: 360px, mp: 390px, lp: 414px, xp: 480px), drawer sidebar on mobile (<768px), adaptive layouts, and minimum 44px touch targets for optimal mobile UX. Portfolio tabs adapt from 3 columns (icon-only) on small mobile to 5 columns with labels on larger screens.
 
 ## Technical Implementation
 - **Frontend**: React with TypeScript (Vite), TanStack Query for state management, Wouter for routing.
