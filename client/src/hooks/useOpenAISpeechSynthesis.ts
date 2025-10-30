@@ -372,18 +372,38 @@ export function useOpenAISpeechSynthesis(
         });
       };
 
-      // Pipeline: Generate next chunk while current one plays
-      const audioUrlPromises: Promise<string | null>[] = [];
+      // Smart pipeline: Generate chunks in small batches to avoid quota limits
+      // Google Gemini TTS has a limit of 10 requests per minute
+      // We'll generate max 2 chunks ahead to stay within limits
+      const MAX_PARALLEL_CHUNKS = 2;
       
-      // Start generating all chunks immediately (parallel generation)
-      for (let i = 0; i < chunks.length; i++) {
-        audioUrlPromises.push(generateChunkAudio(chunks[i], i === 0));
+      let currentIndex = 0;
+      const pendingChunks = new Map<number, Promise<string | null>>();
+      
+      // Helper to start generation for a chunk
+      const startChunkGeneration = (index: number) => {
+        if (index < chunks.length && !pendingChunks.has(index)) {
+          const promise = generateChunkAudio(chunks[index], index === 0);
+          pendingChunks.set(index, promise);
+        }
+      };
+      
+      // Pre-generate first few chunks
+      for (let i = 0; i < Math.min(MAX_PARALLEL_CHUNKS, chunks.length); i++) {
+        startChunkGeneration(i);
       }
       
-      // Play chunks sequentially as they become ready
-      for (const urlPromise of audioUrlPromises) {
-        // Check if cancelled before waiting for next chunk
+      // Play chunks sequentially, generating ahead as we go
+      while (currentIndex < chunks.length) {
+        // Check if cancelled
         if (cancelledRef.current) {
+          break;
+        }
+        
+        // Wait for current chunk to be ready
+        const urlPromise = pendingChunks.get(currentIndex);
+        if (!urlPromise) {
+          console.error(`No promise for chunk ${currentIndex}`);
           break;
         }
         
@@ -394,7 +414,17 @@ export function useOpenAISpeechSynthesis(
           break;
         }
         
+        // Start generating next chunks ahead (keep pipeline full)
+        const nextGenIndex = currentIndex + MAX_PARALLEL_CHUNKS;
+        startChunkGeneration(nextGenIndex);
+        
+        // Play current chunk
         await playAudioUrl(audioUrl);
+        
+        // Clean up used chunk
+        pendingChunks.delete(currentIndex);
+        
+        currentIndex++;
       }
       
       // All chunks done (or cancelled)
