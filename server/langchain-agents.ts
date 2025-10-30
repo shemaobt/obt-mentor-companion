@@ -1776,33 +1776,51 @@ export async function applyPendingEvidence(
         newStatus = 'emerging';
       }
 
-      // Only update if new status is higher than current
-      const statusOrder = { 'not_started': 0, 'emerging': 1, 'growing': 2, 'proficient': 3, 'advanced': 4 };
-      if (statusOrder[newStatus] > statusOrder[currentStatus]) {
-        if (!currentComp) {
-          console.log(`[Apply Evidence] ERROR: Competency record not found for ${competencyId}`);
-          continue;
-        }
+      // FIXED LOGIC: Apply evidence to LOCK competency level, preventing flip-flop with auto-recalculation
+      // Only apply if current statusSource is 'auto' (not manually set or already evidence-based)
+      const currentSource = currentComp?.statusSource || 'auto';
+      
+      if (!currentComp) {
+        console.log(`[Apply Evidence] ERROR: Competency record not found for ${competencyId}`);
+        continue;
+      }
 
-        // Update competency with statusSource='evidence' to prevent recalculateCompetencies() from overwriting
-        await storage.updateCompetencyStatus(
-          currentComp.id,
-          newStatus,
-          `Automatically updated based on ${evidences.length} conversation evidence (avg strength: ${avgStrength.toFixed(1)}/10)`,
-          'AI Assistant',
-          userId,
-          'evidence' // Mark as evidence-based to preserve during auto-recalculation
-        );
-
-        // Mark all evidence as applied
+      // Skip if already locked by manual or previous evidence (unless new evidence is significantly stronger)
+      if (currentSource === 'manual') {
+        console.log(`[Apply Evidence] ${competencyId}: manually set to ${currentStatus}, skipping evidence application`);
+        // Still mark evidence as applied since we've seen it
         const evidenceIds = evidences.map(e => e.id);
         await storage.markEvidenceApplied(evidenceIds);
-
-        updatedCompetencies.push(competencyId);
-        console.log(`[Apply Evidence] ✓ Updated ${competencyId} from ${currentStatus} to ${newStatus}`);
-      } else {
-        console.log(`[Apply Evidence] ${competencyId}: current status ${currentStatus} already >= ${newStatus}, keeping current`);
+        continue;
       }
+
+      if (currentSource === 'evidence') {
+        console.log(`[Apply Evidence] ${competencyId}: already locked by previous evidence at ${currentStatus}, skipping`);
+        // Still mark evidence as applied since we've seen it
+        const evidenceIds = evidences.map(e => e.id);
+        await storage.markEvidenceApplied(evidenceIds);
+        continue;
+      }
+
+      // For 'auto' statusSource: Apply evidence to LOCK the competency level
+      // This prevents recalculation from changing it based on portfolio fluctuations
+      console.log(`[Apply Evidence] ${competencyId}: locking evidence-based level at ${newStatus} (was ${currentStatus} from auto-calculation)`);
+      
+      await storage.updateCompetencyStatus(
+        currentComp.id,
+        newStatus,
+        `Evidence-based level from ${evidences.length} conversation observations (avg strength: ${avgStrength.toFixed(1)}/10). Locked to prevent auto-recalculation changes.`,
+        'AI Assistant',
+        userId,
+        'evidence' // Mark as evidence-based to preserve during auto-recalculation
+      );
+
+      // Mark all evidence as applied
+      const evidenceIds = evidences.map(e => e.id);
+      await storage.markEvidenceApplied(evidenceIds);
+
+      updatedCompetencies.push(competencyId);
+      console.log(`[Apply Evidence] ✓ Locked ${competencyId} at ${newStatus} (was ${currentStatus} auto)`);
     }
 
     return { 
