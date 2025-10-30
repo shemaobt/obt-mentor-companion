@@ -566,7 +566,7 @@ export default function AdminUsers() {
           {/* System Settings */}
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className={isMobile ? "space-y-4" : "flex items-center justify-between"}>
                 <div className="space-y-0.5">
                   <Label htmlFor="approval-toggle" className="text-base font-medium">
                     Require Admin Approval for New Users
@@ -575,13 +575,21 @@ export default function AdminUsers() {
                     When enabled, new user accounts will be set to pending status and require admin approval before they can access the system.
                   </p>
                 </div>
-                <Switch
-                  id="approval-toggle"
-                  checked={approvalSetting?.requireApproval ?? false}
-                  onCheckedChange={(checked) => updateApprovalSettingMutation.mutate(checked)}
-                  disabled={updateApprovalSettingMutation.isPending}
-                  data-testid="switch-require-approval"
-                />
+                <div className={isMobile ? "flex items-center justify-between pt-2" : ""}>
+                  {isMobile && (
+                    <span className="text-sm font-medium">
+                      {approvalSetting?.requireApproval ? "Enabled" : "Disabled"}
+                    </span>
+                  )}
+                  <Switch
+                    id="approval-toggle"
+                    checked={approvalSetting?.requireApproval ?? false}
+                    onCheckedChange={(checked) => updateApprovalSettingMutation.mutate(checked)}
+                    disabled={updateApprovalSettingMutation.isPending}
+                    className={isMobile ? "scale-125" : ""}
+                    data-testid="switch-require-approval"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
