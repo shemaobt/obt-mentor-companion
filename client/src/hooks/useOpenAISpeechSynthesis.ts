@@ -164,51 +164,86 @@ export function useOpenAISpeechSynthesis(
   }, [lang]);
 
   // Split text into smaller chunks for faster generation and playback
-  const splitTextIntoChunks = (text: string, maxChunkLength = 500): string[] => {
+  // Reduced chunk size to 150 characters for faster initial playback
+  const splitTextIntoChunks = (text: string, maxChunkLength = 150): string[] => {
     const chunks: string[] = [];
     
-    // Split by paragraphs first (double newlines)
-    const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+    // Split by sentences first for more natural audio breaks
+    const sentenceMatches = text.match(/[^.!?]+[.!?]+/g);
+    let sentences: string[] = [];
     
-    for (const paragraph of paragraphs) {
-      if (paragraph.length <= maxChunkLength) {
-        chunks.push(paragraph.trim());
+    if (sentenceMatches) {
+      sentences = [...sentenceMatches];
+      
+      // Calculate total matched length to find any remainder
+      const matchedLength = sentenceMatches.reduce((sum, s) => sum + s.length, 0);
+      const remainder = text.slice(matchedLength).trim();
+      
+      // Add any remaining text without terminal punctuation
+      if (remainder) {
+        sentences.push(remainder);
+      }
+    } else {
+      // No sentences with punctuation found, use entire text
+      sentences = [text];
+    }
+    
+    for (const sentence of sentences) {
+      const trimmedSentence = sentence.trim();
+      
+      if (!trimmedSentence) continue;
+      
+      // If sentence fits in one chunk, add it
+      if (trimmedSentence.length <= maxChunkLength) {
+        chunks.push(trimmedSentence);
       } else {
-        // Split long paragraphs by sentences
-        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [];
-        
-        // If no sentences found (no punctuation), force split by maxChunkLength
-        if (sentences.length === 0) {
-          let remaining = paragraph;
-          while (remaining.length > 0) {
-            chunks.push(remaining.substring(0, maxChunkLength).trim());
-            remaining = remaining.substring(maxChunkLength);
-          }
-          continue;
-        }
-        
+        // Split long sentences by commas, semicolons, or natural breaks
+        const subParts = trimmedSentence.split(/([,;:])\s+/);
         let currentChunk = '';
         
-        for (const sentence of sentences) {
-          if ((currentChunk + sentence).length <= maxChunkLength) {
-            currentChunk += sentence;
+        for (let i = 0; i < subParts.length; i++) {
+          const part = subParts[i];
+          
+          // Add punctuation back to previous part
+          if (part === ',' || part === ';' || part === ':') {
+            currentChunk += part;
+            continue;
+          }
+          
+          // Check if adding this part exceeds limit
+          if ((currentChunk + ' ' + part).trim().length <= maxChunkLength) {
+            currentChunk = (currentChunk + ' ' + part).trim();
           } else {
-            if (currentChunk) chunks.push(currentChunk.trim());
-            // If a single sentence is too long, force split it
-            if (sentence.length > maxChunkLength) {
-              let remaining = sentence;
-              while (remaining.length > 0) {
-                chunks.push(remaining.substring(0, maxChunkLength).trim());
-                remaining = remaining.substring(maxChunkLength);
-              }
+            // Push current chunk if not empty
+            if (currentChunk) {
+              chunks.push(currentChunk);
+            }
+            
+            // If single part is still too long, force split by words
+            if (part.length > maxChunkLength) {
+              const words = part.split(/\s+/);
               currentChunk = '';
+              
+              for (const word of words) {
+                if ((currentChunk + ' ' + word).trim().length <= maxChunkLength) {
+                  currentChunk = (currentChunk + ' ' + word).trim();
+                } else {
+                  if (currentChunk) {
+                    chunks.push(currentChunk);
+                  }
+                  currentChunk = word;
+                }
+              }
             } else {
-              currentChunk = sentence;
+              currentChunk = part;
             }
           }
         }
         
-        if (currentChunk) chunks.push(currentChunk.trim());
+        // Don't forget the last chunk
+        if (currentChunk) {
+          chunks.push(currentChunk);
+        }
       }
     }
     
