@@ -227,10 +227,11 @@ export default function AdminDocuments() {
               documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className={`p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors ${isMobile ? "space-y-3" : "flex items-center justify-between"}`}
+                  className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <FileText className="h-5 w-5 text-primary" />
+                  {/* Document info */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{doc.filename}</p>
                       <p className="text-xs text-muted-foreground">
@@ -239,7 +240,8 @@ export default function AdminDocuments() {
                     </div>
                   </div>
                   
-                  <div className={isMobile ? "flex items-center justify-between pl-8" : "flex items-center gap-4"}>
+                  {/* Controls */}
+                  <div className="flex items-center justify-between gap-4 pt-2 border-t">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={doc.isActive}
@@ -253,7 +255,7 @@ export default function AdminDocuments() {
                     
                     <Button
                       variant="ghost"
-                      size={isMobile ? "default" : "icon"}
+                      size="icon"
                       className={isMobile ? "min-h-[44px] min-w-[44px]" : ""}
                       onClick={() => {
                         if (confirm(`Remover "${doc.filename}"?`)) {
