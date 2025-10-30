@@ -692,7 +692,8 @@ export default function ChatInterface({
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
+      const maxHeight = window.innerWidth < 768 ? 60 : 120;
+      textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
     }
   };
 
@@ -909,7 +910,7 @@ export default function ChatInterface({
                 onKeyDown={handleKeyDown}
                 rows={1}
                 disabled={isTyping}
-                className={`resize-none ${isMobile ? 'min-h-[44px] max-h-[100px] phone-sm:max-h-[120px] text-sm phone-sm:text-base' : 'min-h-[44px] max-h-[120px]'} ${isTyping ? 'opacity-60' : ''}`}
+                className={`resize-none min-h-[44px] max-h-[60px] md:max-h-[120px] ${isMobile ? 'text-sm phone-sm:text-base' : ''} ${isTyping ? 'opacity-60' : ''}`}
                 placeholder={
                   isTyping 
                     ? "AI is responding..." 
@@ -1188,7 +1189,7 @@ export default function ChatInterface({
               onKeyDown={handleKeyDown}
               rows={1}
               disabled={isTyping}
-              className={`resize-none ${isMobile ? 'min-h-[44px] max-h-[100px] phone-sm:max-h-[120px] text-sm phone-sm:text-base' : 'min-h-[44px] max-h-[120px]'} ${isTyping ? 'opacity-60' : ''}`}
+              className={`resize-none min-h-[44px] max-h-[60px] md:max-h-[120px] ${isMobile ? 'text-sm phone-sm:text-base' : ''} ${isTyping ? 'opacity-60' : ''}`}
               placeholder={
                 isTyping 
                   ? "AI is responding..." 

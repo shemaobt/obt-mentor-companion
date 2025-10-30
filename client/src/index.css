@@ -467,3 +467,13 @@ iframe[id*="dev-banner"] {
 body {
   top: 0 !important;
 }
+
+/* Hide scrollbar for horizontal scroll (like WhatsApp tabs) */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
