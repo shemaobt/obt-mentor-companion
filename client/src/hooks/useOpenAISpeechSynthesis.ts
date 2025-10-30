@@ -287,12 +287,8 @@ export function useOpenAISpeechSynthesis(
           return null;
         }
         
-        // Check cache first
-        let audioUrl = getCachedAudio(chunkText, language, voiceId);
-        
-        if (audioUrl) {
-          return audioUrl;
-        }
+        // TODO: Cache disabled temporarily - blob URLs don't persist across page reloads
+        // Need to implement proper caching with base64 or IndexedDB
         
         // Only show loading indicator for the first chunk
         if (isFirstChunk) {
@@ -318,10 +314,10 @@ export function useOpenAISpeechSynthesis(
         }
 
         const audioBlob = await response.blob();
-        audioUrl = URL.createObjectURL(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Cache the audio
-        setCachedAudio(chunkText, language, voiceId, audioUrl);
+        // Cache disabled temporarily
+        // setCachedAudio(chunkText, language, voiceId, audioUrl);
         
         if (isFirstChunk) {
           setIsLoading(false);
