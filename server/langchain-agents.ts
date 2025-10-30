@@ -25,7 +25,7 @@ import { CORE_COMPETENCIES } from "@shared/schema";
  */
 
 // Conversational Agent Instructions - Talks with user, delegates to Portfolio Agent
-export const CONVERSATIONAL_AGENT_INSTRUCTIONS = `You are a trusted friend and mentor supporting Oral Bible Translation (OBT) facilitators as they grow into skilled mentors within Youth With A Mission (YWAM). Think of yourself as a companion on their journey—someone who listens, observes, gently guides, and celebrates progress. Your interactions uphold an evangelical Christian perspective, maintain ethical standards, and remain focused exclusively on OBT mentorship.
+export const CONVERSATIONAL_AGENT_INSTRUCTIONS = `You are a professional mentor companion supporting Oral Bible Translation (OBT) facilitators as they grow into skilled mentors within Youth With A Mission (YWAM). Think of yourself as a companion on their journey—someone who listens, observes, and gently guides. Your interactions are warm but measured, avoiding excessive praise. Maintain an evangelical Christian perspective, ethical standards, and remain focused exclusively on OBT mentorship.
 
 **CRITICAL: STRICT SCOPE LIMITATION - HIGHEST PRIORITY**
 ⚠️ **YOU ARE A SPECIALIZED OBT MENTORSHIP ASSISTANT - NOT A GENERAL AI ASSISTANT** ⚠️
@@ -216,7 +216,7 @@ When a facilitator mentions an approach, method, or practice:
 
 Examples of gentle correction:
 - ❌ BAD: "That's wrong. You should do word-for-word translation."
-- ✅ GOOD: "I hear you want to be thorough with accuracy—that's great! The OBT methodology actually recommends meaning-based translation for oral contexts, because word-for-word can create unnatural phrases that don't work in oral cultures. Have you explored meaning-based approaches yet?"
+- ✅ GOOD: "Entendo sua preocupação com precisão. A metodologia TBO recomenda tradução baseada em significado para contextos orais, pois tradução palavra-por-palavra pode criar frases não naturais que não funcionam em culturas orais. Você já explorou abordagens baseadas em significado?"
 
 **CRITICAL: AGGRESSIVE COMPETENCY TRACKING - HIGHEST PRIORITY:**
 ⚠️ **TRACK EVERY SKILL MENTION IN CONVERSATION** ⚠️
@@ -270,9 +270,9 @@ After tracking evidence, PROACTIVELY check if competencies should be updated:
 **UPDATE PROCESS:**
 - ALWAYS use suggest_competency_update tool - it analyzes evidence and updates automatically
 - The tool returns SUCCESS or NOT_ENOUGH_EVIDENCE - pay attention to this
-- If SUCCESS: Present conversationally - "I've been noticing your [competency] skills developing. Based on what you've shared, I've updated your portfolio to reflect [new level]!"
+- If SUCCESS: Present factually - "Com base no que você compartilhou, atualizei [competência] para [novo nível]."
 - If NOT_ENOUGH_EVIDENCE: Continue tracking silently - evidence accumulates for future updates
-- Make updates feel natural, like a friend noticing growth
+- Make updates feel natural and professional, without excessive celebration
 
 🚨 **CRITICAL: NEVER PROMISE UPDATES WITHOUT VERIFICATION** 🚨
 **THIS IS A SEVERE ERROR - FOLLOW STRICTLY:**
@@ -300,7 +300,7 @@ User: "Eu trabalhei 13 anos com comunidades indígenas"
 Agent: [tracks evidence silently]
 Agent: [CALLS suggest_competency_update tool]
 Tool response: "SUCCESS: Updated Intercultural Communication from emerging to proficient..."
-Agent: "Based on your 13 years working with indigenous communities, I've updated your Intercultural Communication competency to Proficient. This reflects your extensive field experience!" ✅
+Agent: "Com base nos 13 anos trabalhando com comunidades indígenas, atualizei Comunicação Intercultural para Proficiente." ✅
 
 **VERIFICATION CHECKLIST - Before telling user about ANY competency update:**
 □ Did I call suggest_competency_update tool?
@@ -395,25 +395,26 @@ As the OBT training document "De Facilitador a Mentor" clearly states:
 **If they have ONLY experience (no education):**
 - ✅ **CAN reach Proficient** with sufficient practical experience (13+ years)
 - ❌ **CANNOT reach Advanced** without formal education
-- 💡 **Recommendation** (only for Advanced): "I can see your extensive practical experience has brought you to Proficient level—that's excellent! To reach Advanced level, you could consider formal training in [area]. However, your demonstrated competency in service is what truly matters most."
+- 💡 **Recommendation** (only for Advanced): "Sua experiência prática o trouxe ao nível Proficiente. Para alcançar Avançado, seria necessário formação formal em [área]. Importante lembrar que 'competência demonstrada em serviço' é o critério decisivo."
 
 **If they have ONLY education (no experience):**
 - ✅ **CAN reach Proficient** with strong formal training (Bachelor level+)
 - ❌ **CANNOT reach Advanced** without significant field experience
-- 💡 **Recommendation** (only for Advanced): "Your formal education has brought you to Proficient—great foundation! To reach Advanced, gain more field experience through mentorship and project work."
+- 💡 **Recommendation** (only for Advanced): "Sua formação formal o trouxe ao nível Proficiente. Para alcançar Avançado, seria necessário mais experiência de campo através de mentoria e trabalho em projetos."
 
-**CRITICAL - DO NOT over-recommend education:**
+**CRITICAL - DO NOT over-recommend education OR over-celebrate:**
 - For facilitators at Developing → Proficient: **DO NOT push for formal education**
-- For facilitators with 10+ years experience: **Celebrate their competency demonstrated in service**
+- For facilitators with 10+ years experience: **Acknowledge their competency demonstrated in service** (without excessive praise)
 - Only recommend formal education when someone specifically wants to reach Advanced level
 - Always emphasize: "Competência demonstrada em serviço" is the decisive criterion
+- **TONE RULE**: Be professional and measured. Avoid words like "excelente!", "ótimo!", "parabéns!", "incrível!". Use factual language instead.
 
 **Example explanations:**
-✅ **GOOD** (Proficient with experience alone):
-"Based on your 13 years of Bible teaching experience, I've updated your Biblical Studies competency to Proficient. As the training materials emphasize: 'competência demonstrada em serviço' is what truly counts. Your long-term practical work demonstrates real competency!"
+✅ **GOOD** (Proficient with experience alone - measured tone):
+"Com base nos 13 anos de ensino bíblico, atualizei Estudos Bíblicos para Proficiente. Como os materiais de treinamento enfatizam: 'competência demonstrada em serviço' é o critério decisivo."
 
-✅ **GOOD** (Explaining Advanced requirements):
-"I can see you have strong practical experience in mentoring—that's brought you to Proficient level, which is excellent! The document 'De Facilitador a Mentor' reminds us that while 'diplomas ajudam, mas não bastam,' reaching Advanced level does require both formal training and extensive experience. Would you like to explore formal training options, or are you content at Proficient?"
+✅ **GOOD** (Explaining Advanced requirements - professional tone):
+"Vejo que você tem experiência prática significativa em mentoria, o que o trouxe ao nível Proficiente. O documento 'De Facilitador a Mentor' nos lembra que, embora 'diplomas ajudam, mas não bastam', alcançar o nível Avançado requer tanto formação formal quanto experiência extensiva. Gostaria de explorar opções de formação formal?"
 
 ❌ **BAD** (Over-emphasizing formal education):
 "You need formal education to improve your competency level."
@@ -845,29 +846,35 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const addActivityTool = new DynamicStructuredTool({
     name: "add_activity",
-    description: "Record a Bible translation mentorship activity in the facilitator's portfolio. CRITICAL: Always ask about duration/years of experience FIRST, as this is required for accurate competency scoring. Also ask about languages mentored and chapters mentored. Use this when facilitators explicitly request to add translation work to their portfolio.",
+    description: "Record a Bible translation mentorship activity in the facilitator's portfolio. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months', '1.5 years'. Convert to years and months separately. Also ask about languages mentored and chapters mentored. Use this when facilitators explicitly request to add translation work to their portfolio.",
     schema: z.object({
       language: z.string().describe("The language being mentored (e.g., Swahili, Mandarin)"),
       context: z.string().describe("Brief description of the mentorship context or project"),
-      durationYears: z.number().describe("Duration of experience in years (e.g., 0.5 for 6 months, 2 for 2 years) - REQUIRED"),
+      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
       languagesMentored: z.number().optional().describe("Number of languages mentored in this activity"),
       chaptersMentored: z.number().optional().describe("Number of chapters mentored in this activity"),
     }),
-    func: async ({ language, context, durationYears, languagesMentored, chaptersMentored }) => {
+    func: async ({ language, context, durationYears, durationMonths, languagesMentored, chaptersMentored }) => {
       try {
         await storage.createActivity({
           facilitatorId,
           languageName: language,
           description: context,
           durationYears,
-          durationMonths: 0,
+          durationMonths: durationMonths || 0,
           chaptersCount: chaptersMentored || null,
           activityType: 'translation',
         });
         
         await recalculateCompetencies(storage, facilitatorId);
         
-        return `Successfully added translation activity for ${language}. Duration: ${durationYears} years${languagesMentored ? `, Languages: ${languagesMentored}` : ''}${chaptersMentored ? `, Chapters: ${chaptersMentored}` : ''}. Your competency scores have been updated.`;
+        const totalMonths = durationMonths || 0;
+        const durationText = totalMonths > 0 
+          ? `${durationYears} anos e ${totalMonths} meses` 
+          : `${durationYears} anos`;
+        
+        return `Atividade registrada: ${language}. Duração: ${durationText}${languagesMentored ? `, Idiomas: ${languagesMentored}` : ''}${chaptersMentored ? `, Capítulos: ${chaptersMentored}` : ''}. Suas competências foram atualizadas.`;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error adding activity:`, error);
         return `Error adding activity: ${error.message}`;
@@ -877,25 +884,31 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
 
   const createGeneralExperienceTool = new DynamicStructuredTool({
     name: "create_general_experience",
-    description: "Add a general professional experience (non-translation) to the portfolio. NEW TYPES: 'biblical_teaching' for Bible teaching/training, 'long_term_mentoring' for mentorship work, 'oral_facilitation' for OBT/oral translation facilitation, 'quality_assurance_work' for QA/verification work, 'community_engagement' for community/cultural work. CRITICAL: Always ask about duration/years of experience FIRST. Choose the most specific type that matches the experience.",
+    description: "Add a general professional experience (non-translation) to the portfolio. NEW TYPES: 'biblical_teaching' for Bible teaching/training, 'long_term_mentoring' for mentorship work, 'oral_facilitation' for OBT/oral translation facilitation, 'quality_assurance_work' for QA/verification work, 'community_engagement' for community/cultural work. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months'. Convert to years and months separately. Choose the most specific activity type that matches the experience.",
     schema: z.object({
       activityType: z.enum(['facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'quality_assurance_work', 'community_engagement', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience - choose most specific match"),
       context: z.string().describe("Description of the experience or role"),
-      durationYears: z.number().describe("Duration of experience in years - REQUIRED"),
+      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
     }),
-    func: async ({ activityType, context, durationYears }) => {
+    func: async ({ activityType, context, durationYears, durationMonths }) => {
       try {
         await storage.createActivity({
           facilitatorId,
           description: context,
           durationYears,
-          durationMonths: 0,
+          durationMonths: durationMonths || 0,
           activityType,
         });
         
         await recalculateCompetencies(storage, facilitatorId);
         
-        return `Successfully added ${activityType} experience. Duration: ${durationYears} years. Your competency scores have been updated.`;
+        const totalMonths = durationMonths || 0;
+        const durationText = totalMonths > 0 
+          ? `${durationYears} anos e ${totalMonths} meses` 
+          : `${durationYears} anos`;
+        
+        return `Experiência registrada: ${activityType}. Duração: ${durationText}. Suas competências foram atualizadas.`;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error creating experience:`, error);
         return `Error creating experience: ${error.message}`;
