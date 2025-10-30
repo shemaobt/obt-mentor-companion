@@ -798,7 +798,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
         }
         
         // Create qualification
-        const qualification = await storage.createFacilitatorQualification({
+        const qualification = await storage.createQualification({
           facilitatorId,
           courseTitle,
           institution,
@@ -833,7 +833,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ qualificationId, ...updates }) => {
       try {
-        const qualification = await storage.updateFacilitatorQualification(qualificationId, updates);
+        const qualification = await storage.updateQualification(qualificationId, updates);
         await recalculateCompetencies(storage, facilitatorId);
         return `Successfully updated qualification. Your competency scores have been recalculated.`;
       } catch (error: any) {
