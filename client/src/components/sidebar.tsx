@@ -716,32 +716,18 @@ export default function Sidebar({
             {/* Theme Switcher (visible to all users) */}
             <ThemeSwitcher />
             
-            {/* Profile Settings option (visible to all users) */}
-            <Link href="/portfolio?tab=settings" className="block">
+            {/* Settings option (visible to all users) */}
+            <Link href="/settings" className="block">
               <Button
                 variant="ghost"
                 className={`w-full justify-start text-sm px-4 ${isMobile ? 'h-12' : 'py-2 h-auto'}`}
                 onClick={() => setUserMenuOpen(false)}
-                data-testid="link-profile-settings"
+                data-testid="link-settings"
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Profile Settings
+                Settings
               </Button>
             </Link>
-            
-            {/* Change Password option (visible to all users) */}
-            <Button
-              variant="ghost"
-              className={`w-full justify-start text-sm px-4 ${isMobile ? 'h-12' : 'py-2 h-auto'}`}
-              onClick={() => {
-                setChangePasswordOpen(true);
-                setUserMenuOpen(false);
-              }}
-              data-testid="button-change-password"
-            >
-              <Lock className="mr-2 h-4 w-4" />
-              Change Password
-            </Button>
             
             <Separator className="my-1" />
             
