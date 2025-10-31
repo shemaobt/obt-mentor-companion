@@ -11,7 +11,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, Check, ChevronsUpDown } from "lucide-react";
+import { Eye, EyeOff, Check, ChevronsUpDown, User, Upload } from "lucide-react";
 import { getActiveTheme } from "@/lib/themes";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,6 +45,8 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [open, setOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
@@ -72,12 +74,73 @@ function Signup() {
     },
   });
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      // Clear state when file input is cleared
+      setProfileImage(null);
+      setProfileImagePreview(null);
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, WEBP, or GIF image",
+        variant: "destructive",
+      });
+      e.target.value = ''; // Clear the input
+      setProfileImage(null);
+      setProfileImagePreview(null);
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+      });
+      e.target.value = ''; // Clear the input
+      setProfileImage(null);
+      setProfileImagePreview(null);
+      return;
+    }
+
+    setProfileImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadProfileImage = async () => {
+    if (!profileImage) return;
+
+    const formData = new FormData();
+    formData.append('image', profileImage);
+
+    const response = await fetch('/api/user/profile-image', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload profile image');
+    }
+  };
+
   const signupMutation = useMutation({
     mutationFn: async (data: Omit<SignupFormData, 'confirmPassword'>) => {
       const response = await apiRequest("POST", "/api/auth/signup", data);
       return response.json();
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       // Check if account requires approval
       if (result.approvalStatus === 'pending') {
         toast({
@@ -87,11 +150,27 @@ function Signup() {
         setLocation("/login?message=pending");
       } else {
         // User was auto-approved and logged in
+        login(result);
+        
+        // Upload profile image if one was selected
+        if (profileImage) {
+          try {
+            await uploadProfileImage();
+          } catch (error) {
+            console.error('Profile image upload failed:', error);
+            // Don't block login if image upload fails
+            toast({
+              title: "Profile image not saved",
+              description: "Your account was created but the profile image failed to upload. You can upload it later in Settings.",
+              variant: "default",
+            });
+          }
+        }
+
         toast({
           title: "Success!",
           description: "Your account has been created successfully.",
         });
-        login(result);
         setLocation("/dashboard");
       }
     },
@@ -174,6 +253,48 @@ function Signup() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Profile Image Upload */}
+              <div className="flex flex-col items-center space-y-3 py-2">
+                <FormLabel>Profile Picture (optional)</FormLabel>
+                <div className="relative">
+                  <div className="h-24 w-24 rounded-full overflow-hidden bg-muted flex items-center justify-center border-2 border-border">
+                    {profileImagePreview ? (
+                      <img 
+                        src={profileImagePreview} 
+                        alt="Profile preview" 
+                        className="h-full w-full object-cover"
+                        data-testid="img-signup-profile-preview"
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    id="signup-profile-image"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                    data-testid="input-signup-profile-image"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('signup-profile-image')?.click()}
+                    data-testid="button-choose-signup-image"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose Image
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Max 5MB (JPEG, PNG, WEBP, or GIF)
+                </p>
               </div>
 
               <FormField
