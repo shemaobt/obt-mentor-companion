@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
+import Settings from "@/pages/settings";
 import AdminFeedback from "@/pages/admin-feedback";
 import AdminUsers from "@/pages/admin-users";
 import AdminDocuments from "@/pages/admin-documents";
@@ -47,6 +48,7 @@ function Router() {
           <Route path="/supervisor/users" component={SupervisorUsers} />
           <Route path="/supervisor/users/:userId/portfolio" component={AdminPortfolioView} />
           <Route path="/portfolio" component={Portfolio} />
+          <Route path="/settings" component={Settings} />
           <Route path="/chat/:chatId" component={Home} />
           <Route path="/" component={Home} />
           <Route path="*" component={NotFound} />
