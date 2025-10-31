@@ -595,17 +595,6 @@ export default function Sidebar({
             {/* Admin-only options */}
             {isAdmin && (
               <>
-                <Link href="/dashboard" className="block">
-                  <Button
-                    variant="ghost"
-                    className={`w-full justify-start text-sm px-3 md:px-4 ${isMobile ? 'h-10 sm:h-12' : 'py-2 h-auto'}`}
-                    onClick={() => setUserMenuOpen(false)}
-                    data-testid="link-dashboard"
-                  >
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
                 <Link href="/admin/users" className="block">
                   <Button
                     variant="ghost"

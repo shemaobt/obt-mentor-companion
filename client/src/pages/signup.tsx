@@ -171,7 +171,7 @@ function Signup() {
           title: "Success!",
           description: "Your account has been created successfully.",
         });
-        setLocation("/dashboard");
+        setLocation("/");
       }
     },
     onError: (error: any) => {
