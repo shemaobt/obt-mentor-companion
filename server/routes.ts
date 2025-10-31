@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateChatTitle } from "./openai";
@@ -4009,10 +4010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDbSyncRoutes(app, requireAdmin, requireCSRFHeader);
 
   // Serve uploaded files
-  app.use('/uploads', requireAuth, (req: any, res, next) => {
-    const express = require('express');
-    express.static('uploads')(req, res, next);
-  });
+  app.use('/uploads', requireAuth, express.static('uploads'));
 
   // Catch-all for unmatched API routes - return 404 instead of HTML
   app.use('/api/*', (req, res) => {
