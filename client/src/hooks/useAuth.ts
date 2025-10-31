@@ -7,6 +7,7 @@ interface User {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  profileImageUrl?: string | null;
   isAdmin?: boolean;
 }
 
@@ -16,6 +17,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

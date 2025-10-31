@@ -43,7 +43,11 @@ import {
   Upload,
   File,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Settings,
+  Lock,
+  ImageIcon,
+  EyeOff
 } from "lucide-react";
 import { 
   CORE_COMPETENCIES,
@@ -761,7 +765,7 @@ export default function Portfolio() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full inline-flex md:grid md:grid-cols-5 overflow-x-auto scrollbar-hide justify-start md:justify-center">
+            <TabsList className="w-full inline-flex md:grid md:grid-cols-6 overflow-x-auto scrollbar-hide justify-start md:justify-center">
               <TabsTrigger value="profile" data-testid="tab-profile" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
                 <User className="h-4 w-4 md:mr-2" />
                 <span className="whitespace-nowrap">Profile</span>
@@ -781,6 +785,10 @@ export default function Portfolio() {
               <TabsTrigger value="reports" data-testid="tab-reports" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
                 <FileText className="h-4 w-4 md:mr-2" />
                 <span className="whitespace-nowrap">Reports</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" data-testid="tab-settings" className="flex-shrink-0 flex items-center gap-2 md:gap-0">
+                <Settings className="h-4 w-4 md:mr-2" />
+                <span className="whitespace-nowrap">Settings</span>
               </TabsTrigger>
             </TabsList>
 
@@ -2084,9 +2092,318 @@ export default function Portfolio() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="mt-6">
+              <div className="space-y-6">
+                {/* Profile Image Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <ImageIcon className="h-5 w-5" />
+                      <span>Profile Image</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Upload a profile picture for your account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ProfileImageUpload />
+                  </CardContent>
+                </Card>
+
+                {/* Change Password Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Lock className="h-5 w-5" />
+                      <span>Change Password</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Update your account password
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ChangePasswordForm />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+// Profile Image Upload Component
+function ProfileImageUpload() {
+  const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(user?.profileImageUrl || null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, WEBP, or GIF image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      // Upload to backend
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/user/profile-image', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      
+      // Update preview
+      setPreviewUrl(data.profileImageUrl);
+      
+      // Refresh user data
+      await refreshUser();
+
+      toast({
+        title: "Success",
+        description: "Profile image updated successfully",
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      <div className="relative">
+        <div className="h-32 w-32 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+          {previewUrl ? (
+            <img 
+              src={previewUrl} 
+              alt="Profile" 
+              className="h-full w-full object-cover"
+              data-testid="img-profile-preview"
+            />
+          ) : (
+            <User className="h-16 w-16 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      <div>
+        <input
+          type="file"
+          id="profile-image-upload"
+          accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleImageUpload}
+          disabled={uploading}
+        />
+        <Button
+          onClick={() => document.getElementById('profile-image-upload')?.click()}
+          disabled={uploading}
+          data-testid="button-upload-profile-image"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {uploading ? "Uploading..." : "Upload Image"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground text-center">
+        Recommended: Square image, max 5MB (JPEG, PNG, WEBP, or GIF)
+      </p>
+    </div>
+  );
+}
+
+// Change Password Form Component
+function ChangePasswordForm() {
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your new passwords match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "New password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to change password');
+      }
+
+      toast({
+        title: "Success",
+        description: "Password changed successfully",
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change password",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="current-password">Current Password</Label>
+        <div className="relative mt-2">
+          <Input
+            id="current-password"
+            type={showCurrent ? "text" : "password"}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            data-testid="input-current-password"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3"
+            onClick={() => setShowCurrent(!showCurrent)}
+            data-testid="button-toggle-current-password"
+          >
+            {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="new-password">New Password</Label>
+        <div className="relative mt-2">
+          <Input
+            id="new-password"
+            type={showNew ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            data-testid="input-new-password"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3"
+            onClick={() => setShowNew(!showNew)}
+            data-testid="button-toggle-new-password"
+          >
+            {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="confirm-password">Confirm New Password</Label>
+        <div className="relative mt-2">
+          <Input
+            id="confirm-password"
+            type={showConfirm ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            data-testid="input-confirm-new-password"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3"
+            onClick={() => setShowConfirm(!showConfirm)}
+            data-testid="button-toggle-confirm-password"
+          >
+            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <Button 
+        type="submit" 
+        disabled={loading}
+        data-testid="button-change-password"
+      >
+        {loading ? "Changing..." : "Change Password"}
+      </Button>
+    </form>
   );
 }

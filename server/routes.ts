@@ -222,6 +222,45 @@ const certificateUpload = multer({
   }
 });
 
+// Ensure profile images directory exists
+const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
+if (!fsSync.existsSync(profileImagesDir)) {
+  fsSync.mkdirSync(profileImagesDir, { recursive: true });
+}
+
+// Multer configuration for profile image uploads
+const profileImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/profile-images/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const profileImageUpload = multer({
+  storage: profileImageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit for profile images
+  },
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, WEBP, and GIF images are allowed for profile pictures'));
+    }
+  }
+});
+
 // Original multer configuration for audio uploads (for backward compatibility)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -679,6 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
         isAdmin: user.isAdmin,
         isSupervisor: user.isSupervisor,
         supervisorId: user.supervisorId,
@@ -686,6 +726,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  // Profile image upload endpoint
+  app.post('/api/user/profile-image', requireAuth, profileImageUpload.single('image'), async (req: any, res) => {
+    try {
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No image file uploaded" });
+      }
+      
+      // Ensure uploads/profile-images directory exists
+      const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
+      await fs.mkdir(profileImagesDir, { recursive: true });
+      
+      // Build the URL for the uploaded image
+      const profileImageUrl = `/uploads/profile-images/${file.filename}`;
+      
+      // Update user's profile image
+      await storage.updateUserProfileImage(req.userId, profileImageUrl);
+      
+      res.json({ 
+        message: "Profile image updated successfully",
+        profileImageUrl
+      });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
     }
   });
 
