@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -112,6 +112,11 @@ function ProfileImageUpload() {
   const { toast } = useToast();
   const [previewUrl, setPreviewUrl] = useState<string | null>(user?.profileImageUrl || null);
   const [uploading, setUploading] = useState(false);
+
+  // Sync preview with user profile image changes
+  useEffect(() => {
+    setPreviewUrl(user?.profileImageUrl || null);
+  }, [user?.profileImageUrl]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
