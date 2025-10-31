@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -190,9 +191,20 @@ export default function Portfolio() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("profile");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [supervisorPopoverOpen, setSupervisorPopoverOpen] = useState(false);
+
+  // Check URL parameter for tab and update when location changes
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const validTabs = ['profile', 'competencies', 'qualifications', 'activities', 'reports', 'settings'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location]);
 
   // Ensure sidebar is closed when switching to mobile
   useEffect(() => {
