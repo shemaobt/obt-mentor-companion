@@ -97,8 +97,8 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen overflow-y-auto px-4 flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen px-4 py-8 flex items-center justify-center bg-background">
+      <Card className="w-full max-w-md my-auto">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex justify-center">
             <LogoWithBackground size="lg" />
