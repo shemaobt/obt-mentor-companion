@@ -731,6 +731,7 @@ export function initializeGeminiModels() {
 
 /**
  * Recalculate all competency scores for a facilitator based on qualifications and activities
+ * PROTECTED: Never decreases competency levels - only upgrades or maintains them
  */
 async function recalculateCompetencies(storage: IStorage, facilitatorId: string): Promise<void> {
   // Get all qualifications and activities
@@ -740,19 +741,52 @@ async function recalculateCompetencies(storage: IStorage, facilitatorId: string)
   // Calculate scores
   const scores = calculateCompetencyScores(qualifications, activities);
   
+  // Get all existing competencies to preserve manual/evidence-based levels
+  const existingCompetencies = await storage.getFacilitatorCompetencies(facilitatorId);
+  const existingMap = new Map(existingCompetencies.map(c => [c.competencyId, c]));
+  
   // Update each competency
   for (const [competencyId, score] of scores.total.entries()) {
-    const status = scoreToStatus(score);
+    const newStatus = scoreToStatus(score);
     const educationScore = scores.education.get(competencyId) || 0;
     const experienceScore = scores.experience.get(competencyId) || 0;
+    const newAutoScore = Math.round(score);
     
+    // Get existing competency if it exists
+    const existing = existingMap.get(competencyId);
+    
+    // PROTECTION: Preserve manual and evidence-based competencies
+    if (existing && (existing.statusSource === 'manual' || existing.statusSource === 'evidence')) {
+      // Don't overwrite manual or evidence-based status, but update the suggested status
+      await storage.upsertCompetency({
+        facilitatorId,
+        competencyId,
+        status: existing.status, // Keep existing status
+        autoScore: newAutoScore,
+        statusSource: existing.statusSource, // Keep existing source
+        suggestedStatus: newStatus, // Update suggestion based on new calculation
+        notes: existing.notes || `Preserved ${existing.statusSource} status. Auto-suggestion: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${score.toFixed(1)}`,
+      });
+      continue;
+    }
+    
+    // PROTECTION: For auto competencies, only upgrade or maintain - never downgrade
+    if (existing && existing.statusSource === 'auto' && existing.autoScore !== null) {
+      // Only update if new score is higher than or equal to existing
+      if (newAutoScore < existing.autoScore) {
+        // Keep existing higher score - don't downgrade
+        continue;
+      }
+    }
+    
+    // Safe to update: new competency OR auto competency with equal/higher score
     await storage.upsertCompetency({
       facilitatorId,
       competencyId,
-      status,
-      autoScore: Math.round(score),
+      status: newStatus,
+      autoScore: newAutoScore,
       statusSource: 'auto',
-      suggestedStatus: status,
+      suggestedStatus: newStatus,
       notes: `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${score.toFixed(1)}`,
     });
   }
