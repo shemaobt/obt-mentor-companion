@@ -49,7 +49,8 @@ import {
   FileText,
   Pencil,
   TrendingUp,
-  Lock
+  Lock,
+  QrCode
 } from "lucide-react";
 import type { Chat, AssistantId, ChatChain } from "@shared/schema";
 import { ASSISTANTS } from "@shared/schema";
@@ -726,6 +727,19 @@ export default function Sidebar({
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
+              </Button>
+            </Link>
+            
+            {/* QR Code option (visible to all users) */}
+            <Link href="/qr-code" className="block">
+              <Button
+                variant="ghost"
+                className={`w-full justify-start text-sm px-4 ${isMobile ? 'h-12' : 'py-2 h-auto'}`}
+                onClick={() => setUserMenuOpen(false)}
+                data-testid="link-qr-code"
+              >
+                <QrCode className="mr-2 h-4 w-4" />
+                QR Code
               </Button>
             </Link>
             
