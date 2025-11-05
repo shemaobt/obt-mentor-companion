@@ -1,6 +1,6 @@
 # Overview
 
-The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, powered by Google Gemini AI. The project aims to enhance mentorship effectiveness, facilitate cross-learning among facilitators, and offer comprehensive facilitator portfolio management, including competencies, qualifications, activities, and quarterly report generation. A key capability is global memory search using Qdrant Cloud for semantic search across all facilitator conversations.
+The OBT Mentor Companion is an AI-powered full-stack web application designed for YWAM Oral Bible Translation (OBT) facilitators. It provides mentorship tracking and assessment capabilities through an AI assistant, powered by Google Gemini AI. The project aims to enhance mentorship effectiveness, facilitate cross-learning among facilitators, and offer comprehensive facilitator portfolio management, including competencies, qualifications, activities, and quarterly report generation. A key capability is global memory search using Qdrant Cloud for semantic search across all facilitator conversations. The app includes a QR code sharing page for easy distribution of the app URL (obtmentor.org).
 
 # User Preferences
 
@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Portfolio Management**: Comprehensive tracking of competencies, qualifications (with multiple certificate uploads, download, preview, delete), activities, and quarterly reports.
 - **User Roles and Permissions**: Three-tier system (Admin, Supervisor, Regular User) with granular access control.
 - **Security Features**: Session-based auth, HTTP-only cookies, authorization, hierarchical access control, CSRF protection, admin/supervisor-controlled user approval.
+- **QR Code Sharing** (Nov 2025): Dedicated `/qr-code` page that generates a scannable QR code for https://obtmentor.org using the `qrcode` library. Features include: real-time canvas rendering, one-click download as PNG, URL copy to clipboard with visual feedback, and mobile-responsive design matching the app's theme.
 
 # External Dependencies
 
