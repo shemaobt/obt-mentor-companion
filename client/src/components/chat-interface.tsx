@@ -765,7 +765,7 @@ export default function ChatInterface({
               <LogoWithBackground size="lg" />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-2">Welcome to OBT Mentor Companion</h2>
-            <p className="text-muted-foreground mb-6">Your friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors within Youth With A Mission (YWAM).</p>
+            <p className="text-muted-foreground mb-6">Your friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors.</p>
             
             {/* Instructions - Chat will be created when first message is sent */}
             <div className="mt-4 space-y-3">
