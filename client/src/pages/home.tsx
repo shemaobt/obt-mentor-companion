@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Sidebar from "@/components/sidebar";
 import ChatInterface from "@/components/chat-interface";
+import OnboardingModal from "@/components/onboarding-modal";
 import type { AssistantId } from "@shared/schema";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [defaultAssistant, setDefaultAssistant] = useState<AssistantId>('obtMentor');
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Ensure sidebar is closed when switching to mobile
   useEffect(() => {
@@ -37,6 +39,13 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
+  // Show onboarding modal when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      setShowOnboarding(true);
+    }
+  }, [isAuthenticated, isLoading]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -51,6 +60,12 @@ export default function Home() {
 
   return (
     <div className="h-screen bg-background flex relative overflow-hidden" data-testid="page-home">
+      {/* Onboarding Modal */}
+      <OnboardingModal 
+        open={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+      />
+
       {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (
         <div 
