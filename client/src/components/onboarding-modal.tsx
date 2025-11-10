@@ -49,50 +49,49 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-transparent border-none" data-testid="dialog-onboarding">
+      <DialogContent className="max-w-5xl p-0 overflow-hidden border-none" data-testid="dialog-onboarding">
         <DialogTitle className="sr-only">OBT Mentor Companion Onboarding</DialogTitle>
         <DialogDescription className="sr-only">
           Welcome to OBT Mentor Companion. Navigate through the presentation slides to learn about the program.
         </DialogDescription>
-        <div className="relative">
+        <div className="flex flex-col">
           {/* Close Button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={handleClose}
-            className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background/90 rounded-full"
             data-testid="button-close-onboarding"
           >
             <X className="h-5 w-5" />
           </Button>
 
           {/* Slide Image */}
-          <div className="w-full" data-testid="slide-content">
+          <div className="w-full bg-black" data-testid="slide-content">
             <img
               src={slides[currentSlide]}
               alt={`Slide ${currentSlide + 1}`}
-              className="w-full h-auto rounded-lg"
+              className="w-full h-auto"
               data-testid={`slide-image-${currentSlide + 1}`}
             />
           </div>
 
-          {/* Navigation Footer */}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
-            <div className="flex items-center justify-between max-w-5xl mx-auto">
+          {/* Navigation Menu Bar */}
+          <div className="bg-background border-t p-4">
+            <div className="flex items-center justify-between">
               {/* Previous Button */}
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={goToPrevious}
                 disabled={currentSlide === 0}
-                className="text-white hover:bg-white/20 disabled:opacity-50"
                 data-testid="button-previous-slide"
               >
-                <ChevronLeft className="h-5 w-5 mr-1" />
+                <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
               </Button>
 
               {/* Page Indicator */}
-              <div className="text-sm text-white font-medium" data-testid="text-slide-indicator">
+              <div className="text-sm font-medium text-muted-foreground" data-testid="text-slide-indicator">
                 {currentSlide + 1} / {slides.length}
               </div>
 
@@ -100,20 +99,19 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
               {isLastSlide ? (
                 <Button
                   onClick={handleClose}
-                  className="bg-[#86884C] hover:bg-[#86884C]/90 text-white"
+                  className="bg-[#86884C] hover:bg-[#86884C]/90"
                   data-testid="button-get-started"
                 >
                   Get Started
                 </Button>
               ) : (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   onClick={goToNext}
-                  className="text-white hover:bg-white/20"
                   data-testid="button-next-slide"
                 >
                   Next
-                  <ChevronRight className="h-5 w-5 ml-1" />
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
             </div>
