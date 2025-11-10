@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import slide1 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_1_1762796472412.jpg";
-import slide2 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_2_1762796472412.jpg";
-import slide3 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_3_1762796472412.jpg";
-import slide4 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_4_1762796472412.jpg";
-import slide5 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_5_1762796472412.jpg";
-import slide6 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_6_1762796472412.jpg";
-import slide7 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_7_1762796472412.jpg";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import slide1 from "@assets/1_1762797474777.png";
+import slide2 from "@assets/2_1762797474777.png";
+import slide3 from "@assets/3_1762797474777.png";
+import slide4 from "@assets/4_1762797474777.png";
+import slide5 from "@assets/5_1762797474777.png";
+import slide6 from "@assets/6_1762797474777.png";
+import slide7 from "@assets/7_1762797474777.png";
 
 interface OnboardingModalProps {
   open: boolean;
@@ -53,17 +53,6 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
           Welcome to OBT Mentor Companion. Navigate through the presentation slides to learn about the program.
         </DialogDescription>
         <div className="flex flex-col">
-          {/* Close Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClose}
-            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background/90 rounded-full"
-            data-testid="button-close-onboarding"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-
           {/* Slide Image */}
           <div className="w-full bg-black" data-testid="slide-content">
             <img
