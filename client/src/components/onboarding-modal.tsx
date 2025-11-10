@@ -9,7 +9,6 @@ import slide4 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_4
 import slide5 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_5_1762796472412.jpg";
 import slide6 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_6_1762796472412.jpg";
 import slide7 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_7_1762796472412.jpg";
-import slide8 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_8_1762796472412.jpg";
 
 interface OnboardingModalProps {
   open: boolean;
@@ -19,7 +18,7 @@ interface OnboardingModalProps {
 export default function OnboardingModal({ open, onClose }: OnboardingModalProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const slides = [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8];
+  const slides = [slide1, slide2, slide3, slide4, slide5, slide6, slide7];
 
   const goToNext = () => {
     if (currentSlide < slides.length - 1) {
