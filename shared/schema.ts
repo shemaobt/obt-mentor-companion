@@ -19,7 +19,7 @@ export const ASSISTANTS = {
   obtMentor: {
     id: 'obtMentor',
     name: 'OBT Mentor Assistant',
-    description: 'A friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors within Youth With A Mission (YWAM).',
+    description: 'A friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors.',
     openaiId: 'asst_placeholder' // Will be updated with actual OpenAI assistant ID
   }
 } as const;
