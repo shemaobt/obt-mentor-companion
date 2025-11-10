@@ -77,7 +77,7 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
           </div>
 
           {/* Navigation Footer */}
-          <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm p-4">
+          <div className="absolute bottom-0 left-0 right-0 p-4">
             <div className="flex items-center justify-between max-w-5xl mx-auto">
               {/* Previous Button */}
               <Button
