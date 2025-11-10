@@ -10,7 +10,6 @@ import slide5 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_5
 import slide6 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_6_1762796472412.jpg";
 import slide7 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_7_1762796472412.jpg";
 import slide8 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_8_1762796472412.jpg";
-import slide9 from "@assets/1762796336130-c65bcd86-ddc9-4482-8e40-bbc241fc8994_9_1762796472412.jpg";
 
 interface OnboardingModalProps {
   open: boolean;
@@ -20,7 +19,7 @@ interface OnboardingModalProps {
 export default function OnboardingModal({ open, onClose }: OnboardingModalProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const slides = [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9];
+  const slides = [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8];
 
   const goToNext = () => {
     if (currentSlide < slides.length - 1) {
@@ -77,7 +76,7 @@ export default function OnboardingModal({ open, onClose }: OnboardingModalProps)
           </div>
 
           {/* Navigation Menu Bar */}
-          <div className="bg-background border-t p-4">
+          <div className="bg-background border-t px-4 py-2">
             <div className="flex items-center justify-between">
               {/* Previous Button */}
               <Button
