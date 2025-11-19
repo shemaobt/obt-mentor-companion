@@ -270,6 +270,27 @@ export function scoreToStatus(score: number): string {
 }
 
 /**
+ * Convert competency status to minimum score (reverse of scoreToStatus)
+ * Used to prevent downgrades for legacy auto competencies without stored autoScore
+ */
+export function statusToMinScore(status: string): number {
+  switch (status) {
+    case 'not_started':
+      return 0;
+    case 'emerging':
+      return 1;
+    case 'growing':
+      return 6;
+    case 'proficient':
+      return 13;
+    case 'advanced':
+      return 21;
+    default:
+      return 0;
+  }
+}
+
+/**
  * Calculate competency impacts for a given activity/experience
  */
 export function calculateActivityImpacts(

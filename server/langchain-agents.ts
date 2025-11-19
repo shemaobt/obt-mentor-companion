@@ -732,64 +732,11 @@ export function initializeGeminiModels() {
 /**
  * Recalculate all competency scores for a facilitator based on qualifications and activities
  * PROTECTED: Never decreases competency levels - only upgrades or maintains them
+ * Returns information about any prevented downgrades for user feedback
  */
-async function recalculateCompetencies(storage: IStorage, facilitatorId: string): Promise<void> {
-  // Get all qualifications and activities
-  const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
-  const activities = await storage.getFacilitatorActivities(facilitatorId);
-  
-  // Calculate scores
-  const scores = calculateCompetencyScores(qualifications, activities);
-  
-  // Get all existing competencies to preserve manual/evidence-based levels
-  const existingCompetencies = await storage.getFacilitatorCompetencies(facilitatorId);
-  const existingMap = new Map(existingCompetencies.map(c => [c.competencyId, c]));
-  
-  // Update each competency
-  for (const [competencyId, score] of scores.total.entries()) {
-    const newStatus = scoreToStatus(score);
-    const educationScore = scores.education.get(competencyId) || 0;
-    const experienceScore = scores.experience.get(competencyId) || 0;
-    const newAutoScore = Math.round(score);
-    
-    // Get existing competency if it exists
-    const existing = existingMap.get(competencyId);
-    
-    // PROTECTION: Preserve manual and evidence-based competencies
-    if (existing && (existing.statusSource === 'manual' || existing.statusSource === 'evidence')) {
-      // Don't overwrite manual or evidence-based status, but update the suggested status
-      await storage.upsertCompetency({
-        facilitatorId,
-        competencyId,
-        status: existing.status, // Keep existing status
-        autoScore: newAutoScore,
-        statusSource: existing.statusSource, // Keep existing source
-        suggestedStatus: newStatus, // Update suggestion based on new calculation
-        notes: existing.notes || `Preserved ${existing.statusSource} status. Auto-suggestion: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${score.toFixed(1)}`,
-      });
-      continue;
-    }
-    
-    // PROTECTION: For auto competencies, only upgrade or maintain - never downgrade
-    if (existing && existing.statusSource === 'auto' && existing.autoScore !== null) {
-      // Only update if new score is higher than or equal to existing
-      if (newAutoScore < existing.autoScore) {
-        // Keep existing higher score - don't downgrade
-        continue;
-      }
-    }
-    
-    // Safe to update: new competency OR auto competency with equal/higher score
-    await storage.upsertCompetency({
-      facilitatorId,
-      competencyId,
-      status: newStatus,
-      autoScore: newAutoScore,
-      statusSource: 'auto',
-      suggestedStatus: newStatus,
-      notes: `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${score.toFixed(1)}`,
-    });
-  }
+async function recalculateCompetencies(storage: IStorage, facilitatorId: string): Promise<{ preventedDowngrades: string[] }> {
+  // Delegate to storage layer which has the complete downgrade protection logic
+  return await storage.recalculateCompetencies(facilitatorId);
 }
 
 /**
@@ -851,10 +798,24 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           description,
         });
         
-        // Recalculate competencies
-        await recalculateCompetencies(storage, facilitatorId);
+        // Verify the qualification was created
+        if (!qualification || !qualification.id) {
+          console.error(`[Portfolio Tool] ❌ Failed to create qualification: ${courseTitle}`);
+          return `Error: Failed to save qualification to database. Please try again or contact support.`;
+        }
         
-        return `Successfully added qualification: ${courseTitle} from ${institution}. Your competency scores have been updated based on this qualification.`;
+        console.log(`[Portfolio Tool] ✅ Qualification created: ${qualification.id} - ${courseTitle}`);
+        
+        // Recalculate competencies and track if any downgrades were prevented
+        const { preventedDowngrades } = await recalculateCompetencies(storage, facilitatorId);
+        
+        let message = `Successfully added qualification: ${courseTitle} from ${institution}. Your competency scores have been updated based on this qualification.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}. The new qualification doesn't change these levels, as your current status is already appropriate based on your overall portfolio.`;
+        }
+        
+        return message;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error adding qualification:`, error);
         return `Error adding qualification: ${error.message}`;
@@ -877,8 +838,15 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     func: async ({ qualificationId, ...updates }) => {
       try {
         const qualification = await storage.updateQualification(qualificationId, updates);
-        await recalculateCompetencies(storage, facilitatorId);
-        return `Successfully updated qualification. Your competency scores have been recalculated.`;
+        const { preventedDowngrades } = await recalculateCompetencies(storage, facilitatorId);
+        
+        let message = `Successfully updated qualification. Your competency scores have been recalculated.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}.`;
+        }
+        
+        return message;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error updating qualification:`, error);
         return `Error updating qualification: ${error.message}`;
@@ -899,7 +867,7 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
     }),
     func: async ({ language, context, durationYears, durationMonths, languagesMentored, chaptersMentored }) => {
       try {
-        await storage.createActivity({
+        const activity = await storage.createActivity({
           facilitatorId,
           languageName: language,
           description: context,
@@ -909,14 +877,29 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           activityType: 'translation',
         });
         
-        await recalculateCompetencies(storage, facilitatorId);
+        // Verify the activity was created
+        if (!activity || !activity.id) {
+          console.error(`[Portfolio Tool] ❌ Failed to create activity: ${language}`);
+          return `Error: Failed to save activity to database. Please try again or contact support.`;
+        }
+        
+        console.log(`[Portfolio Tool] ✅ Activity created: ${activity.id} - ${language}`);
+        
+        // Recalculate competencies
+        const { preventedDowngrades } = await recalculateCompetencies(storage, facilitatorId);
         
         const totalMonths = durationMonths || 0;
         const durationText = totalMonths > 0 
           ? `${durationYears} anos e ${totalMonths} meses` 
           : `${durationYears} anos`;
         
-        return `Atividade registrada: ${language}. Duração: ${durationText}${languagesMentored ? `, Idiomas: ${languagesMentored}` : ''}${chaptersMentored ? `, Capítulos: ${chaptersMentored}` : ''}. Suas competências foram atualizadas.`;
+        let message = `Atividade registrada: ${language}. Duração: ${durationText}${languagesMentored ? `, Idiomas: ${languagesMentored}` : ''}${chaptersMentored ? `, Capítulos: ${chaptersMentored}` : ''}. Suas competências foram atualizadas.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}. A nova atividade não muda esses níveis, pois seu status atual já é apropriado com base em todo o seu portfólio.`;
+        }
+        
+        return message;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error adding activity:`, error);
         return `Error adding activity: ${error.message}`;
@@ -943,14 +926,20 @@ export function createPortfolioTools(storage: IStorage, userId: string, facilita
           activityType,
         });
         
-        await recalculateCompetencies(storage, facilitatorId);
+        const { preventedDowngrades } = await recalculateCompetencies(storage, facilitatorId);
         
         const totalMonths = durationMonths || 0;
         const durationText = totalMonths > 0 
           ? `${durationYears} anos e ${totalMonths} meses` 
           : `${durationYears} anos`;
         
-        return `Experiência registrada: ${activityType}. Duração: ${durationText}. Suas competências foram atualizadas.`;
+        let message = `Experiência registrada: ${activityType}. Duração: ${durationText}. Suas competências foram atualizadas.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}.`;
+        }
+        
+        return message;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error creating experience:`, error);
         return `Error creating experience: ${error.message}`;

@@ -3190,7 +3190,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Automatically initialize/update all 11 competencies based on qualifications
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Competencies GET] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+      }
       
       const competencies = await storage.getFacilitatorCompetencies(facilitator.id);
       res.json(competencies);
@@ -3233,12 +3236,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Facilitator profile not found" });
       }
       
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
       const competencies = await storage.getFacilitatorCompetencies(facilitator.id);
       
+      let message = "Competencies recalculated successfully";
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Competencies Recalc] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+        message += `. Preserved existing levels for: ${preventedDowngrades.join(', ')}`;
+      }
+      
       res.json({ 
-        message: "Competencies recalculated successfully",
-        competencies 
+        message,
+        competencies,
+        preventedDowngrades
       });
     } catch (error) {
       console.error("Error recalculating competencies:", error);
@@ -3486,7 +3496,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Recalculate competencies based on new qualification
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Qualification Create] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+      }
       
       res.json(qualification);
     } catch (error) {
@@ -3530,7 +3543,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const qualification = await storage.updateQualification(qualificationId, updates);
       
       // Recalculate competencies based on updated qualification
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Qualification Update] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+      }
       
       res.json(qualification);
     } catch (error) {
@@ -3549,7 +3565,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Recalculate competencies after deletion
       if (facilitator) {
-        await storage.recalculateCompetencies(facilitator.id);
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+        if (preventedDowngrades.length > 0) {
+          console.log(`[Qualification Delete] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+        }
       }
       
       res.json({ success: true });
@@ -3704,7 +3723,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Recalculate competencies based on new activity
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Activity Create] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+      }
       
       res.json(activity);
     } catch (error) {
@@ -3734,7 +3756,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activity = await storage.updateActivity(activityId, updates);
       
       // Recalculate competencies based on updated activity
-      await storage.recalculateCompetencies(facilitator.id);
+      const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+      if (preventedDowngrades.length > 0) {
+        console.log(`[Activity Update] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+      }
       
       res.json(activity);
     } catch (error) {
@@ -3753,7 +3778,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Recalculate competencies after deletion
       if (facilitator) {
-        await storage.recalculateCompetencies(facilitator.id);
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitator.id);
+        if (preventedDowngrades.length > 0) {
+          console.log(`[Activity Delete] Prevented downgrades for ${facilitator.fullName}: ${preventedDowngrades.join(', ')}`);
+        }
       }
       
       res.json({ success: true });
