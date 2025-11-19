@@ -181,7 +181,7 @@ export interface IStorage {
   getFacilitatorCompetencies(facilitatorId: string): Promise<FacilitatorCompetency[]>;
   upsertCompetency(competency: InsertFacilitatorCompetency): Promise<FacilitatorCompetency>;
   updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence'): Promise<FacilitatorCompetency>;
-  recalculateCompetencies(facilitatorId: string): Promise<void>;
+  recalculateCompetencies(facilitatorId: string): Promise<{ preventedDowngrades: string[] }>;
   recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}>;
   getCompetencyChangeHistory(competencyRecordId: string): Promise<CompetencyChangeHistory[]>;
   
@@ -1187,9 +1187,9 @@ export class DatabaseStorage implements IStorage {
     return history;
   }
 
-  async recalculateCompetencies(facilitatorId: string): Promise<void> {
+  async recalculateCompetencies(facilitatorId: string): Promise<{ preventedDowngrades: string[] }> {
     // Import here to avoid circular dependencies
-    const { calculateCompetencyScores, scoreToStatus } = await import('./competency-mapping');
+    const { calculateCompetencyScores, scoreToStatus, statusToMinScore } = await import('./competency-mapping');
     const { CORE_COMPETENCIES } = await import('@shared/schema');
     
     // Get all qualifications for this facilitator
@@ -1209,6 +1209,9 @@ export class DatabaseStorage implements IStorage {
     
     // Get all competency IDs from the schema
     const allCompetencyIds = Object.keys(CORE_COMPETENCIES);
+    
+    // Track prevented downgrades to inform the user
+    const preventedDowngrades: string[] = [];
     
     // Process ALL competencies (not just those with scores)
     for (const competencyId of allCompetencyIds) {
@@ -1238,34 +1241,93 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(facilitatorCompetencies.id, existing.id));
         } else {
-          // For auto competencies, update everything including status
+          // For auto competencies, only update if new score is >= existing score (never downgrade)
+          const newAutoScore = Math.round(totalScore);
+          
+          // Get existing score - handle legacy competencies without autoScore by deriving from status
+          const existingAutoScore = existing.autoScore ?? statusToMinScore(existing.status);
+          
+          if (newAutoScore >= existingAutoScore) {
+            // Safe to update - score is improving or staying same
+            await db
+              .update(facilitatorCompetencies)
+              .set({
+                status: suggestedStatus as any,
+                autoScore: newAutoScore,
+                statusSource: 'auto',
+                suggestedStatus: suggestedStatus as any,
+                notes,
+                lastUpdated: new Date(),
+              })
+              .where(eq(facilitatorCompetencies.id, existing.id));
+          } else {
+            // Don't downgrade - preserve ALL fields (status, autoScore, suggestedStatus)
+            const competencyName = CORE_COMPETENCIES[competencyId]?.name || competencyId;
+            console.log(`[Competency Protection] ⚠️ DOWNGRADE PREVENTED for ${competencyName}: ${existing.status} (score ${existingAutoScore}) would drop to ${suggestedStatus} (score ${newAutoScore})`);
+            
+            // Track this for user feedback
+            preventedDowngrades.push(competencyName);
+            
+            // Keep existing status and autoScore, just update notes and timestamp
+            await db
+              .update(facilitatorCompetencies)
+              .set({
+                notes: `Auto-calculated would suggest ${suggestedStatus} (score ${newAutoScore}), but preserving ${existing.status} (score ${existingAutoScore}) to prevent downgrade. Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}`,
+                lastUpdated: new Date(),
+              })
+              .where(eq(facilitatorCompetencies.id, existing.id));
+          }
+        }
+      } else {
+        // Create new competency in auto mode - but verify we're not recreating a deleted manual/evidence competency at a lower level
+        // This protects against regressions when records are missing due to bugs or data issues
+        const newAutoScore = Math.round(totalScore);
+        
+        // Double-check: re-fetch to ensure no race condition created a record
+        const doubleCheck = await db
+          .select()
+          .from(facilitatorCompetencies)
+          .where(
+            sql`${facilitatorCompetencies.facilitatorId} = ${facilitatorId} AND ${facilitatorCompetencies.competencyId} = ${competencyId}`
+          )
+          .limit(1);
+        
+        if (doubleCheck.length > 0) {
+          // A record appeared - treat it as existing and apply update logic
+          const existing = doubleCheck[0];
+          const existingAutoScore = existing.autoScore ?? statusToMinScore(existing.status);
+          
+          if (newAutoScore >= existingAutoScore && existing.statusSource !== 'manual' && existing.statusSource !== 'evidence') {
+            await db
+              .update(facilitatorCompetencies)
+              .set({
+                status: suggestedStatus as any,
+                autoScore: newAutoScore,
+                statusSource: 'auto',
+                suggestedStatus: suggestedStatus as any,
+                notes,
+                lastUpdated: new Date(),
+              })
+              .where(eq(facilitatorCompetencies.id, existing.id));
+          }
+        } else {
+          // Safe to create - no existing record found
           await db
-            .update(facilitatorCompetencies)
-            .set({
+            .insert(facilitatorCompetencies)
+            .values({
+              facilitatorId,
+              competencyId,
               status: suggestedStatus as any,
-              autoScore: Math.round(totalScore),
+              autoScore: newAutoScore,
               statusSource: 'auto',
               suggestedStatus: suggestedStatus as any,
               notes,
-              lastUpdated: new Date(),
-            })
-            .where(eq(facilitatorCompetencies.id, existing.id));
+            });
         }
-      } else {
-        // Create new competency in auto mode
-        await db
-          .insert(facilitatorCompetencies)
-          .values({
-            facilitatorId,
-            competencyId,
-            status: suggestedStatus as any,
-            autoScore: Math.round(totalScore),
-            statusSource: 'auto',
-            suggestedStatus: suggestedStatus as any,
-            notes,
-          });
       }
     }
+    
+    return { preventedDowngrades };
   }
 
   async recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}> {
