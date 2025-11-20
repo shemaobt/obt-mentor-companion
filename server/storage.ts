@@ -180,7 +180,7 @@ export interface IStorage {
   // Competency operations
   getFacilitatorCompetencies(facilitatorId: string): Promise<FacilitatorCompetency[]>;
   upsertCompetency(competency: InsertFacilitatorCompetency): Promise<FacilitatorCompetency>;
-  updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence'): Promise<FacilitatorCompetency>;
+  updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence' | 'conversation'): Promise<FacilitatorCompetency>;
   recalculateCompetencies(facilitatorId: string): Promise<{ preventedDowngrades: string[] }>;
   recalculateAllCompetencies(): Promise<{total: number, processed: number, errors: string[]}>;
   getCompetencyChangeHistory(competencyRecordId: string): Promise<CompetencyChangeHistory[]>;
@@ -1126,7 +1126,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence'): Promise<FacilitatorCompetency> {
+  async updateCompetencyStatus(competencyId: string, status: string, notes?: string, changedBy?: string, changedByUserId?: string, statusSource?: 'auto' | 'manual' | 'evidence' | 'conversation'): Promise<FacilitatorCompetency> {
     // First, fetch the current competency to get the old status
     const [current] = await db
       .select()
@@ -1225,13 +1225,14 @@ export class DatabaseStorage implements IStorage {
       const notes = `Auto-calculated: Education=${educationScore.toFixed(1)}, Experience=${experienceScore.toFixed(1)}, Total=${totalScore.toFixed(1)}`;
       
       if (existing) {
-        // Check if competency is manually set or evidence-based
+        // Check if competency is manually set, evidence-based, or conversation-based
         const isManual = existing.statusSource === 'manual';
         const isEvidence = existing.statusSource === 'evidence';
+        const isConversation = existing.statusSource === 'conversation';
         
-        if (isManual || isEvidence) {
-          // For manual or evidence-based competencies, update only autoScore and suggestedStatus
-          // Preserve the manually-set or evidence-based status and notes
+        if (isManual || isEvidence || isConversation) {
+          // For manual, evidence-based, or conversation-based competencies, update only autoScore and suggestedStatus
+          // Preserve the user-set, evidence-based, or AI-suggested status and notes
           await db
             .update(facilitatorCompetencies)
             .set({
@@ -1297,7 +1298,7 @@ export class DatabaseStorage implements IStorage {
           const existing = doubleCheck[0];
           const existingAutoScore = existing.autoScore ?? statusToMinScore(existing.status);
           
-          if (newAutoScore >= existingAutoScore && existing.statusSource !== 'manual' && existing.statusSource !== 'evidence') {
+          if (newAutoScore >= existingAutoScore && existing.statusSource !== 'manual' && existing.statusSource !== 'evidence' && existing.statusSource !== 'conversation') {
             await db
               .update(facilitatorCompetencies)
               .set({
