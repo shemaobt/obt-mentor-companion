@@ -1125,7 +1125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content,
         chatHistory,
         fullContext,
-        imageFilePaths.length > 0 ? imageFilePaths : undefined
+        imageFilePaths.length > 0 ? imageFilePaths : undefined,
+        chatId
       );
       
       const aiResponse = {
@@ -1377,7 +1378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content,
           chatHistory,
           fullContext,
-          imageFilePaths.length > 0 ? imageFilePaths : undefined
+          imageFilePaths.length > 0 ? imageFilePaths : undefined,
+          chatId
         );
         
         // Stream response in smaller, more frequent chunks for perceived speed
@@ -3630,7 +3632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.redirect(attachment.storagePath);
         } else {
           // Fallback for legacy local files
-          res.download(attachment.storagePath, attachment.originalName);
+        res.download(attachment.storagePath, attachment.originalName);
         }
       } catch (error) {
         console.error("Error downloading certificate:", error);

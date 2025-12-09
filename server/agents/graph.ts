@@ -133,7 +133,8 @@ export async function processMessageWithGraph(
   userMessage: string,
   chatHistory: Array<{ role: string; content: string }>,
   providedContext?: string,
-  imageFilePaths?: string[]
+  imageFilePaths?: string[],
+  chatId?: string
 ): Promise<string> {
   if (!facilitatorId) {
     throw new Error('Facilitator ID is required for using the OBT Mentor Agent');
@@ -164,6 +165,7 @@ export async function processMessageWithGraph(
     messages,
     userId,
     facilitatorId,
+    chatId: chatId || "",
     providedContext: providedContext || "",
     imageFilePaths: imageFilePaths || [],
   };

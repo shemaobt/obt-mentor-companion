@@ -54,6 +54,12 @@ export const AgentStateAnnotation = Annotation.Root({
     default: () => "",
   }),
   
+  // Chat ID for context (used by certificate attachment tool)
+  chatId: Annotation<string>({
+    reducer: (_, update) => update,
+    default: () => "",
+  }),
+  
   // Routing - determines which node to execute next
   next: Annotation<NodeTarget>({
     reducer: (_, update) => update,
@@ -103,6 +109,7 @@ export interface GraphInput {
   messages: BaseMessage[];
   userId: string;
   facilitatorId: string;
+  chatId?: string;
   providedContext?: string;
   imageFilePaths?: string[];
 }
