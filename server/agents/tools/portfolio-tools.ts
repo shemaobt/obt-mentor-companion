@@ -134,27 +134,64 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
 
   const updateQualificationTool = new DynamicStructuredTool({
     name: "update_qualification",
-    description: "Update an existing qualification in the facilitator's portfolio. Use this when the facilitator wants to modify information about a course they've already added.",
+    description: `Update an existing qualification in the facilitator's portfolio.
+
+⚠️ IMPORTANT: You MUST call list_qualifications FIRST to get the qualification ID.
+Without the correct ID, this tool will fail.
+
+WORKFLOW:
+1. User asks to update/change a qualification
+2. Call list_qualifications to see all qualifications with IDs
+3. Identify the correct qualification ID from the list
+4. Call this tool with the qualificationId and the fields to update
+
+Only provide the fields that need to be changed - leave others undefined.`,
     schema: z.object({
-      qualificationId: z.string().describe("ID of the qualification to update"),
+      qualificationId: z.string().describe("ID of the qualification to update - GET THIS FROM list_qualifications FIRST"),
       courseTitle: z.string().optional().describe("New title of the course"),
       institution: z.string().optional().describe("New institution name"),
       completionDate: z.string().optional().describe("New completion date (YYYY-MM-DD format)"),
-      credential: z.string().optional().describe("New credential type"),
       courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("New course level"),
       description: z.string().optional().describe("New description"),
     }),
     func: async ({ qualificationId, ...updates }) => {
       try {
-        await storage.updateQualification(qualificationId, updates);
+        // Validate that qualificationId looks like a valid UUID
+        if (!qualificationId || qualificationId.length < 10) {
+          return `Erro: ID de qualificação inválido. Use a ferramenta list_qualifications primeiro para ver os IDs corretos.`;
+        }
+        
+        // Filter out undefined values
+        const cleanUpdates: Record<string, any> = {};
+        if (updates.courseTitle !== undefined) cleanUpdates.courseTitle = updates.courseTitle;
+        if (updates.institution !== undefined) cleanUpdates.institution = updates.institution;
+        if (updates.completionDate !== undefined) cleanUpdates.completionDate = new Date(updates.completionDate);
+        if (updates.courseLevel !== undefined) cleanUpdates.courseLevel = updates.courseLevel;
+        if (updates.description !== undefined) cleanUpdates.description = updates.description;
+        
+        if (Object.keys(cleanUpdates).length === 0) {
+          return `Erro: Nenhum campo para atualizar foi fornecido.`;
+        }
+        
+        await storage.updateQualification(qualificationId, cleanUpdates);
         const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
         
-        let message = `Perfeito! Atualizei a qualificação no seu portfólio.`;
+        // Build confirmation message with what was updated
+        const updatedFields = Object.keys(cleanUpdates).map(key => {
+          const fieldNames: Record<string, string> = {
+            courseTitle: 'título',
+            institution: 'instituição',
+            completionDate: 'data de conclusão',
+            courseLevel: 'nível',
+            description: 'descrição',
+          };
+          return fieldNames[key] || key;
+        });
         
-        return message;
+        return `✅ Qualificação atualizada com sucesso! Campos alterados: ${updatedFields.join(', ')}.`;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error updating qualification:`, error);
-        return `Error updating qualification: ${error.message}`;
+        return `Erro ao atualizar qualificação: ${error.message}. Verifique se o ID está correto usando list_qualifications.`;
       }
     },
   });
@@ -320,10 +357,81 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
     },
   });
 
+  const updateActivityTool = new DynamicStructuredTool({
+    name: "update_activity",
+    description: `Update an existing activity in the facilitator's portfolio.
+
+⚠️ IMPORTANT: You MUST call list_activities FIRST to get the activity ID.
+Without the correct ID, this tool will fail.
+
+WORKFLOW:
+1. User asks to update/change an activity
+2. Call list_activities to see all activities with IDs
+3. Identify the correct activity ID from the list
+4. Call this tool with the activityId and the fields to update
+
+Only provide the fields that need to be changed - leave others undefined.`,
+    schema: z.object({
+      activityId: z.string().describe("ID of the activity to update - GET THIS FROM list_activities FIRST"),
+      activityType: z.enum(['translation', 'facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'quality_assurance_work', 'community_engagement', 'indigenous_work', 'school_work', 'general_experience']).optional().describe("New activity type"),
+      title: z.string().optional().describe("New job title or role"),
+      organization: z.string().optional().describe("New organization name"),
+      description: z.string().optional().describe("New description"),
+      durationYears: z.number().optional().describe("New duration in years"),
+      durationMonths: z.number().min(0).max(11).optional().describe("New duration months (0-11)"),
+      languageName: z.string().optional().describe("New language name (for translation activities)"),
+    }),
+    func: async ({ activityId, ...updates }) => {
+      try {
+        // Validate that activityId looks like a valid UUID
+        if (!activityId || activityId.length < 10) {
+          return `Erro: ID de atividade inválido. Use a ferramenta list_activities primeiro para ver os IDs corretos.`;
+        }
+        
+        // Filter out undefined values
+        const cleanUpdates: Record<string, any> = {};
+        if (updates.activityType !== undefined) cleanUpdates.activityType = updates.activityType;
+        if (updates.title !== undefined) cleanUpdates.title = updates.title;
+        if (updates.organization !== undefined) cleanUpdates.organization = updates.organization;
+        if (updates.description !== undefined) cleanUpdates.description = updates.description;
+        if (updates.durationYears !== undefined) cleanUpdates.durationYears = updates.durationYears;
+        if (updates.durationMonths !== undefined) cleanUpdates.durationMonths = updates.durationMonths;
+        if (updates.languageName !== undefined) cleanUpdates.languageName = updates.languageName;
+        
+        if (Object.keys(cleanUpdates).length === 0) {
+          return `Erro: Nenhum campo para atualizar foi fornecido.`;
+        }
+        
+        await storage.updateActivity(activityId, cleanUpdates);
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        
+        // Build confirmation message with what was updated
+        const updatedFields = Object.keys(cleanUpdates).map(key => {
+          const fieldNames: Record<string, string> = {
+            activityType: 'tipo',
+            title: 'título',
+            organization: 'organização',
+            description: 'descrição',
+            durationYears: 'anos de duração',
+            durationMonths: 'meses de duração',
+            languageName: 'idioma',
+          };
+          return fieldNames[key] || key;
+        });
+        
+        return `✅ Atividade atualizada com sucesso! Campos alterados: ${updatedFields.join(', ')}.`;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error updating activity:`, error);
+        return `Erro ao atualizar atividade: ${error.message}. Verifique se o ID está correto usando list_activities.`;
+      }
+    },
+  });
+
   return [
     addQualificationTool,
     updateQualificationTool,
     addActivityTool,
     createGeneralExperienceTool,
+    updateActivityTool,
   ];
 }
