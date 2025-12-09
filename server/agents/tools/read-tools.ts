@@ -45,19 +45,24 @@ function formatStatusPt(status: string): string {
 export function createReadTools(storage: IStorage, facilitatorId: string) {
   
   /**
-   * List qualifications with IDs - needed for update operations
+   * List qualifications - for internal use and user display
+   * Returns structured data that the agent can use internally
+   * IMPORTANT: The agent should NOT show IDs to the user
    */
   const listQualificationsTool = new DynamicStructuredTool({
     name: "list_qualifications",
-    description: `List all qualifications in the facilitator's portfolio WITH their IDs. 
+    description: `List all qualifications in the facilitator's portfolio.
     
-USE THIS TOOL FIRST when the user wants to:
-- Update a qualification (change date, title, etc.)
-- Delete a qualification
-- Attach a certificate to a qualification
-- See details of a specific qualification
+USE THIS TOOL when the user wants to:
+- See their qualifications
+- Update a qualification (you'll get the ID internally)
+- Find a specific qualification
 
-The returned IDs are required for update_qualification tool.`,
+⚠️ IMPORTANT: This tool returns IDs for YOUR internal use only.
+NEVER show IDs to the user. Refer to qualifications by name and institution.
+
+When you need to update, use the ID internally but tell the user:
+"Vou atualizar seu curso de [nome]..." NOT "Vou atualizar ID xyz..."`,
     schema: z.object({
       language: z.enum(['en', 'pt']).optional().describe("Language for the response. Defaults to Portuguese."),
     }),
@@ -97,44 +102,61 @@ The returned IDs are required for update_qualification tool.`,
           },
         };
         
-        const header = language === 'en' 
-          ? `**Your Qualifications (${qualifications.length}):**\n`
-          : `**Suas Qualificações (${qualifications.length}):**\n`;
-        
-        const list = qualifications.map((q, index) => {
+        // Format for user display (no IDs shown)
+        const userDisplay = qualifications.map((q, index) => {
           const level = levelNames[language][q.courseLevel || 'certificate'] || q.courseLevel;
-          return `${index + 1}. **${q.courseTitle}**
-   - ID: \`${q.id}\`
-   - ${language === 'en' ? 'Institution' : 'Instituição'}: ${q.institution}
-   - ${language === 'en' ? 'Completed' : 'Concluído'}: ${formatDate(q.completionDate)}
-   - ${language === 'en' ? 'Level' : 'Nível'}: ${level}`;
+          return `${index + 1}. **${q.courseTitle}** - ${q.institution}
+   ${language === 'en' ? 'Completed' : 'Concluído'}: ${formatDate(q.completionDate)} | ${language === 'en' ? 'Level' : 'Nível'}: ${level}`;
         }).join('\n\n');
         
-        const footer = language === 'en'
-          ? "\n\n*To update a qualification, I need the ID shown above.*"
-          : "\n\n*Para atualizar uma qualificação, preciso do ID mostrado acima.*";
+        // Internal data for the agent (with IDs) - agent should NOT show this to user
+        const internalData = qualifications.map(q => ({
+          id: q.id,
+          title: q.courseTitle,
+          institution: q.institution,
+          date: q.completionDate,
+          level: q.courseLevel,
+        }));
         
-        return header + list + footer;
+        const header = language === 'en' 
+          ? `**Your Qualifications (${qualifications.length}):**\n\n`
+          : `**Suas Qualificações (${qualifications.length}):**\n\n`;
+        
+        // Return both: user-friendly text + internal JSON (agent extracts ID but doesn't show it)
+        return `${header}${userDisplay}
+
+---
+[INTERNAL - DO NOT SHOW TO USER]
+${JSON.stringify(internalData)}
+[END INTERNAL]`;
       } catch (error: any) {
         console.error(`[Read Tool] list_qualifications failed:`, error);
-        return `Error listing qualifications: ${error.message}`;
+        return language === 'en' 
+          ? "Sorry, I couldn't load your qualifications. Please try again."
+          : "Desculpe, não consegui carregar suas qualificações. Tente novamente.";
       }
     },
   });
 
   /**
-   * List activities with IDs - needed for update operations
+   * List activities - for internal use and user display
+   * Returns structured data that the agent can use internally
+   * IMPORTANT: The agent should NOT show IDs to the user
    */
   const listActivitiesTool = new DynamicStructuredTool({
     name: "list_activities",
-    description: `List all activities in the facilitator's portfolio WITH their IDs.
+    description: `List all activities in the facilitator's portfolio.
     
-USE THIS TOOL FIRST when the user wants to:
-- Update an activity (change duration, description, etc.)
-- Delete an activity
-- See details of a specific activity
+USE THIS TOOL when the user wants to:
+- See their activities
+- Update an activity (you'll get the ID internally)
+- Find a specific activity
 
-The returned IDs are required for update_activity tool.`,
+⚠️ IMPORTANT: This tool returns IDs for YOUR internal use only.
+NEVER show IDs to the user. Refer to activities by title and organization.
+
+When you need to update, use the ID internally but tell the user:
+"Vou atualizar sua experiência como [cargo] na [organização]..." NOT "Vou atualizar ID xyz..."`,
     schema: z.object({
       language: z.enum(['en', 'pt']).optional().describe("Language for the response. Defaults to Portuguese."),
     }),
@@ -177,32 +199,45 @@ The returned IDs are required for update_activity tool.`,
           },
         };
         
-        const header = language === 'en' 
-          ? `**Your Activities (${activities.length}):**\n`
-          : `**Suas Atividades (${activities.length}):**\n`;
-        
-        const list = activities.map((a, index) => {
+        // Format for user display (no IDs shown)
+        const userDisplay = activities.map((a, index) => {
           const type = activityTypeNames[language][a.activityType || 'general_experience'] || a.activityType;
           const duration = a.durationMonths && a.durationMonths > 0
             ? `${a.durationYears || 0} ${language === 'en' ? 'years' : 'anos'}, ${a.durationMonths} ${language === 'en' ? 'months' : 'meses'}`
             : `${a.durationYears || 0} ${language === 'en' ? 'years' : 'anos'}`;
           
-          return `${index + 1}. **${a.title || type}**
-   - ID: \`${a.id}\`
-   - ${language === 'en' ? 'Type' : 'Tipo'}: ${type}
-   - ${language === 'en' ? 'Organization' : 'Organização'}: ${a.organization || 'N/A'}
-   - ${language === 'en' ? 'Duration' : 'Duração'}: ${duration}
-   ${a.languageName ? `- ${language === 'en' ? 'Language' : 'Idioma'}: ${a.languageName}` : ''}`;
+          const langInfo = a.languageName ? ` | ${language === 'en' ? 'Language' : 'Idioma'}: ${a.languageName}` : '';
+          
+          return `${index + 1}. **${a.title || type}** - ${a.organization || 'N/A'}
+   ${type} | ${language === 'en' ? 'Duration' : 'Duração'}: ${duration}${langInfo}`;
         }).join('\n\n');
         
-        const footer = language === 'en'
-          ? "\n\n*To update an activity, I need the ID shown above.*"
-          : "\n\n*Para atualizar uma atividade, preciso do ID mostrado acima.*";
+        // Internal data for the agent (with IDs) - agent should NOT show this to user
+        const internalData = activities.map(a => ({
+          id: a.id,
+          title: a.title,
+          type: a.activityType,
+          organization: a.organization,
+          duration: { years: a.durationYears, months: a.durationMonths },
+          language: a.languageName,
+        }));
         
-        return header + list + footer;
+        const header = language === 'en' 
+          ? `**Your Activities (${activities.length}):**\n\n`
+          : `**Suas Atividades (${activities.length}):**\n\n`;
+        
+        // Return both: user-friendly text + internal JSON (agent extracts ID but doesn't show it)
+        return `${header}${userDisplay}
+
+---
+[INTERNAL - DO NOT SHOW TO USER]
+${JSON.stringify(internalData)}
+[END INTERNAL]`;
       } catch (error: any) {
         console.error(`[Read Tool] list_activities failed:`, error);
-        return `Error listing activities: ${error.message}`;
+        return language === 'en' 
+          ? "Sorry, I couldn't load your activities. Please try again."
+          : "Desculpe, não consegui carregar suas atividades. Tente novamente.";
       }
     },
   });

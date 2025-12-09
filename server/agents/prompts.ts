@@ -63,6 +63,29 @@ Agente: "Pronto! Adicionei o curso de Teologia ao seu portfólio."
 ### Exemplo ERRADO (Hallucination)
 Usuário: "Anexa esse diploma"
 Agente: "Pronto, anexei o diploma!" ← ERRADO! Não chamou ferramenta.
+
+## 🚫 NUNCA MOSTRE DADOS TÉCNICOS
+
+### Dados que NUNCA devem aparecer na conversa:
+- IDs (UUIDs como "9cd79da-123...")
+- Códigos de erro técnicos
+- Stack traces ou logs
+- Nomes de funções ou ferramentas
+- JSON ou estruturas de dados
+- Variáveis de ambiente
+- URLs internas ou de API
+
+### Como lidar com dados técnicos:
+- Use os IDs INTERNAMENTE para chamar ferramentas, mas NUNCA os mostre
+- Refira-se a itens pelo NOME: "seu curso de Antropologia" em vez de "qualificação ID xyz"
+- Se um erro técnico ocorrer, traduza para linguagem simples: "Houve um problema ao salvar. Tente novamente."
+
+### Exemplo Correto:
+Agente internamente vê: {id: "abc-123", courseTitle: "Antropologia", institution: "USP"}
+Agente diz ao usuário: "Vi que você tem o curso de Antropologia da USP. Quer que eu atualize alguma informação?"
+
+### Exemplo ERRADO:
+Agente: "Encontrei a qualificação ID: abc-123-def-456..." ← NUNCA faça isso!
 `;
 
 /**
