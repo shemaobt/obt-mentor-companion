@@ -91,28 +91,36 @@ jobs:
             exit 1
           fi
           
-          GOOGLE_API_KEY="${{ secrets.GOOGLE_API_KEY }}"
-          QDRANT_URL="${{ secrets.QDRANT_URL }}"
-          QDRANT_API_KEY="${{ secrets.QDRANT_API_KEY }}"
-          SESSION_SECRET="${{ secrets.SESSION_SECRET }}"
-          REPLIT_OIDC_CLIENT_ID="${{ secrets.REPLIT_OIDC_CLIENT_ID }}"
-          REPLIT_OIDC_CLIENT_SECRET="${{ secrets.REPLIT_OIDC_CLIENT_SECRET }}"
-          
           gcloud run deploy "${BACKEND_SERVICE}" \
             --image "${{ steps.vars.outputs.backend_image_uri }}" \
             --region "${CLOUD_RUN_REGION}" \
             --project "${PROJECT_ID}" \
-            --set-env-vars="DATABASE_URL=${DATABASE_URL},GOOGLE_API_KEY=${GOOGLE_API_KEY},QDRANT_URL=${QDRANT_URL},QDRANT_API_KEY=${QDRANT_API_KEY},SESSION_SECRET=${SESSION_SECRET},REPLIT_OIDC_CLIENT_ID=${REPLIT_OIDC_CLIENT_ID},REPLIT_OIDC_CLIENT_SECRET=${REPLIT_OIDC_CLIENT_SECRET},REPLIT_OIDC_ISSUER=https://replit.com,NODE_ENV=production" \
             --timeout=300 \
-            --cpu=2 \
-            --memory=1Gi \
-            --port=5000 \
-            --cpu-boost \
-            --allow-unauthenticated \
-            --startup-probe="httpGet.path=/health,httpGet.port=5000,timeoutSeconds=30,periodSeconds=60,failureThreshold=5" \
+            --update-env-vars="^||^DATABASE_URL=${DATABASE_URL}||GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}||QDRANT_URL=${{ secrets.QDRANT_URL }}||QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}||SESSION_SECRET=${{ secrets.SESSION_SECRET }}||REPLIT_OIDC_CLIENT_ID=${{ secrets.REPLIT_OIDC_CLIENT_ID }}||REPLIT_OIDC_CLIENT_SECRET=${{ secrets.REPLIT_OIDC_CLIENT_SECRET }}||REPLIT_OIDC_ISSUER=https://replit.com||NODE_ENV=production" \
             --quiet \
             --format="value(status.url)" > backend_url.txt
           echo "backend_url=$(cat backend_url.txt)" >> $GITHUB_OUTPUT
+
+      - name: Fetch Cloud Run logs on failure
+        if: failure()
+        run: |
+          echo "📋 Fetching recent Cloud Run logs for debugging..."
+          REVISION=$(gcloud run revisions list \
+            --service="${BACKEND_SERVICE}" \
+            --region="${CLOUD_RUN_REGION}" \
+            --project="${PROJECT_ID}" \
+            --limit=1 \
+            --format="value(name)" 2>/dev/null | head -1 || echo "")
+          
+          if [ -n "${REVISION}" ]; then
+            echo "Recent logs for revision: ${REVISION}"
+            gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=${BACKEND_SERVICE} AND resource.labels.revision_name=$(basename ${REVISION})" \
+              --limit=100 \
+              --format="table(timestamp,severity,textPayload)" \
+              --project="${PROJECT_ID}" 2>&1 || echo "Could not fetch logs"
+          else
+            echo "Could not find revision name"
+          fi
 
       - name: Deploy frontend to Cloud Run
         run: |
@@ -122,8 +130,6 @@ jobs:
             --region "${CLOUD_RUN_REGION}" \
             --project "${PROJECT_ID}" \
             --set-env-vars="BACKEND_URL=${BACKEND_URL}" \
-            --port=8080 \
-            --allow-unauthenticated \
             --quiet
 
       - name: Show deployment URLs
