@@ -2,6 +2,10 @@
  * LangGraph StateGraph Definition
  * 
  * Wires together all agent nodes into a cohesive workflow.
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - Portfolio no longer waits for Competency tracking (runs in background)
+ * - Competency tracking is triggered asynchronously after portfolio updates
  */
 
 import { StateGraph, END } from "@langchain/langgraph";
@@ -17,8 +21,50 @@ import {
 } from "./nodes";
 import type { IStorage } from "../storage";
 
+// Store for background competency tasks
+const pendingCompetencyTasks: Map<string, Promise<void>> = new Map();
+
+/**
+ * Run competency tracking in the background (non-blocking)
+ */
+export function runCompetencyInBackground(
+  storage: IStorage, 
+  facilitatorId: string,
+  messages: any[]
+): void {
+  const taskId = `${facilitatorId}-${Date.now()}`;
+  
+  const task = (async () => {
+    try {
+      console.log(`[Background Competency] Starting for facilitator ${facilitatorId}`);
+      const competencyNode = createCompetencyNode(storage);
+      
+      await competencyNode({
+        messages,
+        userId: '',
+        facilitatorId,
+        next: 'END',
+        response: '',
+        providedContext: '',
+        imageFilePaths: [],
+      });
+      
+      console.log(`[Background Competency] Completed for facilitator ${facilitatorId}`);
+    } catch (error) {
+      console.error(`[Background Competency] Error for facilitator ${facilitatorId}:`, error);
+    } finally {
+      pendingCompetencyTasks.delete(taskId);
+    }
+  })();
+  
+  pendingCompetencyTasks.set(taskId, task);
+}
+
 /**
  * Create the agent graph with all nodes wired together
+ * 
+ * OPTIMIZATION: Portfolio now goes directly to END instead of waiting for competency.
+ * Competency tracking is triggered in the background after the response is sent.
  */
 export function createAgentGraph(storage: IStorage) {
   // Create node functions with storage dependency
@@ -37,10 +83,10 @@ export function createAgentGraph(storage: IStorage) {
     .addNode("report", reportNode)
     
     // Define edges
-    // After portfolio update, run competency tracking
-    .addEdge("portfolio", "competency")
+    // OPTIMIZATION: Portfolio now goes directly to END (competency runs in background)
+    .addEdge("portfolio", END)
     
-    // After competency tracking, end
+    // Competency tracking (when explicitly routed)
     .addEdge("competency", END)
     
     // Report goes directly to end
@@ -76,6 +122,9 @@ export function createAgentGraph(storage: IStorage) {
  * 
  * This is the main entry point for message processing.
  * Maintains backward compatibility with the old processMessageWithLangChain signature.
+ * 
+ * OPTIMIZATION: After portfolio updates, competency tracking runs in background
+ * so the user gets their response faster.
  */
 export async function processMessageWithGraph(
   storage: IStorage,
@@ -119,6 +168,9 @@ export async function processMessageWithGraph(
     imageFilePaths: imageFilePaths || [],
   };
   
+  // Detect if this is a portfolio-related message (for background competency)
+  const isPortfolioMessage = detectPortfolioIntent(userMessage);
+  
   try {
     console.log('[Graph] Invoking graph...');
     
@@ -134,6 +186,12 @@ export async function processMessageWithGraph(
     
     // Extract response from state
     const response = result.response || "I apologize, but I wasn't able to generate a response. Please try again.";
+    
+    // OPTIMIZATION: Run competency tracking in background after portfolio updates
+    if (isPortfolioMessage && facilitatorId) {
+      console.log('[Graph] Triggering background competency tracking...');
+      runCompetencyInBackground(storage, facilitatorId, messages);
+    }
     
     return response;
   } catch (error: any) {
@@ -152,4 +210,22 @@ export async function processMessageWithGraph(
       throw new Error(`AI agent error: ${error?.message || 'Unknown error occurred'}`);
     }
   }
+}
+
+/**
+ * Simple portfolio intent detection for triggering background competency
+ */
+function detectPortfolioIntent(message: string): boolean {
+  const normalizedMessage = message.toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const portfolioKeywords = [
+    'adicionar', 'registrar', 'cadastrar', 'incluir',
+    'qualificacao', 'qualificação', 'certificado', 'curso', 'diploma',
+    'atividade', 'experiencia', 'experiência', 'trabalhei',
+    'add', 'register', 'qualification', 'activity', 'experience'
+  ];
+
+  return portfolioKeywords.some(keyword => normalizedMessage.includes(keyword));
 }

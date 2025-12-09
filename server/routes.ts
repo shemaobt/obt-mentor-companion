@@ -1347,7 +1347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return;
         }
         
-        console.log('[LangChain Streaming] Processing message with RAG-optimized LangChain agent');
+        console.log('[LangChain Streaming] Processing message with streaming-optimized LangChain agent');
         
         let assistantMessageId: string | null = null;
         let fullContent = "";
@@ -1355,7 +1355,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get chat history for LangChain
         const chatHistory = await storage.getChatMessages(chatId, userId);
         
-        // Process with LangChain agent (this uses RAG and is optimized!)
+        // Create assistant message placeholder immediately
+        const assistantMessage = await storage.createMessage({
+          chatId,
+          role: "assistant",
+          content: "", // Will be updated when streaming completes
+        });
+        assistantMessageId = assistantMessage.id;
+        
+        // Send assistant message created event immediately so UI shows typing
+        res.write(`data: ${JSON.stringify({ 
+          type: 'assistant_message_start',
+          data: assistantMessage
+        })}\n\n`);
+        
+        // Process with LangChain agent - now with faster processing due to background competency
         const langchainResponse = await processMessageWithLangChain(
           storage,
           userId,
@@ -1366,26 +1380,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           imageFilePaths.length > 0 ? imageFilePaths : undefined
         );
         
-        // Create assistant message
-        const assistantMessage = await storage.createMessage({
-          chatId,
-          role: "assistant",
-          content: "", // Will be updated incrementally
-        });
-        assistantMessageId = assistantMessage.id;
+        // Stream response in smaller, more frequent chunks for perceived speed
+        // Using character-based chunking for smoother streaming
+        const chunkSize = 15; // Characters per chunk for smooth typing effect
         
-        // Send assistant message created event
-        res.write(`data: ${JSON.stringify({ 
-          type: 'assistant_message_start',
-          data: assistantMessage
-        })}\n\n`);
-        
-        // Simulate streaming by chunking the response
-        const words = langchainResponse.split(' ');
-        const chunkSize = 3; // Stream 3 words at a time for smooth experience
-        
-        for (let i = 0; i < words.length; i += chunkSize) {
-          const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
+        for (let i = 0; i < langchainResponse.length; i += chunkSize) {
+          const chunk = langchainResponse.slice(i, i + chunkSize);
           fullContent += chunk;
           
           res.write(`data: ${JSON.stringify({ 
@@ -1393,8 +1393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             data: chunk 
           })}\n\n`);
           
-          // Small delay for smooth streaming effect
-          await new Promise(resolve => setTimeout(resolve, 20));
+          // Very small delay for smooth streaming effect (10ms per chunk)
+          await new Promise(resolve => setTimeout(resolve, 10));
         }
         
         // Update the assistant message with final content
