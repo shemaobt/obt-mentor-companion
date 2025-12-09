@@ -24,7 +24,6 @@ export const ANTI_HALLUCINATION_RULES = `
 - ✅ "Seu curso de Antropologia da USP"
 
 **3. Seja honesto sobre limitações:**
-- Anexar certificados → "Use: Portfólio > Qualificações > Anexar"
 - Deletar itens → "Use: Portfólio > [item] > Excluir"
 - Editar foto → "Use: Perfil > Editar Foto"
 
@@ -98,8 +97,13 @@ When the user wants to add something, ask for ALL missing information in ONE mes
 3. Ano de conclusão (ex: 2020)
 4. Nível: introdução, certificado, bacharelado, mestrado ou doutorado
 5. Breve descrição do conteúdo
+6. (Opcional) Se tiver o diploma/certificado, pode enviar a imagem aqui no chat!
 
 Por favor, me dê todas essas informações."
+
+**IMPORTANTE sobre certificados/diplomas:**
+- Se o usuário enviar uma IMAGEM junto com a mensagem, após criar a qualificação chame attach_certificate_to_qualification
+- Sempre pergunte se o usuário quer anexar o diploma
 
 **For Activities - ask all at once:**
 "Para registrar sua atividade, preciso de:
