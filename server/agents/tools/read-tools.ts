@@ -44,6 +44,169 @@ function formatStatusPt(status: string): string {
  */
 export function createReadTools(storage: IStorage, facilitatorId: string) {
   
+  /**
+   * List qualifications with IDs - needed for update operations
+   */
+  const listQualificationsTool = new DynamicStructuredTool({
+    name: "list_qualifications",
+    description: `List all qualifications in the facilitator's portfolio WITH their IDs. 
+    
+USE THIS TOOL FIRST when the user wants to:
+- Update a qualification (change date, title, etc.)
+- Delete a qualification
+- Attach a certificate to a qualification
+- See details of a specific qualification
+
+The returned IDs are required for update_qualification tool.`,
+    schema: z.object({
+      language: z.enum(['en', 'pt']).optional().describe("Language for the response. Defaults to Portuguese."),
+    }),
+    func: async ({ language = 'pt' }) => {
+      try {
+        const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
+        
+        if (qualifications.length === 0) {
+          return language === 'en' 
+            ? "No qualifications found in your portfolio."
+            : "Nenhuma qualificação encontrada no seu portfólio.";
+        }
+        
+        const formatDate = (date: Date | string | null) => {
+          if (!date) return 'N/A';
+          const d = new Date(date);
+          return d.toLocaleDateString(language === 'en' ? 'en-US' : 'pt-BR', { 
+            year: 'numeric', 
+            month: 'long' 
+          });
+        };
+        
+        const levelNames: Record<string, Record<string, string>> = {
+          en: {
+            introduction: 'Introduction',
+            certificate: 'Certificate',
+            bachelor: 'Bachelor',
+            master: 'Master',
+            doctoral: 'Doctoral',
+          },
+          pt: {
+            introduction: 'Introdução',
+            certificate: 'Certificado',
+            bachelor: 'Bacharelado',
+            master: 'Mestrado',
+            doctoral: 'Doutorado',
+          },
+        };
+        
+        const header = language === 'en' 
+          ? `**Your Qualifications (${qualifications.length}):**\n`
+          : `**Suas Qualificações (${qualifications.length}):**\n`;
+        
+        const list = qualifications.map((q, index) => {
+          const level = levelNames[language][q.courseLevel || 'certificate'] || q.courseLevel;
+          return `${index + 1}. **${q.courseTitle}**
+   - ID: \`${q.id}\`
+   - ${language === 'en' ? 'Institution' : 'Instituição'}: ${q.institution}
+   - ${language === 'en' ? 'Completed' : 'Concluído'}: ${formatDate(q.completionDate)}
+   - ${language === 'en' ? 'Level' : 'Nível'}: ${level}`;
+        }).join('\n\n');
+        
+        const footer = language === 'en'
+          ? "\n\n*To update a qualification, I need the ID shown above.*"
+          : "\n\n*Para atualizar uma qualificação, preciso do ID mostrado acima.*";
+        
+        return header + list + footer;
+      } catch (error: any) {
+        console.error(`[Read Tool] list_qualifications failed:`, error);
+        return `Error listing qualifications: ${error.message}`;
+      }
+    },
+  });
+
+  /**
+   * List activities with IDs - needed for update operations
+   */
+  const listActivitiesTool = new DynamicStructuredTool({
+    name: "list_activities",
+    description: `List all activities in the facilitator's portfolio WITH their IDs.
+    
+USE THIS TOOL FIRST when the user wants to:
+- Update an activity (change duration, description, etc.)
+- Delete an activity
+- See details of a specific activity
+
+The returned IDs are required for update_activity tool.`,
+    schema: z.object({
+      language: z.enum(['en', 'pt']).optional().describe("Language for the response. Defaults to Portuguese."),
+    }),
+    func: async ({ language = 'pt' }) => {
+      try {
+        const activities = await storage.getFacilitatorActivities(facilitatorId);
+        
+        if (activities.length === 0) {
+          return language === 'en' 
+            ? "No activities found in your portfolio."
+            : "Nenhuma atividade encontrada no seu portfólio.";
+        }
+        
+        const activityTypeNames: Record<string, Record<string, string>> = {
+          en: {
+            translation: 'Translation',
+            facilitation: 'Facilitation',
+            teaching: 'Teaching',
+            biblical_teaching: 'Biblical Teaching',
+            long_term_mentoring: 'Long-term Mentoring',
+            oral_facilitation: 'Oral Facilitation',
+            quality_assurance_work: 'Quality Assurance',
+            community_engagement: 'Community Engagement',
+            indigenous_work: 'Indigenous Work',
+            school_work: 'School Work',
+            general_experience: 'General Experience',
+          },
+          pt: {
+            translation: 'Tradução',
+            facilitation: 'Facilitação',
+            teaching: 'Ensino',
+            biblical_teaching: 'Ensino Bíblico',
+            long_term_mentoring: 'Mentoria',
+            oral_facilitation: 'Facilitação Oral',
+            quality_assurance_work: 'Controle de Qualidade',
+            community_engagement: 'Engajamento Comunitário',
+            indigenous_work: 'Trabalho Indígena',
+            school_work: 'Trabalho Escolar',
+            general_experience: 'Experiência Geral',
+          },
+        };
+        
+        const header = language === 'en' 
+          ? `**Your Activities (${activities.length}):**\n`
+          : `**Suas Atividades (${activities.length}):**\n`;
+        
+        const list = activities.map((a, index) => {
+          const type = activityTypeNames[language][a.activityType || 'general_experience'] || a.activityType;
+          const duration = a.durationMonths && a.durationMonths > 0
+            ? `${a.durationYears || 0} ${language === 'en' ? 'years' : 'anos'}, ${a.durationMonths} ${language === 'en' ? 'months' : 'meses'}`
+            : `${a.durationYears || 0} ${language === 'en' ? 'years' : 'anos'}`;
+          
+          return `${index + 1}. **${a.title || type}**
+   - ID: \`${a.id}\`
+   - ${language === 'en' ? 'Type' : 'Tipo'}: ${type}
+   - ${language === 'en' ? 'Organization' : 'Organização'}: ${a.organization || 'N/A'}
+   - ${language === 'en' ? 'Duration' : 'Duração'}: ${duration}
+   ${a.languageName ? `- ${language === 'en' ? 'Language' : 'Idioma'}: ${a.languageName}` : ''}`;
+        }).join('\n\n');
+        
+        const footer = language === 'en'
+          ? "\n\n*To update an activity, I need the ID shown above.*"
+          : "\n\n*Para atualizar uma atividade, preciso do ID mostrado acima.*";
+        
+        return header + list + footer;
+      } catch (error: any) {
+        console.error(`[Read Tool] list_activities failed:`, error);
+        return `Error listing activities: ${error.message}`;
+      }
+    },
+  });
+
   const getPortfolioSummaryTool = new DynamicStructuredTool({
     name: "get_portfolio_summary",
     description: "Get an overall summary of the facilitator's portfolio including competency counts, strongest areas, growth areas, and two-pillar analysis (education vs experience). Use this when the user asks about their overall progress, what they need to work on, or how they're doing generally. Returns pre-formatted output ready to display.",
@@ -151,5 +314,7 @@ ${growthAreas.map(c => `${formatFn(c.status)} **${c.name}**`).join('\n')}
 
   return [
     getPortfolioSummaryTool,
+    listQualificationsTool,
+    listActivitiesTool,
   ];
 }
