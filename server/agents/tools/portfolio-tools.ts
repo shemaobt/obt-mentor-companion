@@ -35,20 +35,40 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
   
   const addQualificationTool = new DynamicStructuredTool({
     name: "add_qualification",
-    description: "Add a qualification (course, certificate, or training) to the facilitator's portfolio. IMPORTANT: Always ask the facilitator about the course level (introduction, certificate, bachelor, master, or doctoral) as this significantly impacts competency scoring. Use this when the facilitator mentions completing a course or receiving a qualification.",
+    description: `Add a qualification (course, certificate, or training) to the facilitator's portfolio.
+
+REQUIRED QUESTIONS - You MUST ask ALL of these before calling this tool:
+1. Course Title - "Qual o nome do curso?"
+2. Institution - "Em qual instituição você fez?"
+3. Completion Date - "Quando você concluiu? (mês e ano)"
+4. Course Level - "Qual o nível do curso? (introdução, certificado, bacharelado, mestrado ou doutorado)"
+5. Description - "Pode descrever brevemente o conteúdo do curso?"
+
+DO NOT call this tool until you have answers for ALL 5 questions.`,
     schema: z.object({
-      courseTitle: z.string().describe("Title of the course or training"),
-      institution: z.string().describe("Institution or organization that provided the training"),
-      completionDate: z.string().describe("Date of completion (YYYY-MM-DD format)"),
-      credential: z.string().optional().describe("Type of credential received (e.g., Certificate, Diploma)"),
-      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("Academic level of the course - ALWAYS ask the facilitator this question"),
-      description: z.string().describe("Brief description of the course content - REQUIRED field"),
+      courseTitle: z.string().describe("Title of the course or training - REQUIRED"),
+      institution: z.string().describe("Institution or organization that provided the training - REQUIRED"),
+      completionDate: z.string().describe("Date of completion (YYYY-MM-DD format) - REQUIRED"),
+      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).describe("Academic level of the course - REQUIRED. Options: introduction, certificate, bachelor, master, doctoral"),
+      description: z.string().describe("Brief description of the course content - REQUIRED"),
     }),
-    func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
+    func: async ({ courseTitle, institution, completionDate, courseLevel, description }) => {
       try {
-        // Validate required description field
+        // Validate all required fields
+        if (!courseTitle || courseTitle.trim().length === 0) {
+          return `Erro: O título do curso é obrigatório. Por favor, me diga o nome do curso.`;
+        }
+        if (!institution || institution.trim().length === 0) {
+          return `Erro: A instituição é obrigatória. Em qual instituição você fez o curso?`;
+        }
+        if (!completionDate) {
+          return `Erro: A data de conclusão é obrigatória. Quando você concluiu o curso?`;
+        }
+        if (!courseLevel) {
+          return `Erro: O nível do curso é obrigatório. Qual o nível: introdução, certificado, bacharelado, mestrado ou doutorado?`;
+        }
         if (!description || description.trim().length === 0) {
-          return `Error: Description is required for all qualifications. Please provide a brief description of the course content.`;
+          return `Erro: A descrição é obrigatória. Pode descrever brevemente o conteúdo do curso?`;
         }
 
         // Normalize text for robust duplicate detection
@@ -83,8 +103,7 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
           courseTitle,
           institution,
           completionDate: new Date(completionDate),
-          credential: credential || null,
-          courseLevel: courseLevel || null,
+          courseLevel,
           description,
         });
         
@@ -142,21 +161,51 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
 
   const addActivityTool = new DynamicStructuredTool({
     name: "add_activity",
-    description: "Record a Bible translation mentorship activity in the facilitator's portfolio. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months', '1.5 years'. Convert to years and months separately. Also ask about languages mentored and chapters mentored. Use this when facilitators explicitly request to add translation work to their portfolio.",
+    description: `Record a Bible translation mentorship activity in the facilitator's portfolio.
+
+REQUIRED QUESTIONS - You MUST ask ALL of these before calling this tool:
+1. Title - "Qual era seu cargo/função?" (e.g., "Facilitador de Tradução", "Mentor OBT")
+2. Organization - "Em qual organização você trabalhou?" (e.g., "YWAM", "Wycliffe")
+3. Language - "Qual idioma você trabalhou?"
+4. Duration - "Por quanto tempo você trabalhou nisso?" (convert to years and months)
+5. Description - "Pode descrever o trabalho que fez?"
+6. Chapters (optional) - "Quantos capítulos foram trabalhados?"
+
+DO NOT call this tool until you have answers for questions 1-5.`,
     schema: z.object({
-      language: z.string().describe("The language being mentored (e.g., Swahili, Mandarin)"),
-      context: z.string().describe("Brief description of the mentorship context or project"),
-      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
-      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
-      languagesMentored: z.number().optional().describe("Number of languages mentored in this activity"),
+      title: z.string().describe("Job title or role (e.g., 'Translation Facilitator', 'OBT Mentor') - REQUIRED"),
+      organization: z.string().describe("Organization where the work was done (e.g., 'YWAM', 'Wycliffe') - REQUIRED"),
+      language: z.string().describe("The language being mentored (e.g., Swahili, Mandarin) - REQUIRED"),
+      description: z.string().describe("Description of the mentorship context or project - REQUIRED"),
+      durationYears: z.number().describe("Years of experience (integer part) - REQUIRED"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11)"),
       chaptersMentored: z.number().optional().describe("Number of chapters mentored in this activity"),
     }),
-    func: async ({ language, context, durationYears, durationMonths, languagesMentored, chaptersMentored }) => {
+    func: async ({ title, organization, language, description, durationYears, durationMonths, chaptersMentored }) => {
       try {
+        // Validate all required fields
+        if (!title || title.trim().length === 0) {
+          return `Erro: O título/cargo é obrigatório. Qual era sua função nessa atividade?`;
+        }
+        if (!organization || organization.trim().length === 0) {
+          return `Erro: A organização é obrigatória. Em qual organização você trabalhou?`;
+        }
+        if (!language || language.trim().length === 0) {
+          return `Erro: O idioma é obrigatório. Qual idioma você trabalhou?`;
+        }
+        if (!description || description.trim().length === 0) {
+          return `Erro: A descrição é obrigatória. Pode descrever o trabalho que fez?`;
+        }
+        if (durationYears === undefined || durationYears === null) {
+          return `Erro: A duração é obrigatória. Por quanto tempo você trabalhou nisso?`;
+        }
+
         const activity = await storage.createActivity({
           facilitatorId,
+          title,
+          organization,
           languageName: language,
-          description: context,
+          description,
           durationYears,
           durationMonths: durationMonths || 0,
           chaptersCount: chaptersMentored || null,
@@ -169,7 +218,7 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
           return `Error: Failed to save activity to database. Please try again or contact support.`;
         }
         
-        console.log(`[Portfolio Tool] ✅ Activity created: ${activity.id} - ${language}`);
+        console.log(`[Portfolio Tool] ✅ Activity created: ${activity.id} - ${title} at ${organization}`);
         
         // Recalculate competencies
         const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
@@ -179,11 +228,8 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
           ? `${durationYears} anos e ${totalMonths} meses` 
           : `${durationYears} ano${durationYears !== 1 ? 's' : ''}`;
         
-        let message = `Excelente! Registrei sua experiência de mentoria em ${language} (${durationText}) no seu portfólio.`;
+        let message = `Excelente! Registrei sua experiência como ${title} em ${organization}, trabalhando com ${language} (${durationText}).`;
         
-        if (languagesMentored && languagesMentored > 1) {
-          message += ` Você mentorou ${languagesMentored} idiomas.`;
-        }
         if (chaptersMentored) {
           message += ` Total de ${chaptersMentored} capítulos trabalhados.`;
         }
@@ -200,18 +246,58 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
 
   const createGeneralExperienceTool = new DynamicStructuredTool({
     name: "create_general_experience",
-    description: "Add a general professional experience (non-translation) to the portfolio. NEW TYPES: 'biblical_teaching' for Bible teaching/training, 'long_term_mentoring' for mentorship work, 'oral_facilitation' for OBT/oral translation facilitation, 'quality_assurance_work' for QA/verification work, 'community_engagement' for community/cultural work. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months'. Convert to years and months separately. Choose the most specific activity type that matches the experience.",
+    description: `Add a general professional experience (non-translation) to the portfolio.
+
+REQUIRED QUESTIONS - You MUST ask ALL of these before calling this tool:
+1. Activity Type - "Que tipo de atividade foi?" Choose from:
+   - facilitation (facilitação)
+   - teaching (ensino)
+   - biblical_teaching (ensino bíblico)
+   - long_term_mentoring (mentoria)
+   - oral_facilitation (facilitação oral/OBT)
+   - quality_assurance_work (controle de qualidade)
+   - community_engagement (engajamento comunitário)
+   - indigenous_work (trabalho com povos indígenas)
+   - school_work (trabalho escolar)
+   - general_experience (experiência geral)
+2. Title - "Qual era seu cargo/função?"
+3. Organization - "Em qual organização você trabalhou?"
+4. Duration - "Por quanto tempo você trabalhou nisso?"
+5. Description - "Pode descrever o trabalho que fez?"
+
+DO NOT call this tool until you have answers for ALL 5 questions.`,
     schema: z.object({
-      activityType: z.enum(['facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'quality_assurance_work', 'community_engagement', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience - choose most specific match"),
-      context: z.string().describe("Description of the experience or role"),
-      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
-      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
+      activityType: z.enum(['facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'quality_assurance_work', 'community_engagement', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience - REQUIRED"),
+      title: z.string().describe("Job title or role (e.g., 'Professor', 'Facilitador') - REQUIRED"),
+      organization: z.string().describe("Organization where the work was done - REQUIRED"),
+      description: z.string().describe("Description of the experience or role - REQUIRED"),
+      durationYears: z.number().describe("Years of experience (integer part) - REQUIRED"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11)"),
     }),
-    func: async ({ activityType, context, durationYears, durationMonths }) => {
+    func: async ({ activityType, title, organization, description, durationYears, durationMonths }) => {
       try {
+        // Validate all required fields
+        if (!activityType) {
+          return `Erro: O tipo de atividade é obrigatório. Que tipo de atividade foi?`;
+        }
+        if (!title || title.trim().length === 0) {
+          return `Erro: O título/cargo é obrigatório. Qual era sua função?`;
+        }
+        if (!organization || organization.trim().length === 0) {
+          return `Erro: A organização é obrigatória. Em qual organização você trabalhou?`;
+        }
+        if (!description || description.trim().length === 0) {
+          return `Erro: A descrição é obrigatória. Pode descrever o trabalho que fez?`;
+        }
+        if (durationYears === undefined || durationYears === null) {
+          return `Erro: A duração é obrigatória. Por quanto tempo você trabalhou nisso?`;
+        }
+
         await storage.createActivity({
           facilitatorId,
-          description: context,
+          title,
+          organization,
+          description,
           durationYears,
           durationMonths: durationMonths || 0,
           activityType,
@@ -226,7 +312,7 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
         
         const friendlyType = getFriendlyActivityType(activityType);
         
-        return `Perfeito! Adicionei ${durationText} de experiência em ${friendlyType} ao seu portfólio. Suas competências foram atualizadas!`;
+        return `Perfeito! Registrei sua experiência como ${title} em ${organization} (${friendlyType}, ${durationText}). Suas competências foram atualizadas!`;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error creating experience:`, error);
         return `Error creating experience: ${error.message}`;
