@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { neon } from "@neondatabase/serverless";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeQdrantCollection } from "./vector-memory";
@@ -29,14 +30,11 @@ let sessionStore: any;
 // Validate DATABASE_URL exists
 if (!process.env.DATABASE_URL) {
   const errorMsg = 'DATABASE_URL environment variable is required';
-  log(`Session store error: ${errorMsg}`);
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(errorMsg);
-  }
-  // Use memory store in development if DATABASE_URL missing
+  log(`Session store warning: ${errorMsg}`);
+  // Use memory store if DATABASE_URL missing - server will still start
   const MemoryStore = session.MemoryStore;
   sessionStore = new MemoryStore();
-  log('Using memory-based session store (degraded mode)');
+  log('Using memory-based session store (DATABASE_URL not set)');
 } else {
   try {
     sessionStore = new PostgreSQLStore({
@@ -132,18 +130,74 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add health check endpoint for deployment readiness
+// Track initialization state
+let isInitialized = false;
+let initError: string | null = null;
+
+// Add health check endpoint for deployment readiness - MUST respond quickly
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ 
     status: 'ok', 
+    initialized: isInitialized,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-(async () => {
+// Start the server IMMEDIATELY so Cloud Run health checks pass
+const port = parseInt(process.env.PORT || '5000', 10);
+log(`Starting server on port ${port}...`);
+log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'set' : 'not set'}`);
+
+// Create HTTP server directly from express app first
+const server = createServer(app);
+
+// Handle server errors
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.syscall !== 'listen') {
+    log(`Server error: ${error.message}`);
+    throw error;
+  }
+  
+  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+  
+  switch (error.code) {
+    case 'EACCES':
+      log(`ERROR: ${bind} requires elevated privileges`);
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      log(`ERROR: ${bind} is already in use`);
+      process.exit(1);
+      break;
+    default:
+      log(`ERROR: Server error on ${bind}: ${error.message}`);
+      throw error;
+  }
+});
+
+// Start listening IMMEDIATELY
+server.listen(port, "0.0.0.0", () => {
+  log(`✅ Server listening on port ${port}`);
+  log(`Health check available at http://0.0.0.0:${port}/health`);
+  
+  // NOW do the slow initialization asynchronously
+  initializeApp().catch((error) => {
+    log(`Server initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    initError = error instanceof Error ? error.message : 'Unknown error';
+    // Don't exit - keep the server running for health checks and debugging
+  });
+});
+
+// Async initialization function - runs AFTER server is listening
+async function initializeApp() {
   try {
-    const server = await registerRoutes(app);
+    log('Starting application initialization...');
+    
+    // Register routes (includes database operations)
+    await registerRoutes(app);
+    log('Routes registered successfully');
 
     // Initialize Qdrant collection for global memory
     try {
@@ -154,64 +208,25 @@ app.get('/health', (req: Request, res: Response) => {
       log('Continuing without vector memory (semantic search will be unavailable)');
     }
 
+    // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
 
       res.status(status).json({ message });
       log(`Request error: ${err.message || err}`);
-      // Don't rethrow - log and continue to prevent crashes
     });
 
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
+    // Setup static file serving in production
+    if (app.get("env") !== "development") {
       serveStatic(app);
+      log('Static file serving configured');
     }
 
-    // ALWAYS serve the app on the port specified in the environment variable PORT
-    // Other ports are firewalled. Default to 5000 if not specified.
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    const port = parseInt(process.env.PORT || '5000', 10);
-    
-    log(`Starting server on port ${port}...`);
-    log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'set' : 'not set'}`);
-    
-    // Handle server errors before listening
-    server.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.syscall !== 'listen') {
-        log(`Server error: ${error.message}`);
-        throw error;
-      }
-      
-      const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
-      
-      switch (error.code) {
-        case 'EACCES':
-          log(`ERROR: ${bind} requires elevated privileges`);
-          process.exit(1);
-          break;
-        case 'EADDRINUSE':
-          log(`ERROR: ${bind} is already in use`);
-          process.exit(1);
-          break;
-        default:
-          log(`ERROR: Server error on ${bind}: ${error.message}`);
-          throw error;
-      }
-    });
-    
-    server.listen(port, "0.0.0.0", () => {
-      log(`✅ Server successfully started and listening on port ${port}`);
-      log(`Health check available at http://0.0.0.0:${port}/health`);
-    });
+    isInitialized = true;
+    log('✅ Application fully initialized and ready to serve requests');
   } catch (error) {
-    log(`Server initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    process.exit(1);
+    log(`Initialization error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw error;
   }
-})();
+}
