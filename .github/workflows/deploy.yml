@@ -109,7 +109,7 @@ jobs:
             --port=5000 \
             --cpu-boost \
             --allow-unauthenticated \
-            --startup-probe="httpGet.path=/health,httpGet.port=5000,timeoutSeconds=30,periodSeconds=10,failureThreshold=10" \
+            --startup-probe="httpGet.path=/health,httpGet.port=5000,timeoutSeconds=30,periodSeconds=60,failureThreshold=5" \
             --quiet \
             --format="value(status.url)" > backend_url.txt
           echo "backend_url=$(cat backend_url.txt)" >> $GITHUB_OUTPUT
