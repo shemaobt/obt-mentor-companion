@@ -43,7 +43,9 @@ jobs:
         run: gcloud config set project "${PROJECT_ID}"
 
       - name: Configure Artifact Registry authentication
-        run: gcloud auth configure-docker "${GAR_REGION}-docker.pkg.dev" --quiet
+        run: |
+          # Get access token and configure Docker to use it
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "${GAR_REGION}-docker.pkg.dev"
 
       - name: Set image tags
         id: vars
