@@ -18,9 +18,10 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import { processMessageWithLangChain, generateReportNarrative } from "./langchain-agents";
-import { parseDocument, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
+import { parseDocument, parseDocumentBuffer, chunkText, storeDocumentChunks, updateDocumentChunksStatus, deleteDocumentChunks, searchDocumentChunks } from "./document-processor";
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
+import { uploadToGCS, deleteFromGCS } from "./gcs-storage";
 
 /**
  * Extract text from certificate files (PDF, DOCX) for AI verification
@@ -145,19 +146,9 @@ const fileUpload = multer({
   }
 });
 
-// Multer configuration for document uploads (PDF, DOCX, TXT)
-const documentStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/documents/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Multer configuration for document uploads (PDF, DOCX, TXT) - memory storage for GCS
 const documentUpload = multer({
-  storage: documentStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 25 * 1024 * 1024, // 25MB limit
   },
@@ -176,19 +167,9 @@ const documentUpload = multer({
   }
 });
 
-// Multer configuration for certificate uploads (PDF, images, DOCX)
-const certificateStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/certificates/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Multer configuration for certificate uploads (PDF, images, DOCX) - memory storage for GCS
 const certificateUpload = multer({
-  storage: certificateStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit for certificates
   },
@@ -209,25 +190,9 @@ const certificateUpload = multer({
   }
 });
 
-// Ensure profile images directory exists
-const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
-if (!fsSync.existsSync(profileImagesDir)) {
-  fsSync.mkdirSync(profileImagesDir, { recursive: true });
-}
-
-// Multer configuration for profile image uploads
-const profileImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/profile-images/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Multer configuration for profile image uploads (memory storage for GCS upload)
 const profileImageUpload = multer({
-  storage: profileImageStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit for profile images
   },
@@ -725,14 +690,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No image file uploaded" });
       }
       
-      // Ensure uploads/profile-images directory exists
-      const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
-      await fs.mkdir(profileImagesDir, { recursive: true });
+      // Get current user to check for existing profile image
+      const user = await storage.getUserById(req.userId);
       
-      // Build the URL for the uploaded image
-      const profileImageUrl = `/uploads/profile-images/${file.filename}`;
+      // Delete old profile image from GCS if it exists and is a GCS URL
+      if (user?.profileImageUrl && user.profileImageUrl.includes('storage.googleapis.com')) {
+        await deleteFromGCS(user.profileImageUrl);
+      }
       
-      // Update user's profile image
+      // Upload to Google Cloud Storage
+      const profileImageUrl = await uploadToGCS(
+        file.buffer,
+        file.originalname,
+        'profile-images',
+        file.mimetype
+      );
+      
+      // Update user's profile image URL
       await storage.updateUserProfileImage(req.userId, profileImageUrl);
       
       res.json({ 
@@ -2773,8 +2747,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       else if (ext === '.txt') fileType = 'txt';
       else return res.status(400).json({ message: "Unsupported file type" });
 
-      // Parse document text
-      const text = await parseDocument(file.path, fileType);
+      // Parse document text from buffer (memory storage)
+      const text = await parseDocumentBuffer(file.buffer, fileType);
       
       // Chunk the text (using defaults: ~225 words ≈ 300 tokens per chunk)
       const chunks = chunkText(text);
@@ -2797,8 +2771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
       });
 
-      // Clean up uploaded file (we've stored everything in Qdrant)
-      await fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+      // No need to clean up file - using memory storage
 
       res.json(document);
     } catch (error) {
@@ -3574,17 +3547,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Certificate file is required" });
         }
 
-        // Ensure uploads/certificates directory exists
-        const certDir = path.join(process.cwd(), 'uploads', 'certificates');
-        await fs.mkdir(certDir, { recursive: true });
+        // Upload to Google Cloud Storage
+        const gcsUrl = await uploadToGCS(
+          file.buffer,
+          file.originalname,
+          'certificates',
+          file.mimetype
+        );
+        
+        // Generate a unique filename from the GCS URL
+        const filename = gcsUrl.split('/').pop() || file.originalname;
         
         const attachment = await storage.createQualificationAttachment({
           qualificationId,
-          filename: file.filename,
+          filename,
           originalName: file.originalname,
           mimeType: file.mimetype,
           fileSize: file.size,
-          storagePath: file.path,
+          storagePath: gcsUrl, // Store GCS URL
         });
         
         res.json(attachment);
@@ -3607,12 +3587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const attachment = attachments.find(a => a.id === attachmentId);
         
         if (attachment) {
-          // Delete file from disk
-          try {
-            await fs.unlink(attachment.storagePath);
-          } catch (err) {
-            console.error("Error deleting file from disk:", err);
-          }
+          // Delete file from GCS
+          await deleteFromGCS(attachment.storagePath);
         }
         
         await storage.deleteQualificationAttachment(attachmentId);
@@ -3649,7 +3625,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "Certificate not found" });
         }
         
-        res.download(attachment.storagePath, attachment.originalName);
+        // Redirect to GCS URL for download
+        if (attachment.storagePath.includes('storage.googleapis.com')) {
+          res.redirect(attachment.storagePath);
+        } else {
+          // Fallback for legacy local files
+          res.download(attachment.storagePath, attachment.originalName);
+        }
       } catch (error) {
         console.error("Error downloading certificate:", error);
         res.status(500).json({ message: "Failed to download certificate" });
@@ -4008,7 +3990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Database sync routes (admin only)
   registerDbSyncRoutes(app, requireAdmin, requireCSRFHeader);
 
-  // Serve uploaded files
+  // Serve legacy uploaded files (new uploads go to GCS)
+  // This can be removed once all files are migrated to GCS
   app.use('/uploads', requireAuth, express.static('uploads'));
 
   // Catch-all for unmatched API routes - return 404 instead of HTML

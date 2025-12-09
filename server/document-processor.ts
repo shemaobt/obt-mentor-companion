@@ -27,32 +27,43 @@ const COLLECTION_NAME = 'obt_global_memory';
 const VECTOR_DIM = 768;
 
 /**
- * Parse text from different file types
+ * Parse text from different file types (file path version)
  */
 export async function parseDocument(filePath: string, fileType: string): Promise<string> {
   try {
+    const buffer = await fs.readFile(filePath);
+    return await parseDocumentBuffer(buffer, fileType);
+  } catch (error) {
+    console.error('Error parsing document:', error);
+    throw error;
+  }
+}
+
+/**
+ * Parse text from a buffer directly (for memory-based uploads)
+ */
+export async function parseDocumentBuffer(buffer: Buffer, fileType: string): Promise<string> {
+  try {
     switch (fileType) {
       case 'pdf':
-        const pdfBuffer = await fs.readFile(filePath);
         // PDFParse constructor accepts { data: buffer } for local files
-        const parser = new pdfParse({ data: pdfBuffer });
+        const parser = new pdfParse({ data: buffer });
         const result = await parser.getText();
         await parser.destroy();
         return result.text;
 
       case 'docx':
-        const docxBuffer = await fs.readFile(filePath);
-        const docxResult = await mammoth.extractRawText({ buffer: docxBuffer });
+        const docxResult = await mammoth.extractRawText({ buffer: buffer });
         return docxResult.value;
 
       case 'txt':
-        return await fs.readFile(filePath, 'utf-8');
+        return buffer.toString('utf-8');
 
       default:
         throw new Error(`Unsupported file type: ${fileType}`);
     }
   } catch (error) {
-    console.error('Error parsing document:', error);
+    console.error('Error parsing document buffer:', error);
     throw error;
   }
 }
