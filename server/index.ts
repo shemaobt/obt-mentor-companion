@@ -177,12 +177,38 @@ app.get('/health', (req: Request, res: Response) => {
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
     const port = parseInt(process.env.PORT || '5000', 10);
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`serving on port ${port}`);
+    
+    log(`Starting server on port ${port}...`);
+    log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'set' : 'not set'}`);
+    
+    // Handle server errors before listening
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.syscall !== 'listen') {
+        log(`Server error: ${error.message}`);
+        throw error;
+      }
+      
+      const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+      
+      switch (error.code) {
+        case 'EACCES':
+          log(`ERROR: ${bind} requires elevated privileges`);
+          process.exit(1);
+          break;
+        case 'EADDRINUSE':
+          log(`ERROR: ${bind} is already in use`);
+          process.exit(1);
+          break;
+        default:
+          log(`ERROR: Server error on ${bind}: ${error.message}`);
+          throw error;
+      }
+    });
+    
+    server.listen(port, "0.0.0.0", () => {
+      log(`✅ Server successfully started and listening on port ${port}`);
+      log(`Health check available at http://0.0.0.0:${port}/health`);
     });
   } catch (error) {
     log(`Server initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
