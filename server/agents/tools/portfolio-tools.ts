@@ -9,6 +9,26 @@ import { z } from "zod";
 import type { IStorage } from "../../storage";
 
 /**
+ * Convert activity type to friendly Portuguese name
+ */
+function getFriendlyActivityType(activityType: string): string {
+  const friendlyNames: Record<string, string> = {
+    'facilitation': 'facilitação',
+    'teaching': 'ensino',
+    'biblical_teaching': 'ensino bíblico',
+    'long_term_mentoring': 'mentoria',
+    'oral_facilitation': 'facilitação oral',
+    'quality_assurance_work': 'controle de qualidade',
+    'community_engagement': 'engajamento comunitário',
+    'indigenous_work': 'trabalho com povos indígenas',
+    'school_work': 'trabalho escolar',
+    'general_experience': 'experiência profissional',
+    'translation': 'tradução',
+  };
+  return friendlyNames[activityType] || activityType;
+}
+
+/**
  * Create portfolio management tools
  */
 export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
@@ -79,10 +99,10 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
         // Recalculate competencies and track if any downgrades were prevented
         const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
         
-        let message = `Successfully added qualification: ${courseTitle} from ${institution}. Your competency scores have been updated based on this qualification.`;
+        let message = `Ótimo! Adicionei "${courseTitle}" de ${institution} ao seu portfólio. Suas competências foram atualizadas com base nessa qualificação.`;
         
         if (preventedDowngrades.length > 0) {
-          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}. The new qualification doesn't change these levels, as your current status is already appropriate based on your overall portfolio.`;
+          message += ` Seus níveis atuais de competência foram mantidos.`;
         }
         
         return message;
@@ -110,11 +130,7 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
         await storage.updateQualification(qualificationId, updates);
         const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
         
-        let message = `Successfully updated qualification. Your competency scores have been recalculated.`;
-        
-        if (preventedDowngrades.length > 0) {
-          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}.`;
-        }
+        let message = `Perfeito! Atualizei a qualificação no seu portfólio.`;
         
         return message;
       } catch (error: any) {
@@ -161,13 +177,18 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
         const totalMonths = durationMonths || 0;
         const durationText = totalMonths > 0 
           ? `${durationYears} anos e ${totalMonths} meses` 
-          : `${durationYears} anos`;
+          : `${durationYears} ano${durationYears !== 1 ? 's' : ''}`;
         
-        let message = `Atividade registrada: ${language}. Duração: ${durationText}${languagesMentored ? `, Idiomas: ${languagesMentored}` : ''}${chaptersMentored ? `, Capítulos: ${chaptersMentored}` : ''}. Suas competências foram atualizadas.`;
+        let message = `Excelente! Registrei sua experiência de mentoria em ${language} (${durationText}) no seu portfólio.`;
         
-        if (preventedDowngrades.length > 0) {
-          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}. A nova atividade não muda esses níveis, pois seu status atual já é apropriado com base em todo o seu portfólio.`;
+        if (languagesMentored && languagesMentored > 1) {
+          message += ` Você mentorou ${languagesMentored} idiomas.`;
         }
+        if (chaptersMentored) {
+          message += ` Total de ${chaptersMentored} capítulos trabalhados.`;
+        }
+        
+        message += ` Suas competências foram atualizadas!`;
         
         return message;
       } catch (error: any) {
@@ -196,20 +217,16 @@ export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
           activityType,
         });
         
-        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        await storage.recalculateCompetencies(facilitatorId);
         
         const totalMonths = durationMonths || 0;
         const durationText = totalMonths > 0 
           ? `${durationYears} anos e ${totalMonths} meses` 
-          : `${durationYears} anos`;
+          : `${durationYears} ano${durationYears !== 1 ? 's' : ''}`;
         
-        let message = `Experiência registrada: ${activityType}. Duração: ${durationText}. Suas competências foram atualizadas.`;
+        const friendlyType = getFriendlyActivityType(activityType);
         
-        if (preventedDowngrades.length > 0) {
-          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}.`;
-        }
-        
-        return message;
+        return `Perfeito! Adicionei ${durationText} de experiência em ${friendlyType} ao seu portfólio. Suas competências foram atualizadas!`;
       } catch (error: any) {
         console.error(`[Portfolio Tool] Error creating experience:`, error);
         return `Error creating experience: ${error.message}`;
