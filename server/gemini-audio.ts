@@ -61,6 +61,39 @@ function detectLanguage(text: string): string {
 }
 
 /**
+ * Translate text using Gemini
+ */
+export async function translateWithGemini(
+  text: string,
+  fromLanguage: string = 'auto',
+  toLanguage: string = 'en-US',
+  context?: string
+): Promise<string> {
+  try {
+    console.log(`[Gemini Translation] Translating from ${fromLanguage} to ${toLanguage}`);
+    
+    // Get Gemini client
+    const client = getGeminiClient();
+    const model = client.getGenerativeModel({ model: "gemini-2.5-flash" }); // Use flash for fast translations
+    
+    // Create translation prompt
+    const prompt = context 
+      ? `Translate the following text from ${fromLanguage} to ${toLanguage}. Context: ${context}\n\nText to translate: ${text}\n\nProvide only the translation without any additional text or explanations.`
+      : `Translate the following text from ${fromLanguage} to ${toLanguage}:\n\n${text}\n\nProvide only the translation without any additional text or explanations.`;
+    
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const translatedText = response.text().trim();
+    
+    console.log(`[Gemini Translation] Translation completed (${translatedText.length} chars)`);
+    return translatedText;
+  } catch (error) {
+    console.error('[Gemini Translation] Error:', error);
+    throw new Error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
  * Transcribe audio using Gemini 2.5's native audio understanding
  * Supports up to 9.5 hours of audio with speaker diarization
  */
