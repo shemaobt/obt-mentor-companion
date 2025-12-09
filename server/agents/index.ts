@@ -48,4 +48,7 @@ export {
 } from "./nodes";
 
 // Graph
-export { createAgentGraph, processMessageWithGraph } from "./graph";
+export { createAgentGraph, processMessageWithGraph, runCompetencyInBackground } from "./graph";
+
+// Streaming
+export { processMessageWithStreaming, determineNodeType } from "./streaming";
