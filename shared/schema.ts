@@ -20,7 +20,7 @@ export const ASSISTANTS = {
     id: 'obtMentor',
     name: 'OBT Mentor Assistant',
     description: 'A friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors.',
-    openaiId: 'asst_placeholder' // Will be updated with actual OpenAI assistant ID
+    model: 'gemini-2.5-pro' // Google Gemini 2.5 Pro
   }
 } as const;
 

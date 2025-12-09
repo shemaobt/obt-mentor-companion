@@ -2,9 +2,8 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateChatTitle } from "./openai";
-import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage } from "./gemini-audio";
-import OpenAI from "openai";
+import { generateChatTitle } from "./utils";
+import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage, translateWithGemini } from "./gemini-audio";
 import { storeMessageEmbedding, getContextForQuery, getComprehensiveContext, deleteChatEmbeddings } from "./vector-memory";
 import { applyPendingEvidence } from "./langchain-agents";
 import { insertChatSchema, insertMessageSchema, insertApiKeySchema, insertUserSchema, insertFeedbackSchema, CORE_COMPETENCIES } from "@shared/schema";
@@ -116,19 +115,6 @@ class AudioCache {
 }
 
 const audioCache = new AudioCache();
-
-// Lazy-loaded OpenAI instance for direct API calls
-let openai: OpenAI | null = null;
-function getOpenAI() {
-  if (!openai) {
-    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is required for translation features');
-    }
-    openai = new OpenAI({ apiKey });
-  }
-  return openai;
-}
 
 // Multer configuration for file uploads (images and audio)
 const fileStorage = multer.diskStorage({
@@ -1852,23 +1838,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Text too long (max 2048 characters)" });
       }
 
-      // Create a translation prompt
-      const prompt = context 
-        ? `Translate the following text from ${fromLanguage} to ${toLanguage}. Context: ${context}\n\nText to translate: ${text}`
-        : `Translate the following text from ${fromLanguage} to ${toLanguage}:\n\n${text}`;
-
-      // Create a direct OpenAI chat completion for translation
-      const completion = await getOpenAI().chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: 'system', content: 'You are a professional translator. Provide only the translation without any additional text or explanations.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.1
-      });
-      
-      const response = completion.choices[0].message.content;
+      // Use Gemini for translation
+      const response = await translateWithGemini(text, fromLanguage, toLanguage, context);
 
       res.json({
         translatedText: response,

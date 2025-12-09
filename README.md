@@ -1,322 +1,472 @@
-# OBT Mentor Companion - AI-Powered Mentorship Tracking System
+# OBT Mentor Companion
 
-A comprehensive mentorship tracking and assessment application for YWAM Oral Bible Translation (OBT) facilitators. Features competency tracking, qualification management, mentorship activity logging, quarterly report generation, and global memory search powered by Qdrant vector database with semantic search.
+AI-powered mentorship tracking system for YWAM Oral Bible Translation (OBT) facilitators. Track competencies, manage qualifications, log activities, generate reports, and get AI mentorship guidance.
 
-## Features
+---
 
-### 🎯 Core Features
-- **OBT Mentor Assistant**: Dedicated AI assistant for mentorship guidance and support
-- **Competency Tracking**: Track progress across 8 core OBT competencies with status levels
-- **Qualification Management**: Store and manage formal courses and credentials
-- **Activity Logging**: Record language translation mentorship activities with chapter counts
-- **Quarterly Reports**: Generate comprehensive reports compiling all facilitator data
-- **Global Memory Search**: Semantic search across all facilitator conversations using Qdrant
-- **Portuguese Interface**: Portfolio and report features use Portuguese labels
+## 🚀 Quick Start
 
-### 📊 Competency Tracking
-Track progress in 8 core competencies:
-- Scripture Engagement
-- Oral Bible Translation Methods
-- Cultural Sensitivity
-- Community Development
-- Team Leadership
-- Training & Facilitation
-- Technology Integration
-- Program Assessment
-
-Status levels: Not Started, Developing, Proficient, Advanced
-
-### 📚 Portfolio Management
-- **Competencies Tab**: Track competency progress with notes
-- **Qualifications Tab**: Record formal courses, institutions, completion dates
-- **Activities Tab**: Log language translation work with chapter counts
-- **Reports Tab**: Generate and view quarterly assessment reports
-
-### 🔍 AI-Powered Features
-- **Semantic Memory**: Qdrant vector database stores conversation embeddings
-- **Contextual Responses**: AI retrieves relevant past conversations
-- **Cross-Learning**: Access insights from other facilitators globally
-- **OpenAI Integration**: Uses GPT-4 via Assistant API
-
-### 🔐 Security & Authentication
-- **Replit Auth Integration**: Secure OpenID Connect authentication
-- **Session Management**: PostgreSQL-backed session storage
-- **User Approval System**: Admin approval workflow for new users
-- **Secure Reports**: Report access restricted to owning facilitator
-
-## Tech Stack
-
-### Frontend
-- **React 18** with TypeScript
-- **Vite** for fast development and optimized builds
-- **Tailwind CSS** with shadcn/ui components
-- **TanStack Query** for server state management
-- **Wouter** for lightweight routing
-- **Radix UI** primitives for accessible components
-
-### Backend
-- **Node.js** with Express.js
-- **TypeScript** with ESM modules
-- **Drizzle ORM** with PostgreSQL
-- **Passport.js** with OpenID Connect
-- **OpenAI API** integration (Assistant API)
-- **Qdrant** vector database for semantic search
-
-### Database
-- **PostgreSQL** with Neon serverless driver
-- **Facilitator profiles** with competency tracking
-- **Qualification and activity records**
-- **Quarterly report storage**
-- **Vector embeddings** in Qdrant Cloud
-
-## Installation & Setup
-
-### Prerequisites
-- Node.js 18+ 
-- PostgreSQL database
-- OpenAI API key
-- Replit account (for authentication)
-- Qdrant Cloud account
-
-### Environment Variables
 ```bash
-# Database
-DATABASE_URL=your_postgresql_connection_string
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
-
-# Qdrant Vector Database
-QDRANT_URL=your_qdrant_cloud_url
-QDRANT_API_KEY=your_qdrant_api_key
-
-# Authentication
-REPLIT_OIDC_CLIENT_ID=your_replit_client_id
-REPLIT_OIDC_CLIENT_SECRET=your_replit_client_secret
-REPLIT_OIDC_ISSUER=https://replit.com
-
-# Session
-SESSION_SECRET=your_session_secret
-```
-
-### Development Setup
-```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Push database schema
+# 2. Create .env file
+DATABASE_URL=postgresql://localhost/obt_mentor
+GOOGLE_API_KEY=your_gemini_api_key
+QDRANT_URL=your_qdrant_url
+QDRANT_API_KEY=your_qdrant_key
+SESSION_SECRET=random-32-char-minimum-string
+
+# 3. Setup database
+createdb obt_mentor
 npm run db:push
 
-# Start development server
+# 4. Start app
 npm run dev
 ```
 
-### Production Build
-```bash
-# Build the application
-npm run build
+Open **http://localhost:5000**
 
-# Start production server
-npm start
+---
+
+## 📋 Features
+
+### Core Features
+- **AI Mentor Assistant** - Google Gemini 2.5 Pro powered conversations
+- **Competency Tracking** - 11 core OBT competencies with 5 status levels
+- **Portfolio Management** - Qualifications, activities, and reports
+- **Semantic Memory** - Qdrant vector search across all conversations
+- **Quarterly Reports** - Auto-generated DOCX reports
+
+### Competencies Tracked
+1. Interpersonal Skills
+2. Intercultural Communication
+3. Multimodal Skills
+4. Translation Theory & Process
+5. Languages & Communication
+6. Biblical Languages
+7. Biblical Studies & Theology
+8. Planning & Quality Assurance
+9. Consulting & Mentoring
+10. Applied Technology
+11. Reflective Practice
+
+**Status Levels**: Not Yet Started → Emerging → Growing → Proficient → Advanced
+
+### Key Business Rules
+- **No Downgrades**: Competencies can only progress forward
+- **Advanced Requirements**: Requires both:
+  - Education: Bachelor degree or higher
+  - Experience: 3+ years in relevant activities
+
+---
+
+## 🛠 Tech Stack
+
+**Frontend**: React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
+
+**Backend**: Node.js + Express + TypeScript + Drizzle ORM + PostgreSQL
+
+**AI**: Google Gemini 2.5 Pro (conversations) + Gemini 2.5 Flash (translations)
+
+**Vector DB**: Qdrant Cloud (semantic search with text-embedding-004)
+
+**Auth**: Passport.js + OpenID Connect
+
+---
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js 18+
+- **Neon PostgreSQL** database ([Create free](https://neon.tech/))
+- Google Gemini API key ([Get it here](https://makersuite.google.com/app/apikey))
+- Qdrant Cloud account ([Create free](https://qdrant.io/))
+
+### Environment Variables
+
+Create `.env` file:
+
+```bash
+# Required - Use Neon PostgreSQL connection string
+DATABASE_URL=postgresql://username:password@ep-xxx-xxx.us-east-2.aws.neon.tech/obt_mentor?sslmode=require
+GOOGLE_API_KEY=your_google_gemini_api_key
+QDRANT_URL=https://your-cluster.qdrant.io
+QDRANT_API_KEY=your_qdrant_api_key
+SESSION_SECRET=your-secure-random-string-32-chars-minimum
+
+# Optional (if using Replit Auth)
+REPLIT_OIDC_CLIENT_ID=your_replit_client_id
+REPLIT_OIDC_CLIENT_SECRET=your_replit_client_secret
+REPLIT_OIDC_ISSUER=https://replit.com
 ```
 
-## API Documentation
+### Development
+
+```bash
+npm install          # Install dependencies
+npm run db:push      # Sync database schema (works with Neon)
+npm run dev          # Start dev server (port 5000)
+```
+
+**Note**: Using Neon PostgreSQL eliminates the need for local PostgreSQL installation. Just get your connection string from [Neon Console](https://console.neon.tech/) and add it to `.env`.
+
+### Production
+
+```bash
+npm run build        # Build frontend + backend
+npm start            # Start production server
+```
+
+---
+
+## 🧪 Testing
+
+Comprehensive integration tests using **pytest** (functional approach):
+
+```bash
+# Setup (first time)
+createdb obt_test
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements-test.txt
+
+# Run tests
+./run_tests.sh                 # All tests
+npm test                       # Same as above
+npm run test:coverage          # With coverage
+npm run test:parallel          # Faster (parallel)
+npm run test:competency        # Competency tests only
+npm run test:qualification     # Qualification tests only
+npm run test:activity          # Activity tests only
+npm run test:workflow          # End-to-end tests
+```
+
+**Test Coverage**: 66+ integration tests covering all business rules
+
+Full documentation: [`tests/README.md`](tests/README.md)
+
+---
+
+## 🏗 Architecture
+
+### Database (PostgreSQL + Drizzle ORM)
+
+**18 Tables**:
+- `users`, `facilitators`, `sessions`
+- `facilitator_competencies`, `facilitator_qualifications`, `mentorship_activities`
+- `quarterly_reports`, `competency_evidence`, `competency_change_history`
+- `chats`, `messages`, `chat_chains`, `message_attachments`
+- `documents`, `qualification_attachments`
+- `api_keys`, `api_usage`, `feedback`
+
+### AI System
+
+**Multi-Agent Architecture** (LangGraph):
+- **Conversational Agent**: Gemini 2.5 Pro for mentorship guidance
+- **Report Agent**: Gemini 2.5 Pro for narrative generation
+- **Supervisor**: Routes between agents
+
+**Cost Optimization**: Migrated from OpenAI GPT-4o → Gemini 2.5 Pro
+- **Before**: ~$5/M tokens
+- **After**: ~$0.13/M tokens
+- **Savings**: 75-98% 🎉
+
+### Vector Memory
+- **Model**: Google text-embedding-004 (768 dimensions)
+- **Storage**: Qdrant Cloud
+- **Features**: Semantic search, global cross-learning
+
+---
+
+## 📡 API Endpoints
 
 ### Authentication
-All API endpoints require authentication via session cookies.
+All endpoints require session cookies (automatic via Passport.js)
 
-### Portfolio Endpoints
+### Facilitator Endpoints
 
-#### Get Facilitator Profile
 ```http
-GET /api/facilitator
-```
-
-#### Update Facilitator Profile
-```http
-PUT /api/facilitator
-Content-Type: application/json
-
-{
-  "region": "South America",
-  "mentorSupervisor": "John Doe"
-}
-```
-
-#### Get Competencies
-```http
-GET /api/facilitator/competencies
-```
-
-#### Update Competency
-```http
-POST /api/facilitator/competencies
-Content-Type: application/json
-
-{
-  "competencyId": "scripture-engagement",
-  "status": "proficient",
-  "notes": "Completed advanced training"
-}
-```
-
-#### Get Qualifications
-```http
-GET /api/facilitator/qualifications
-```
-
-#### Create Qualification
-```http
-POST /api/facilitator/qualifications
-Content-Type: application/json
-
-{
-  "courseTitle": "OBT Facilitator Training",
-  "institution": "YWAM University",
-  "completionDate": "2024-06-15",
-  "credential": "Certificate"
-}
-```
-
-#### Get Activities
-```http
-GET /api/facilitator/activities
-```
-
-#### Create Activity
-```http
-POST /api/facilitator/activities
-Content-Type: application/json
-
-{
-  "languageName": "Swahili",
-  "chaptersCount": 5,
-  "activityDate": "2024-10-01",
-  "notes": "Gospel of John chapters 1-5"
-}
-```
-
-### Report Endpoints
-
-#### Get Reports
-```http
-GET /api/facilitator/reports
-```
-
-#### Generate Report
-```http
-POST /api/facilitator/reports/generate
-Content-Type: application/json
-
-{
-  "periodStart": "2024-01-01",
-  "periodEnd": "2024-03-31"
-}
-```
-
-#### Delete Report
-```http
-DELETE /api/facilitator/reports/:reportId
+GET    /api/facilitator                    # Get profile
+PUT    /api/facilitator                    # Update profile
+GET    /api/facilitator/competencies       # Get competencies
+POST   /api/facilitator/competencies       # Update competency
+GET    /api/facilitator/qualifications     # Get qualifications
+POST   /api/facilitator/qualifications     # Create qualification
+DELETE /api/facilitator/qualifications/:id # Delete qualification
+GET    /api/facilitator/activities         # Get activities
+POST   /api/facilitator/activities         # Create activity
+DELETE /api/facilitator/activities/:id     # Delete activity
+GET    /api/facilitator/reports            # Get reports
+POST   /api/facilitator/reports/generate   # Generate report
+DELETE /api/facilitator/reports/:id        # Delete report
 ```
 
 ### Chat Endpoints
 
-#### Create New Chat
 ```http
-POST /api/chats
-Content-Type: application/json
-
-{
-  "title": "Chat title"
-}
+GET    /api/chats                          # Get all chats
+POST   /api/chats                          # Create chat
+GET    /api/chats/:id/messages             # Get messages
+POST   /api/chats/:id/messages             # Send message (with AI)
+DELETE /api/chats/:id                      # Delete chat
 ```
 
-#### Get User's Chats
+### Admin Endpoints
+
 ```http
-GET /api/chats
+GET    /api/admin/users                    # List users
+PUT    /api/admin/users/:id/approve        # Approve user
+GET    /api/admin/feedback                 # View feedback
+GET    /api/admin/documents                # Manage RAG documents
+POST   /api/admin/documents/upload         # Upload document
 ```
 
-#### Send Message (with Global Memory)
-```http
-POST /api/chats/:chatId/messages
-Content-Type: application/json
+---
 
-{
-  "content": "How do I improve my facilitation skills?"
-}
+## 💾 Database Management
+
+### Backups
+
+```bash
+# Manual backup
+npx tsx scripts/backup-database.ts
+
+# Restore from backup
+npx tsx scripts/restore-database.ts backup-2025-01-24.sql
+
+# List backups
+ls -lh backups/
 ```
 
-The AI automatically retrieves relevant context from:
-- Your past conversations
-- Related experiences from other facilitators (global memory)
+**Auto-retention**: Keeps last 7 backups
 
-## Architecture
+### Migrations
 
-### Vector Memory System
-- **Embeddings**: OpenAI text-embedding-3-small (1536 dimensions)
-- **Storage**: Qdrant Cloud vector database
-- **Search**: Cosine similarity with score thresholds
-- **Context**: Facilitator-specific + global cross-learning
+```bash
+# Push schema changes to database
+npm run db:push
 
-### Portfolio Data Model
-```typescript
-Facilitator {
-  id, userId, region, mentorSupervisor,
-  totalLanguagesMentored, totalChaptersMentored
-}
+# Pre-publish safety check (prevents destructive changes)
+PRODUCTION_DATABASE_URL=<url> npx tsx scripts/pre-publish-check.ts
 
-FacilitatorCompetency {
-  facilitatorId, competencyId, status, notes
-}
-
-FacilitatorQualification {
-  facilitatorId, courseTitle, institution,
-  completionDate, credential
-}
-
-MentorshipActivity {
-  facilitatorId, languageName, chaptersCount,
-  activityDate, notes
-}
-
-QuarterlyReport {
-  facilitatorId, periodStart, periodEnd, reportData
-}
+# Post-publish verification
+PRODUCTION_DATABASE_URL=<url> npx tsx server/verify-production-users.ts
 ```
 
-## Usage
+---
 
-### For Facilitators
-1. **Sign up** and wait for admin approval
-2. **Complete profile** with region and supervisor info
-3. **Track competencies** across 8 core areas
-4. **Log activities** for each language mentored
-5. **Record qualifications** from training courses
-6. **Generate reports** quarterly for assessment
-7. **Chat with AI** for mentorship guidance
+## 🎨 Themes
 
-### For Administrators
-1. **Approve users** from pending list
-2. **Monitor facilitators** across regions
-3. **Review reports** for assessment cycles
-4. **Manage permissions** and access
+6 color themes available (user-selectable):
 
-## Contributing
+1. **Areia** (sandy beige)
+2. **Azul** (soft blue-teal)
+3. **Telha** (terracotta orange)
+4. **Verde Claro** (light olive green) - Default
+5. **Verde** (dark forest green)
+6. **Preto** (deep charcoal)
+
+Change theme: User Profile → Theme button
+
+Customize: Edit `client/src/lib/themes.ts`
+
+---
+
+## 🚢 Deployment
+
+### Google Cloud Run (Recommended)
+
+Complete infrastructure-as-code setup with Terraform:
+
+```bash
+# See full guide: DEPLOYMENT.md
+
+# Quick deploy
+cd /Users/lucas/Desktop/shemaobt/tf/environments/obt-prod
+terraform init
+terraform apply -var-file=obt-prod.tfvars
+
+# Then push to GitHub - automatic deployment via GitHub Actions
+git push origin main
+```
+
+**Features**:
+- ✅ Automatic scaling (0-5 instances)
+- ✅ HTTPS by default
+- ✅ CI/CD with GitHub Actions
+- ✅ Neon PostgreSQL integration
+- ✅ Custom domain support
+- ✅ ~$5-20/month cost
+
+📚 **Full Documentation**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+### Docker Compose (Local Testing)
+
+```bash
+# Build and run locally
+docker-compose up
+
+# Access:
+# Frontend: http://localhost:8080
+# Backend: http://localhost:5000
+```
+
+### Manual Deployment
+
+```bash
+npm run build
+# Output:
+# - dist/public/  (frontend)
+# - dist/index.js (backend)
+
+# Deploy to any Node.js hosting platform
+```
+
+### Other Platforms
+
+- **Replit**: Pre-configured ✅
+- **Heroku/Railway**: Compatible
+- **Render**: Compatible
+- **Any Docker platform**: Dockerfiles included
+
+---
+
+## 📚 Project Structure
+
+```
+obt-mentor-companion/
+├── client/               # React frontend
+│   └── src/
+│       ├── components/   # UI components (57 files)
+│       ├── pages/        # Route pages (15 files)
+│       ├── hooks/        # Custom hooks (7 files)
+│       └── lib/          # Utilities (4 files)
+├── server/               # Express backend
+│   ├── index.ts          # Server entry
+│   ├── routes.ts         # API routes
+│   ├── storage.ts        # Database queries
+│   ├── langchain-agents.ts  # AI agents
+│   ├── gemini-audio.ts   # Audio/translation
+│   ├── vector-memory.ts  # Qdrant integration
+│   └── utils.ts          # Utilities
+├── shared/
+│   └── schema.ts         # Database schema (18 tables)
+├── tests/                # Integration tests (66+ tests)
+│   ├── conftest.py       # Test fixtures
+│   └── test_*.py         # Test suites
+└── scripts/              # Utility scripts
+    ├── backup-database.ts
+    ├── restore-database.ts
+    └── pre-publish-check.ts
+```
+
+---
+
+## 🔧 Development Scripts
+
+```bash
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm start                # Start production server
+npm run check            # TypeScript type checking
+npm run db:push          # Sync database schema
+npm test                 # Run integration tests
+npm run test:coverage    # Tests with coverage
+npm run test:parallel    # Faster parallel tests
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Database Connection Error
+
+```bash
+# Check PostgreSQL is running
+psql -l
+
+# Verify DATABASE_URL format
+echo $DATABASE_URL
+# Should be: postgresql://user:pass@host:port/database
+
+# Recreate database
+dropdb obt_mentor && createdb obt_mentor
+npm run db:push
+```
+
+### API Key Errors
+
+```bash
+# Verify keys are set
+echo $GOOGLE_API_KEY
+echo $QDRANT_URL
+
+# Check .env file exists
+cat .env
+```
+
+### Port Already in Use
+
+```bash
+# Change port in .env
+PORT=3000
+
+# Or kill process on port 5000
+lsof -ti:5000 | xargs kill -9
+```
+
+### Migration Fails
+
+```bash
+# Drop and recreate (caution: data loss!)
+dropdb obt_mentor
+createdb obt_mentor
+npm run db:push
+```
+
+---
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
-## License
+**Code Style**:
+- TypeScript for all code
+- Functional programming for tests
+- Follow existing patterns
+- Add tests for new features
 
-This project is licensed under the MIT License.
+---
 
-## Acknowledgments
+## 📄 License
 
-- **YWAM** for the Oral Bible Translation program
-- **OpenAI** for AI models and APIs
-- **Qdrant** for vector database capabilities
-- **Replit** for hosting and authentication
-- **Radix UI** and **shadcn/ui** for component library
+MIT License - See LICENSE file for details
+
+---
+
+## 🙏 Acknowledgments
+
+- **YWAM** - Oral Bible Translation program
+- **Google Gemini** - AI models and APIs
+- **Qdrant** - Vector database
+- **Replit** - Hosting and authentication
+- **shadcn/ui** - Component library
+
+---
+
+## 📞 Support
+
+For issues or questions:
+1. Check this README
+2. Review `tests/README.md` for testing help
+3. Check error logs: `logs/` directory
+4. Open an issue on GitHub
+
+---
+
+**Made with ❤️ for OBT Facilitators**
