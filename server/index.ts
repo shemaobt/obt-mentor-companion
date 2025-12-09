@@ -4,7 +4,7 @@ import connectPgSimple from "connect-pg-simple";
 import { neon } from "@neondatabase/serverless";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { serveStatic, log } from "./utils";
 import { initializeQdrantCollection } from "./vector-memory";
 
 const app = express();
