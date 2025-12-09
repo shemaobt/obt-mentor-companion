@@ -39,9 +39,9 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Show onboarding modal when authenticated
+  // Show onboarding modal only on first login (not every page load)
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && !isLoading && !localStorage.getItem('hasSeenOnboarding')) {
       setShowOnboarding(true);
     }
   }, [isAuthenticated, isLoading]);
@@ -63,7 +63,10 @@ export default function Home() {
       {/* Onboarding Modal */}
       <OnboardingModal 
         open={showOnboarding} 
-        onClose={() => setShowOnboarding(false)} 
+        onClose={() => {
+          localStorage.setItem('hasSeenOnboarding', 'true');
+          setShowOnboarding(false);
+        }} 
       />
 
       {/* Mobile Sidebar Overlay */}
