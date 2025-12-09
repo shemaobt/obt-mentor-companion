@@ -1,0 +1,226 @@
+/**
+ * Portfolio Tools
+ * 
+ * Tools for adding and updating qualifications and activities in the facilitator's portfolio.
+ */
+
+import { DynamicStructuredTool } from "@langchain/core/tools";
+import { z } from "zod";
+import type { IStorage } from "../../storage";
+
+/**
+ * Create portfolio management tools
+ */
+export function createPortfolioTools(storage: IStorage, facilitatorId: string) {
+  
+  const addQualificationTool = new DynamicStructuredTool({
+    name: "add_qualification",
+    description: "Add a qualification (course, certificate, or training) to the facilitator's portfolio. IMPORTANT: Always ask the facilitator about the course level (introduction, certificate, bachelor, master, or doctoral) as this significantly impacts competency scoring. Use this when the facilitator mentions completing a course or receiving a qualification.",
+    schema: z.object({
+      courseTitle: z.string().describe("Title of the course or training"),
+      institution: z.string().describe("Institution or organization that provided the training"),
+      completionDate: z.string().describe("Date of completion (YYYY-MM-DD format)"),
+      credential: z.string().optional().describe("Type of credential received (e.g., Certificate, Diploma)"),
+      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("Academic level of the course - ALWAYS ask the facilitator this question"),
+      description: z.string().describe("Brief description of the course content - REQUIRED field"),
+    }),
+    func: async ({ courseTitle, institution, completionDate, credential, courseLevel, description }) => {
+      try {
+        // Validate required description field
+        if (!description || description.trim().length === 0) {
+          return `Error: Description is required for all qualifications. Please provide a brief description of the course content.`;
+        }
+
+        // Normalize text for robust duplicate detection
+        const normalizeText = (text: string): string => {
+          return text
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[^\w\s+#.]/g, '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '');
+        };
+        
+        // Check for duplicate qualification
+        const existingQualifications = await storage.getFacilitatorQualifications(facilitatorId);
+        const normalizedTitle = normalizeText(courseTitle);
+        const normalizedInstitution = normalizeText(institution);
+        
+        const duplicate = existingQualifications.find(q => 
+          normalizeText(q.courseTitle) === normalizedTitle &&
+          normalizeText(q.institution) === normalizedInstitution
+        );
+        
+        if (duplicate) {
+          console.log(`[Portfolio Tool] Duplicate qualification detected: ${courseTitle} from ${institution}`);
+          return `This qualification already exists in your portfolio: "${courseTitle}" from ${institution} (completed ${duplicate.completionDate ? new Date(duplicate.completionDate).toLocaleDateString() : 'unknown date'}). If you want to update it, please tell me what information needs to be changed.`;
+        }
+        
+        // Create qualification
+        const qualification = await storage.createQualification({
+          facilitatorId,
+          courseTitle,
+          institution,
+          completionDate: new Date(completionDate),
+          credential: credential || null,
+          courseLevel: courseLevel || null,
+          description,
+        });
+        
+        // Verify the qualification was created
+        if (!qualification || !qualification.id) {
+          console.error(`[Portfolio Tool] ❌ Failed to create qualification: ${courseTitle}`);
+          return `Error: Failed to save qualification to database. Please try again or contact support.`;
+        }
+        
+        console.log(`[Portfolio Tool] ✅ Qualification created: ${qualification.id} - ${courseTitle}`);
+        
+        // Recalculate competencies and track if any downgrades were prevented
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        
+        let message = `Successfully added qualification: ${courseTitle} from ${institution}. Your competency scores have been updated based on this qualification.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}. The new qualification doesn't change these levels, as your current status is already appropriate based on your overall portfolio.`;
+        }
+        
+        return message;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error adding qualification:`, error);
+        return `Error adding qualification: ${error.message}`;
+      }
+    },
+  });
+
+  const updateQualificationTool = new DynamicStructuredTool({
+    name: "update_qualification",
+    description: "Update an existing qualification in the facilitator's portfolio. Use this when the facilitator wants to modify information about a course they've already added.",
+    schema: z.object({
+      qualificationId: z.string().describe("ID of the qualification to update"),
+      courseTitle: z.string().optional().describe("New title of the course"),
+      institution: z.string().optional().describe("New institution name"),
+      completionDate: z.string().optional().describe("New completion date (YYYY-MM-DD format)"),
+      credential: z.string().optional().describe("New credential type"),
+      courseLevel: z.enum(['introduction', 'certificate', 'bachelor', 'master', 'doctoral']).optional().describe("New course level"),
+      description: z.string().optional().describe("New description"),
+    }),
+    func: async ({ qualificationId, ...updates }) => {
+      try {
+        await storage.updateQualification(qualificationId, updates);
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        
+        let message = `Successfully updated qualification. Your competency scores have been recalculated.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Note:** Your existing competency levels were preserved for: ${preventedDowngrades.join(', ')}.`;
+        }
+        
+        return message;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error updating qualification:`, error);
+        return `Error updating qualification: ${error.message}`;
+      }
+    },
+  });
+
+  const addActivityTool = new DynamicStructuredTool({
+    name: "add_activity",
+    description: "Record a Bible translation mentorship activity in the facilitator's portfolio. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months', '1.5 years'. Convert to years and months separately. Also ask about languages mentored and chapters mentored. Use this when facilitators explicitly request to add translation work to their portfolio.",
+    schema: z.object({
+      language: z.string().describe("The language being mentored (e.g., Swahili, Mandarin)"),
+      context: z.string().describe("Brief description of the mentorship context or project"),
+      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
+      languagesMentored: z.number().optional().describe("Number of languages mentored in this activity"),
+      chaptersMentored: z.number().optional().describe("Number of chapters mentored in this activity"),
+    }),
+    func: async ({ language, context, durationYears, durationMonths, languagesMentored, chaptersMentored }) => {
+      try {
+        const activity = await storage.createActivity({
+          facilitatorId,
+          languageName: language,
+          description: context,
+          durationYears,
+          durationMonths: durationMonths || 0,
+          chaptersCount: chaptersMentored || null,
+          activityType: 'translation',
+        });
+        
+        // Verify the activity was created
+        if (!activity || !activity.id) {
+          console.error(`[Portfolio Tool] ❌ Failed to create activity: ${language}`);
+          return `Error: Failed to save activity to database. Please try again or contact support.`;
+        }
+        
+        console.log(`[Portfolio Tool] ✅ Activity created: ${activity.id} - ${language}`);
+        
+        // Recalculate competencies
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        
+        const totalMonths = durationMonths || 0;
+        const durationText = totalMonths > 0 
+          ? `${durationYears} anos e ${totalMonths} meses` 
+          : `${durationYears} anos`;
+        
+        let message = `Atividade registrada: ${language}. Duração: ${durationText}${languagesMentored ? `, Idiomas: ${languagesMentored}` : ''}${chaptersMentored ? `, Capítulos: ${chaptersMentored}` : ''}. Suas competências foram atualizadas.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}. A nova atividade não muda esses níveis, pois seu status atual já é apropriado com base em todo o seu portfólio.`;
+        }
+        
+        return message;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error adding activity:`, error);
+        return `Error adding activity: ${error.message}`;
+      }
+    },
+  });
+
+  const createGeneralExperienceTool = new DynamicStructuredTool({
+    name: "create_general_experience",
+    description: "Add a general professional experience (non-translation) to the portfolio. NEW TYPES: 'biblical_teaching' for Bible teaching/training, 'long_term_mentoring' for mentorship work, 'oral_facilitation' for OBT/oral translation facilitation, 'quality_assurance_work' for QA/verification work, 'community_engagement' for community/cultural work. CRITICAL: Always ask about total duration FIRST. Accept answers like '5 months', '2 years and 3 months'. Convert to years and months separately. Choose the most specific activity type that matches the experience.",
+    schema: z.object({
+      activityType: z.enum(['facilitation', 'teaching', 'biblical_teaching', 'long_term_mentoring', 'oral_facilitation', 'quality_assurance_work', 'community_engagement', 'indigenous_work', 'school_work', 'general_experience']).describe("Type of experience - choose most specific match"),
+      context: z.string().describe("Description of the experience or role"),
+      durationYears: z.number().describe("Years of experience (integer part, e.g., 2 for '2 years 3 months', 0 for '5 months')"),
+      durationMonths: z.number().min(0).max(11).optional().describe("Additional months beyond full years (0-11, e.g., 3 for '2 years 3 months', 5 for '5 months'). Do NOT count full years here."),
+    }),
+    func: async ({ activityType, context, durationYears, durationMonths }) => {
+      try {
+        await storage.createActivity({
+          facilitatorId,
+          description: context,
+          durationYears,
+          durationMonths: durationMonths || 0,
+          activityType,
+        });
+        
+        const { preventedDowngrades } = await storage.recalculateCompetencies(facilitatorId);
+        
+        const totalMonths = durationMonths || 0;
+        const durationText = totalMonths > 0 
+          ? `${durationYears} anos e ${totalMonths} meses` 
+          : `${durationYears} anos`;
+        
+        let message = `Experiência registrada: ${activityType}. Duração: ${durationText}. Suas competências foram atualizadas.`;
+        
+        if (preventedDowngrades.length > 0) {
+          message += `\n\n**Nota:** Seus níveis de competência existentes foram preservados para: ${preventedDowngrades.join(', ')}.`;
+        }
+        
+        return message;
+      } catch (error: any) {
+        console.error(`[Portfolio Tool] Error creating experience:`, error);
+        return `Error creating experience: ${error.message}`;
+      }
+    },
+  });
+
+  return [
+    addQualificationTool,
+    updateQualificationTool,
+    addActivityTool,
+    createGeneralExperienceTool,
+  ];
+}
