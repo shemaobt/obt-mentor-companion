@@ -417,19 +417,6 @@
   }
 }
 
-/* Hide Replit dev banner iframe that duplicates content */
-#vite-plugin-dev-banner,
-#vite-plugin-dev-banner-iframe,
-iframe[id*="vite-plugin"],
-iframe[id*="dev-banner"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  position: absolute !important;
-  left: -9999px !important;
-}
-
 /* Google Translate Widget Styling */
 .translate-widget-container {
   padding: 0.5rem;

@@ -97,8 +97,7 @@ export const GROWTH_STATUSES = {
 
 export type GrowthStatus = keyof typeof GROWTH_STATUSES;
 
-// Session storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Session storage table for express-session with connect-pg-simple
 export const sessions = pgTable(
   "sessions",
   {
