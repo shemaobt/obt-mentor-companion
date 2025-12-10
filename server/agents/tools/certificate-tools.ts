@@ -15,61 +15,60 @@ export function createCertificateTools(storage: IStorage, facilitatorId: string)
   
   const attachCertificateTool = new DynamicStructuredTool({
     name: "attach_certificate_to_qualification",
-    description: "Automatically match and attach a certificate file to the correct qualification in the portfolio. This tool reads certificate content, compares it with existing qualifications, and attaches it to the best match. Use when a user uploads a certificate file.",
+    description: `Attach a certificate/diploma image from the chat to a qualification.
+
+WORKFLOW:
+1. User sends an image in the chat message
+2. Look at [ATTACHMENTS IN THIS MESSAGE] in the context to find the attachment ID
+3. Call list_qualifications to get the qualification ID
+4. Call this tool with both IDs (NEVER show IDs to user)
+
+The attachment ID is found in the context like: "- diploma.jpg (ID: abc-123-def, Type: image/jpeg...)"
+Extract the ID value after "(ID: " and before the comma.
+
+Example good response: "Pronto! Anexei o diploma ao seu curso de Teologia."
+Example BAD response: "Anexei o attachment abc-123..." ← NEVER do this!`,
     schema: z.object({
-      certificateFilePath: z.string().describe("Full path to the uploaded certificate file (PDF, DOCX, JPEG, PNG)"),
-      chatId: z.string().optional().describe("Current chat ID for tracking"),
-      messageId: z.string().optional().describe("Current message ID for tracking"),
+      qualificationId: z.string().describe("ID from list_qualifications INTERNAL data - NEVER show to user"),
+      attachmentId: z.string().describe("Attachment ID from [ATTACHMENTS IN THIS MESSAGE] context - NEVER show to user"),
     }),
-    func: async ({ certificateFilePath, chatId, messageId }) => {
+    func: async ({ qualificationId, attachmentId }) => {
       try {
-        // Extract text from certificate
-        const { extractTextFromFile } = await import('../../file-processing');
-        const certificateText = await extractTextFromFile(certificateFilePath);
-        
-        if (!certificateText || certificateText.trim().length === 0) {
-          return `Error: Could not extract text from certificate file. Please ensure the file is a valid PDF, DOCX, or image file.`;
+        // Validate IDs
+        if (!qualificationId || qualificationId.length < 10) {
+          return `Não consegui identificar qual qualificação. Use list_qualifications primeiro para ver suas qualificações.`;
         }
-
-        // Get all qualifications
+        if (!attachmentId || attachmentId.length < 10) {
+          return `Não encontrei a imagem do diploma. Por favor, envie a imagem do certificado junto com a mensagem.`;
+        }
+        
+        // Get qualification name for user-friendly response
         const qualifications = await storage.getFacilitatorQualifications(facilitatorId);
+        const qualification = qualifications.find(q => q.id === qualificationId);
         
-        if (qualifications.length === 0) {
-          return `No qualifications found in your portfolio. Please add the qualification details first, then I can attach this certificate to it.`;
-        }
-
-        // Find best matching qualification
-        const normalizeText = (text: string) => text.toLowerCase().replace(/[^\w\s]/g, '').trim();
-        const certTextNormalized = normalizeText(certificateText.substring(0, 2000)); // Limit to first 2000 chars
-        
-        let bestMatch: typeof qualifications[0] | null = null;
-        let bestScore = 0;
-        
-        for (const qual of qualifications) {
-          const qualText = normalizeText(`${qual.courseTitle} ${qual.institution} ${qual.description || ''}`);
-          
-          // Simple scoring: count matching words
-          const qualWords = qualText.split(/\s+/);
-          const matchCount = qualWords.filter(word => word.length > 3 && certTextNormalized.includes(word)).length;
-          const score = matchCount / qualWords.length;
-          
-          if (score > bestScore) {
-            bestScore = score;
-            bestMatch = qual;
-          }
+        if (!qualification) {
+          return `Não encontrei essa qualificação no seu portfólio. Use list_qualifications para ver suas qualificações disponíveis.`;
         }
         
-        if (!bestMatch || bestScore < 0.2) {
-          return `Could not find a matching qualification for this certificate. The certificate mentions: "${certificateText.substring(0, 200)}..."\n\nPlease tell me which qualification this certificate is for, or add the qualification first.`;
-        }
-
-        // Attach certificate
-        await storage.attachCertificateToQualification(bestMatch.id, certificateFilePath, certificateText);
+        const qualName = qualification.courseTitle || 'qualificação';
         
-        return `Successfully attached certificate to: "${bestMatch.courseTitle}" from ${bestMatch.institution}. Match confidence: ${(bestScore * 100).toFixed(0)}%.`;
+        // Attach the certificate using the message attachment
+        await storage.attachCertificateFromMessageAttachment(attachmentId, qualificationId, facilitatorId);
+        
+        console.log(`[Certificate Tool] ✅ Certificate attached to qualification: ${qualificationId}`);
+        
+        return `✅ Pronto! Anexei o diploma/certificado ao seu curso "${qualName}". Você pode ver o arquivo na página do Portfólio.`;
       } catch (error: any) {
-        console.error(`[Portfolio Tool] attach_certificate_to_qualification failed:`, error);
-        return `Error attaching certificate: ${error.message}`;
+        console.error(`[Certificate Tool] Error attaching certificate:`, error);
+        
+        if (error.message?.includes('Unauthorized')) {
+          return `Não foi possível anexar este arquivo. Certifique-se de que você enviou a imagem nesta conversa.`;
+        }
+        if (error.message?.includes('not found')) {
+          return `Não encontrei o arquivo ou a qualificação. Por favor, verifique se a imagem foi enviada corretamente.`;
+        }
+        
+        return `Houve um problema ao anexar o certificado. Por favor, tente novamente ou use a interface: Portfólio > Qualificações > Anexar Certificado.`;
       }
     },
   });
