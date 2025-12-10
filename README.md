@@ -299,7 +299,7 @@ git push origin main
 - ✅ Custom domain support
 - ✅ ~$5-20/month cost
 
-📚 **Full Documentation**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+📚 **Full Setup**: Run `./deploy.sh` after configuring `.env`
 
 ### Docker Compose (Local Testing)
 
