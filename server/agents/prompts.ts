@@ -215,12 +215,22 @@ ${PHILOSOPHY_QUOTES.competencyAssessment}`;
  */
 export const ROUTING_KEYWORDS = {
   portfolio: [
-    // Portuguese
+    // Portuguese - Add/Create
     "adicionar", "registrar", "incluir", "completei", "fiz um curso",
     "qualificação", "certificado", "atividade", "experiência",
-    // English
+    // Portuguese - Update/Edit
+    "atualizar", "mudar", "alterar", "corrigir", "editar", "modificar",
+    // Portuguese - Attach/Upload
+    "anexar", "diploma",
+    // Portuguese - Portfolio context
+    "portfólio", "portfolio", "meu curso", "minha formação",
+    // English - Add/Create
     "add", "record", "include", "completed", "took a course",
-    "qualification", "certificate", "activity", "experience"
+    "qualification", "certificate", "activity", "experience",
+    // English - Update/Edit
+    "update", "change", "edit", "modify", "fix",
+    // English - Attach
+    "attach"
   ],
   report: [
     // Portuguese
