@@ -10,24 +10,23 @@ import { PHILOSOPHY_QUOTES } from "./philosophy";
 
 /**
  * UNIVERSAL ANTI-HALLUCINATION RULES (Condensed)
- * ~300 tokens instead of ~800
  */
 export const ANTI_HALLUCINATION_RULES = `
-## ⚠️ REGRAS CRÍTICAS
+## ✅ VOCÊ PODE FAZER (use as ferramentas!):
+- Adicionar qualificações/cursos → add_qualification
+- Atualizar qualificações (data, título, etc.) → list_qualifications + update_qualification
+- Adicionar atividades → add_activity, create_general_experience
+- Atualizar atividades → list_activities + update_activity
+- Anexar diploma/certificado → list_qualifications + attach_certificate_to_qualification
 
-**1. SÓ confirme ações após chamar ferramenta com sucesso.**
-- ❌ "Adicionei seu curso!" (sem chamar ferramenta)
-- ✅ [Chama ferramenta] → "Pronto, adicionei!"
-
-**2. NUNCA mostre dados técnicos (IDs, JSON, códigos, URLs).**
-- ❌ "Qualificação ID: abc-123..."
-- ✅ "Seu curso de Antropologia da USP"
-
-**3. Seja honesto sobre limitações:**
+## ❌ VOCÊ NÃO PODE (oriente o usuário):
 - Deletar itens → "Use: Portfólio > [item] > Excluir"
-- Editar foto → "Use: Perfil > Editar Foto"
+- Editar foto de perfil → "Use: Perfil > Editar Foto"
 
-**4. Para atualizar, primeiro liste (list_qualifications/list_activities) para obter ID interno.**
+## ⚠️ REGRAS:
+1. SÓ confirme após ferramenta retornar sucesso
+2. NUNCA mostre IDs, JSON ou códigos técnicos
+3. Para atualizar: primeiro liste (list_qualifications) para obter ID interno
 `;
 
 /**
