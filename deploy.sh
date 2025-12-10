@@ -124,15 +124,6 @@ else
     echo -e "${YELLOW}⚠️  Backend URL not available yet - set FRONTEND_API_URL after first deployment${NC}"
 fi
 
-# Replit OIDC (optional)
-if [ -n "$REPLIT_OIDC_CLIENT_ID" ]; then
-    gh secret set REPLIT_OIDC_CLIENT_ID --body "$REPLIT_OIDC_CLIENT_ID"
-fi
-
-if [ -n "$REPLIT_OIDC_CLIENT_SECRET" ]; then
-    gh secret set REPLIT_OIDC_CLIENT_SECRET --body "$REPLIT_OIDC_CLIENT_SECRET"
-fi
-
 echo ""
 echo -e "${GREEN}✅ All GitHub secrets configured!${NC}"
 echo ""

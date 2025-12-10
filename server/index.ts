@@ -11,8 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Trust proxy for proper secure cookie and IP handling
-// Replit runs applications behind a proxy in all environments
+// Trust proxy for proper secure cookie and IP handling (Cloud Run, nginx, etc.)
 app.set('trust proxy', 1);
 
 // Session configuration
@@ -90,7 +89,7 @@ try {
     saveUninitialized: false,
     name: 'obt_mentor.sid', // Custom session cookie name
     cookie: cookieSettings,
-    proxy: true, // Trust the reverse proxy (important for Replit deployments)
+    proxy: true, // Trust the reverse proxy (Cloud Run, nginx)
   }));
 } catch (error) {
   log(`Failed to configure session middleware: ${error instanceof Error ? error.message : 'Unknown error'}`);

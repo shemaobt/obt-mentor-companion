@@ -97,7 +97,7 @@ jobs:
             --project "${PROJECT_ID}" \
             --timeout=300 \
             --min-instances=1 \
-            --update-env-vars="^||^DATABASE_URL=${DATABASE_URL}||GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}||QDRANT_URL=${{ secrets.QDRANT_URL }}||QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}||SESSION_SECRET=${{ secrets.SESSION_SECRET }}||REPLIT_OIDC_CLIENT_ID=${{ secrets.REPLIT_OIDC_CLIENT_ID }}||REPLIT_OIDC_CLIENT_SECRET=${{ secrets.REPLIT_OIDC_CLIENT_SECRET }}||REPLIT_OIDC_ISSUER=https://replit.com||GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}||NODE_ENV=production" \
+            --update-env-vars="^||^DATABASE_URL=${DATABASE_URL}||GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}||QDRANT_URL=${{ secrets.QDRANT_URL }}||QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}||SESSION_SECRET=${{ secrets.SESSION_SECRET }}||GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}||NODE_ENV=production" \
             --quiet \
             --format="value(status.url)" > backend_url.txt
           echo "backend_url=$(cat backend_url.txt)" >> $GITHUB_OUTPUT

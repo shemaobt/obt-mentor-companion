@@ -94,11 +94,6 @@ GOOGLE_API_KEY=your_google_gemini_api_key
 QDRANT_URL=https://your-cluster.qdrant.io
 QDRANT_API_KEY=your_qdrant_api_key
 SESSION_SECRET=your-secure-random-string-32-chars-minimum
-
-# Optional (if using Replit Auth)
-REPLIT_OIDC_CLIENT_ID=your_replit_client_id
-REPLIT_OIDC_CLIENT_SECRET=your_replit_client_secret
-REPLIT_OIDC_ISSUER=https://replit.com
 ```
 
 ### Development
@@ -325,7 +320,6 @@ npm run build
 
 ### Other Platforms
 
-- **Replit**: Pre-configured ✅
 - **Heroku/Railway**: Compatible
 - **Render**: Compatible
 - **Any Docker platform**: Dockerfiles included
@@ -454,7 +448,6 @@ MIT License - See LICENSE file for details
 - **YWAM** - Oral Bible Translation program
 - **Google Gemini** - AI models and APIs
 - **Qdrant** - Vector database
-- **Replit** - Hosting and authentication
 - **shadcn/ui** - Component library
 
 ---
