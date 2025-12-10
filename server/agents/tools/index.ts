@@ -38,11 +38,12 @@ export function getConversationalTools(storage: IStorage, facilitatorId: string)
 }
 
 /**
- * Get tools for portfolio node (portfolio management + certificate)
+ * Get tools for portfolio node (portfolio management + certificate + read)
  */
 export function getPortfolioNodeTools(storage: IStorage, facilitatorId: string) {
   return [
     ...createPortfolioTools(storage, facilitatorId),
     ...createCertificateTools(storage, facilitatorId),
+    ...createReadTools(storage, facilitatorId),
   ];
 }
