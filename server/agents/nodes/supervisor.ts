@@ -94,13 +94,28 @@ function isPortfolioFollowup(messages: any[]): boolean {
   // Look at the last few messages for context
   const recentMessages = messages.slice(-6);
   
+  // #region agent log
+  console.log(`[DEBUG-H] isPortfolioFollowup checking ${recentMessages.length} messages`);
+  // #endregion
+  
   // Find the last AI message before the current human message
   for (let i = recentMessages.length - 2; i >= 0; i--) {
     const msg = recentMessages[i];
-    if (msg instanceof AIMessage) {
+    const msgType = msg._getType?.() || msg.constructor?.name || typeof msg;
+    const isAI = msg instanceof AIMessage || msgType === 'ai' || msg.role === 'assistant' || msg.role === 'ai';
+    
+    // #region agent log
+    console.log(`[DEBUG-H] Message[${i}] type=${msgType}, isAI=${isAI}`);
+    // #endregion
+    
+    if (isAI) {
       const content = typeof msg.content === 'string' 
         ? msg.content.toLowerCase() 
         : JSON.stringify(msg.content).toLowerCase();
+      
+      // #region agent log
+      console.log(`[DEBUG-H] AI content preview: ${content.substring(0, 100)}...`);
+      // #endregion
       
       // Check if AI was asking for portfolio data
       const isAskingForData = PORTFOLIO_FOLLOWUP_INDICATORS.some(
@@ -111,10 +126,16 @@ function isPortfolioFollowup(messages: any[]): boolean {
         console.log('[Supervisor] Detected portfolio followup context from AI message');
         return true;
       }
+      // #region agent log
+      console.log(`[DEBUG-H] AI message did not match any portfolio indicators`);
+      // #endregion
       break; // Only check the most recent AI message
     }
   }
   
+  // #region agent log
+  console.log(`[DEBUG-H] No portfolio followup detected`);
+  // #endregion
   return false;
 }
 
