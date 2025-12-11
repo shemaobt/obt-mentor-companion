@@ -28,12 +28,18 @@ export function createAllTools(storage: IStorage, facilitatorId: string) {
 }
 
 /**
- * Get tools for conversational node (read-only + competency tracking)
+ * Get tools for conversational node
+ * 
+ * SIMPLIFIED ARCHITECTURE: The conversational node now has ALL tools.
+ * The LLM decides when to use portfolio/certificate tools based on conversation context.
+ * This eliminates the need for complex routing logic in the supervisor.
  */
 export function getConversationalTools(storage: IStorage, facilitatorId: string) {
   return [
     ...createReadTools(storage, facilitatorId),
     ...createCompetencyTools(storage, facilitatorId),
+    ...createPortfolioTools(storage, facilitatorId),
+    ...createCertificateTools(storage, facilitatorId),
   ];
 }
 
