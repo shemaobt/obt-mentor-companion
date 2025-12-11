@@ -53,6 +53,9 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
       description: z.string().describe("Brief description of the course content - REQUIRED"),
     }),
     func: async ({ courseTitle, institution, completionDate, courseLevel, description }) => {
+      // #region agent log
+      console.log(`[DEBUG-A] add_qualification called with:`, JSON.stringify({ courseTitle, institution, completionDate, courseLevel, description, facilitatorId }, null, 2));
+      // #endregion
       try {
         // Validate all required fields
         if (!courseTitle || courseTitle.trim().length === 0) {
@@ -98,6 +101,9 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
         }
         
         // Create qualification
+        // #region agent log
+        console.log(`[DEBUG-B] About to create qualification in DB for facilitator: ${facilitatorId}`);
+        // #endregion
         const qualification = await storage.createQualification({
           facilitatorId,
           courseTitle,
@@ -106,6 +112,9 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
           courseLevel,
           description,
         });
+        // #region agent log
+        console.log(`[DEBUG-C] Qualification created result:`, JSON.stringify(qualification, null, 2));
+        // #endregion
         
         // Verify the qualification was created
         if (!qualification || !qualification.id) {
@@ -126,6 +135,9 @@ DO NOT call this tool until you have answers for ALL 5 questions.`,
         
         return message;
       } catch (error: any) {
+        // #region agent log
+        console.error(`[DEBUG-D] Error in add_qualification:`, error?.message, error?.stack);
+        // #endregion
         console.error(`[Portfolio Tool] Error adding qualification:`, error);
         return `Error adding qualification: ${error.message}`;
       }

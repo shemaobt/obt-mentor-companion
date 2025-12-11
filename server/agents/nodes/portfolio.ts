@@ -83,6 +83,11 @@ export function createPortfolioNode(storage: IStorage) {
     const humanMessage = new HumanMessage({ content: messageContent });
     
     try {
+      // #region agent log
+      console.log('[DEBUG-E] Portfolio Node invoking agent with facilitatorId:', facilitatorId);
+      console.log('[DEBUG-E] Message content:', messageContent.substring(0, 200));
+      console.log('[DEBUG-E] Available tools:', tools.map(t => t.name).join(', '));
+      // #endregion
       console.log('[Portfolio Node] Invoking agent...');
       
       // Add timeout
@@ -95,6 +100,18 @@ export function createPortfolioNode(storage: IStorage) {
       });
       
       const result = await Promise.race([invokePromise, timeoutPromise]);
+      // #region agent log
+      console.log('[DEBUG-F] Agent result messages count:', result.messages?.length);
+      // Log ALL messages to see tool calls and results
+      result.messages?.forEach((msg: any, i: number) => {
+        const msgType = msg._getType?.() || msg.role || 'unknown';
+        const content = typeof msg.content === 'string' ? msg.content.substring(0, 500) : JSON.stringify(msg.content)?.substring(0, 500);
+        console.log(`[DEBUG-F] Message[${i}] type=${msgType}: ${content}`);
+        if (msg.tool_calls) {
+          console.log(`[DEBUG-F] Message[${i}] tool_calls:`, JSON.stringify(msg.tool_calls, null, 2));
+        }
+      });
+      // #endregion
       console.log('[Portfolio Node] Agent invocation successful');
       
       // Extract the final AI message
@@ -113,6 +130,11 @@ export function createPortfolioNode(storage: IStorage) {
         next: 'competency', // Track competencies after portfolio updates
       };
     } catch (error: any) {
+      // #region agent log
+      console.error('[DEBUG-G] Portfolio Node CAUGHT ERROR:', error?.message);
+      console.error('[DEBUG-G] Error stack:', error?.stack);
+      console.error('[DEBUG-G] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      // #endregion
       console.error('[Portfolio Node] Error:', error);
       
       // Provide user-friendly error messages
