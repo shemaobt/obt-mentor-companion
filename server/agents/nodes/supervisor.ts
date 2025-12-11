@@ -7,7 +7,7 @@
 
 import { AgentState, NodeTarget } from "../state";
 import { ROUTING_KEYWORDS } from "../prompts";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
 
 /**
  * Keywords for portfolio intent detection
@@ -71,6 +71,54 @@ function detectPortfolioIntent(text: string): { type: string; data: Record<strin
 }
 
 /**
+ * Keywords that indicate an AI message was asking for portfolio data
+ * (used for context-aware routing)
+ */
+const PORTFOLIO_FOLLOWUP_INDICATORS = [
+  // Portuguese prompts asking for qualification details
+  'nome do curso', 'instituição', 'ano de conclusão', 'nível do curso',
+  'descrição do conteúdo', 'breve descrição', 'pode descrever',
+  'registrar sua qualificação', 'adicionar sua qualificação',
+  // Portuguese prompts asking for activity details  
+  'cargo/função', 'organização', 'duração', 'quanto tempo',
+  'registrar sua atividade', 'experiência',
+  // English equivalents
+  'course title', 'institution', 'completion date', 'course level',
+  'description', 'job title', 'organization', 'duration',
+];
+
+/**
+ * Check if the previous AI message was asking for portfolio data
+ */
+function isPortfolioFollowup(messages: any[]): boolean {
+  // Look at the last few messages for context
+  const recentMessages = messages.slice(-6);
+  
+  // Find the last AI message before the current human message
+  for (let i = recentMessages.length - 2; i >= 0; i--) {
+    const msg = recentMessages[i];
+    if (msg instanceof AIMessage) {
+      const content = typeof msg.content === 'string' 
+        ? msg.content.toLowerCase() 
+        : JSON.stringify(msg.content).toLowerCase();
+      
+      // Check if AI was asking for portfolio data
+      const isAskingForData = PORTFOLIO_FOLLOWUP_INDICATORS.some(
+        indicator => content.includes(indicator.toLowerCase())
+      );
+      
+      if (isAskingForData) {
+        console.log('[Supervisor] Detected portfolio followup context from AI message');
+        return true;
+      }
+      break; // Only check the most recent AI message
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Supervisor node function
  * 
  * Analyzes the latest message and determines which node should handle it.
@@ -106,6 +154,16 @@ export async function supervisorNode(state: typeof AgentState.State): Promise<Pa
     return { 
       next: 'portfolio' as NodeTarget,
       portfolioIntent: intent || undefined,
+    };
+  }
+  
+  // NEW: Check if this is a followup to a portfolio request
+  // (e.g., user providing course details after agent asked for them)
+  if (isPortfolioFollowup(messages)) {
+    console.log('[Supervisor] -> Routing to PORTFOLIO node (followup context detected)');
+    return { 
+      next: 'portfolio' as NodeTarget,
+      portfolioIntent: { type: 'followup', data: {} },
     };
   }
   
