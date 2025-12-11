@@ -1431,6 +1431,13 @@ export class DatabaseStorage implements IStorage {
     const sourceAttachment = sourceAttachmentRow.attachment;
     const attachmentOwnerFacilitatorId = sourceAttachmentRow.chat.facilitatorId;
     
+    // #region agent log
+    console.log(`[DEBUG-CERT] Attachment owner facilitatorId: ${attachmentOwnerFacilitatorId}`);
+    console.log(`[DEBUG-CERT] Authenticated facilitatorId: ${facilitatorId}`);
+    console.log(`[DEBUG-CERT] Chat ID: ${sourceAttachmentRow.chat.id}`);
+    console.log(`[DEBUG-CERT] Message ID: ${sourceAttachmentRow.message.id}`);
+    // #endregion
+    
     // Verify qualification exists and get its facilitator ID
     const [qualification] = await db
       .select()
