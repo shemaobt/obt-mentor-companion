@@ -107,6 +107,7 @@ export interface IStorage {
   
   // Message attachment operations
   getMessageAttachments(messageId: string): Promise<MessageAttachment[]>;
+  getMessageAttachment(attachmentId: string): Promise<MessageAttachment | undefined>;
   createMessageAttachment(attachment: InsertMessageAttachment): Promise<MessageAttachment>;
   
   // API Key operations
@@ -566,6 +567,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(messageAttachments)
       .where(eq(messageAttachments.messageId, messageId));
+  }
+
+  async getMessageAttachment(attachmentId: string): Promise<MessageAttachment | undefined> {
+    const [attachment] = await db
+      .select()
+      .from(messageAttachments)
+      .where(eq(messageAttachments.id, attachmentId));
+    return attachment;
   }
 
   async createMessageAttachment(attachment: InsertMessageAttachment): Promise<MessageAttachment> {
