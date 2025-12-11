@@ -1413,15 +1413,19 @@ export class DatabaseStorage implements IStorage {
 
   async attachCertificateFromMessageAttachment(messageAttachmentId: string, qualificationId: string, facilitatorId: string): Promise<QualificationAttachment> {
     // Get the original message attachment with chat ownership info
+    // Note: chats table has userId, not facilitatorId directly
+    // We need to join through facilitators table to get the facilitator
     const [sourceAttachmentRow] = await db
       .select({
         attachment: messageAttachments,
         message: messages,
         chat: chats,
+        facilitator: facilitators,
       })
       .from(messageAttachments)
       .innerJoin(messages, eq(messageAttachments.messageId, messages.id))
       .innerJoin(chats, eq(messages.chatId, chats.id))
+      .innerJoin(facilitators, eq(chats.userId, facilitators.userId))
       .where(eq(messageAttachments.id, messageAttachmentId));
     
     if (!sourceAttachmentRow) {
@@ -1429,13 +1433,15 @@ export class DatabaseStorage implements IStorage {
     }
     
     const sourceAttachment = sourceAttachmentRow.attachment;
-    const attachmentOwnerFacilitatorId = sourceAttachmentRow.chat.facilitatorId;
+    // Get facilitatorId from the facilitator record (via chat.userId -> facilitators.userId)
+    const attachmentOwnerFacilitatorId = sourceAttachmentRow.facilitator?.id;
     
     // #region agent log
     console.log(`[DEBUG-CERT] Attachment owner facilitatorId: ${attachmentOwnerFacilitatorId}`);
     console.log(`[DEBUG-CERT] Authenticated facilitatorId: ${facilitatorId}`);
     console.log(`[DEBUG-CERT] Chat ID: ${sourceAttachmentRow.chat.id}`);
-    console.log(`[DEBUG-CERT] Message ID: ${sourceAttachmentRow.message.id}`);
+    console.log(`[DEBUG-CERT] Chat userId: ${sourceAttachmentRow.chat.userId}`);
+    console.log(`[DEBUG-CERT] Facilitator userId: ${sourceAttachmentRow.facilitator?.userId}`);
     // #endregion
     
     // Verify qualification exists and get its facilitator ID
