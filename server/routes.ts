@@ -22,10 +22,8 @@ import { parseDocument, parseDocumentBuffer, chunkText, storeDocumentChunks, upd
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
 import { uploadToGCS, deleteFromGCS } from "./gcs-storage";
+import { getCachedAudio, setCachedAudio, getAudioETag } from "./utils/audio-cache";
 
-/**
- * Extract text from certificate files (PDF, DOCX) for AI verification
- */
 async function extractCertificateText(storagePath: string, mimeType: string): Promise<string | null> {
   try {
     let fileType: string | null = null;
@@ -48,74 +46,6 @@ async function extractCertificateText(storagePath: string, mimeType: string): Pr
     return null;
   }
 }
-
-// Server-side audio cache for faster TTS responses
-interface CachedAudio {
-  buffer: Buffer;
-  timestamp: number;
-  etag: string;
-}
-
-class AudioCache {
-  private cache = new Map<string, CachedAudio>();
-  private maxSize = 100; // Limit memory usage
-  private ttl = 24 * 60 * 60 * 1000; // 24 hours
-
-  private createCacheKey(text: string, language: string, voice?: string): string {
-    // Normalize text for consistent caching
-    const normalizedText = text.trim().toLowerCase();
-    const voiceKey = voice || 'default';
-    return createHash('sha256').update(`${normalizedText}:${language}:${voiceKey}`).digest('hex');
-  }
-
-  private isExpired(cached: CachedAudio): boolean {
-    return Date.now() - cached.timestamp > this.ttl;
-  }
-
-  get(text: string, language: string, voice?: string): CachedAudio | null {
-    const key = this.createCacheKey(text, language, voice);
-    const cached = this.cache.get(key);
-    
-    if (cached && !this.isExpired(cached)) {
-      // LRU: Move to end by re-inserting
-      this.cache.delete(key);
-      this.cache.set(key, cached);
-      return cached;
-    }
-    
-    if (cached) {
-      this.cache.delete(key); // Remove expired
-    }
-    
-    return null;
-  }
-
-  set(text: string, language: string, buffer: Buffer, voice?: string): CachedAudio {
-    const key = this.createCacheKey(text, language, voice);
-    const etag = `"${key.substring(0, 16)}"`;
-    const cached: CachedAudio = {
-      buffer,
-      timestamp: Date.now(),
-      etag
-    };
-
-    // LRU eviction if cache is full
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) this.cache.delete(firstKey);
-    }
-
-    this.cache.set(key, cached);
-    return cached;
-  }
-
-  getETag(text: string, language: string, voice?: string): string {
-    const key = this.createCacheKey(text, language, voice);
-    return `"${key.substring(0, 16)}"`;
-  }
-}
-
-const audioCache = new AudioCache();
 
 // Multer configuration for file uploads (images and audio)
 const fileStorage = multer.diskStorage({
@@ -1721,7 +1651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate ETag for this content (language/voice are auto-detected)
-      const etag = audioCache.getETag(text, 'auto', 'auto');
+      const etag = getAudioETag(text, 'auto', 'auto');
       
       // Check if client has cached version
       const clientETag = req.headers['if-none-match'];
@@ -1730,7 +1660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check server cache first (use 'auto' since language/voice are auto-detected)
-      let cached = audioCache.get(text, 'auto', 'auto');
+      let cached = getCachedAudio(text, 'auto', 'auto');
 
       if (cached) {
         // Cache hit - instant response!
@@ -1782,7 +1712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Cache the complete audio (use 'auto' since language/voice are auto-detected)
         const completeBuffer = Buffer.concat(chunks);
-        audioCache.set(text, 'auto', completeBuffer, 'auto');
+        setCachedAudio(text, 'auto', completeBuffer, 'auto');
       } catch (streamError) {
         console.error("Error streaming audio chunks:", streamError);
         // Headers already sent, can't return error status
@@ -1863,7 +1793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check server cache first (cache key is just text, language/voice are auto-detected)
-      let cached = audioCache.get(text, 'auto', 'auto');
+      let cached = getCachedAudio(text, 'auto', 'auto');
       let audioBuffer: Buffer;
       let detectedLanguage: string;
       let detectedVoice: string;
@@ -1881,11 +1811,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detectedVoice = result.voice;
         
         // Cache with 'auto' as the language/voice keys since they're detected
-        cached = audioCache.set(text, 'auto', audioBuffer, 'auto');
+        cached = setCachedAudio(text, 'auto', audioBuffer, 'auto');
       }
       
       // Generate ETag based on text only (language/voice are auto-detected)
-      const etag = audioCache.getETag(text, 'auto', 'auto');
+      const etag = getAudioETag(text, 'auto', 'auto');
       
       // Check if client has cached version
       const clientETag = req.headers['if-none-match'];
