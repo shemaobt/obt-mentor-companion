@@ -1,9 +1,3 @@
-/**
- * Tool Exports
- * 
- * Re-exports all tool creation functions for easy importing.
- */
-
 export { createPortfolioTools } from "./portfolio-tools";
 export { createCompetencyTools } from "./competency-tools";
 export { createCertificateTools } from "./certificate-tools";
@@ -15,9 +9,6 @@ import { createCompetencyTools } from "./competency-tools";
 import { createCertificateTools } from "./certificate-tools";
 import { createReadTools } from "./read-tools";
 
-/**
- * Create all tools for a facilitator
- */
 export function createAllTools(storage: IStorage, facilitatorId: string) {
   return {
     portfolioTools: createPortfolioTools(storage, facilitatorId),
@@ -27,19 +18,10 @@ export function createAllTools(storage: IStorage, facilitatorId: string) {
   };
 }
 
-/**
- * Get tools for conversational node (read-only + competency tracking)
- */
 export function getConversationalTools(storage: IStorage, facilitatorId: string) {
-  return [
-    ...createReadTools(storage, facilitatorId),
-    ...createCompetencyTools(storage, facilitatorId),
-  ];
+  return [...createReadTools(storage, facilitatorId), ...createCompetencyTools(storage, facilitatorId)];
 }
 
-/**
- * Get tools for portfolio node (portfolio management + certificate + read)
- */
 export function getPortfolioNodeTools(storage: IStorage, facilitatorId: string) {
   return [
     ...createPortfolioTools(storage, facilitatorId),
