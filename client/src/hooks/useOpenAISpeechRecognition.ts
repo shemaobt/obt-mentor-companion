@@ -15,8 +15,8 @@ interface OpenAISpeechRecognitionHook {
   isSupported: boolean;
   lastError: string | null;
   permissionDenied: boolean;
-  volumeLevel: number; // 0-100 for waveform visualization
-  elapsedTime: number; // seconds elapsed since recording started
+  volumeLevel: number;
+  elapsedTime: number;
 }
 
 export function useOpenAISpeechRecognition(
@@ -40,7 +40,6 @@ export function useOpenAISpeechRecognition(
   const startTimeRef = useRef<number>(0);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if browser supports MediaRecorder (universal support)
   const isSupported = typeof window !== 'undefined' && 
     'MediaRecorder' in window && 
     'navigator' in window && 
@@ -51,7 +50,6 @@ export function useOpenAISpeechRecognition(
     isProcessingRef.current = true;
 
     try {
-      // Determine correct file extension based on MIME type for Whisper
       let extension = 'webm';
       if (mimeType.includes('wav')) extension = 'wav';
       else if (mimeType.includes('mp4')) extension = 'mp4';
@@ -100,7 +98,6 @@ export function useOpenAISpeechRecognition(
       streamRef.current = stream;
       chunksRef.current = [];
 
-      // Set up Web Audio API for waveform visualization
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = audioContext;
       
@@ -112,17 +109,14 @@ export function useOpenAISpeechRecognition(
       sourceNode.connect(analyser);
       analyserRef.current = analyser;
       
-      // Start elapsed time tracking
       startTimeRef.current = Date.now();
       setElapsedTime(0);
       
-      // Update timer every 100ms
       timerIntervalRef.current = setInterval(() => {
         const elapsed = (Date.now() - startTimeRef.current) / 1000;
         setElapsedTime(Math.floor(elapsed));
       }, 100);
       
-      // Visualize audio levels
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       
       const updateVolume = () => {
@@ -130,15 +124,13 @@ export function useOpenAISpeechRecognition(
         
         analyserRef.current.getByteFrequencyData(dataArray);
         
-        // Calculate average volume (0-255) and normalize to 0-100
         const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-        const normalizedVolume = Math.min(100, Math.round((average / 255) * 150)); // Amplify for better visualization
+        const normalizedVolume = Math.min(100, Math.round((average / 255) * 150));
         
         setVolumeLevel(normalizedVolume);
         animationFrameRef.current = requestAnimationFrame(updateVolume);
       };
 
-      // Determine the best audio format for Whisper compatibility
       const mimeTypes = [
         'audio/wav',
         'audio/mp4', 
@@ -157,12 +149,10 @@ export function useOpenAISpeechRecognition(
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: selectedMimeType || undefined,
-        audioBitsPerSecond: 64000, // Good quality for speech
+        audioBitsPerSecond: 64000,
       });
 
       mediaRecorderRef.current = mediaRecorder;
-
-      // Store audio data for processing when recording ends
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -174,7 +164,6 @@ export function useOpenAISpeechRecognition(
         setIsListening(true);
         setInterimTranscript("Listening...");
         
-        // Start the waveform animation loop after recording starts
         const dataArray = new Uint8Array(analyserRef.current!.frequencyBinCount);
         
         const updateVolume = () => {
@@ -182,9 +171,8 @@ export function useOpenAISpeechRecognition(
           
           analyserRef.current.getByteFrequencyData(dataArray);
           
-          // Calculate average volume (0-255) and normalize to 0-100
           const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-          const normalizedVolume = Math.min(100, Math.round((average / 255) * 150)); // Amplify for better visualization
+          const normalizedVolume = Math.min(100, Math.round((average / 255) * 150));
           
           setVolumeLevel(normalizedVolume);
           animationFrameRef.current = requestAnimationFrame(updateVolume);
@@ -197,10 +185,7 @@ export function useOpenAISpeechRecognition(
         setIsListening(false);
         setInterimTranscript("");
         
-        // Wait briefly to ensure final dataavailable event has fired
-        // This prevents audio truncation at the end of recordings
         setTimeout(() => {
-          // Process the complete recording
           if (chunksRef.current.length > 0) {
             const audioBlob = new Blob(chunksRef.current, { type: selectedMimeType });
             if (audioBlob.size > 1000) {
@@ -208,13 +193,11 @@ export function useOpenAISpeechRecognition(
             }
           }
 
-          // Cleanup
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
           }
           
-          // Clean up audio visualization
           if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
             animationFrameRef.current = null;
@@ -232,7 +215,7 @@ export function useOpenAISpeechRecognition(
           
           setVolumeLevel(0);
           setElapsedTime(0);
-        }, 100); // 100ms delay to capture final chunk
+        }, 100);
       };
 
       mediaRecorder.onerror = (event: any) => {
@@ -241,9 +224,7 @@ export function useOpenAISpeechRecognition(
         setIsListening(false);
       };
 
-      // Start recording with timeslice to capture data incrementally
-      // This ensures we don't lose the final chunk and reduces truncation
-      mediaRecorder.start(1000); // Capture chunks every 1 second
+      mediaRecorder.start(1000);
 
     } catch (error: any) {
       console.error('Error starting recording:', error);
