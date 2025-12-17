@@ -1,10 +1,3 @@
-/**
- * Conversational Node
- * 
- * Warm mentor chat with scope enforcement and document citation.
- * Tools: get_portfolio_summary (read-only), track_competency_evidence, suggest_competency_update
- */
-
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
@@ -14,9 +7,6 @@ import { getConversationalTools } from "../tools";
 import type { IStorage } from "../../storage";
 import * as fs from "fs/promises";
 
-/**
- * Create conversational node function
- */
 export function createConversationalNode(storage: IStorage) {
   
   return async function conversationalNode(state: typeof AgentState.State): Promise<Partial<typeof AgentState.State>> {
@@ -32,7 +22,6 @@ export function createConversationalNode(storage: IStorage) {
       };
     }
     
-    // Initialize Gemini model
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required');
@@ -47,17 +36,14 @@ export function createConversationalNode(storage: IStorage) {
       maxRetries: 2,
     });
     
-    // Get tools for this node
     const tools = getConversationalTools(storage, facilitatorId);
     
-    // Create react agent
     const agent = createReactAgent({
       llm: model,
       tools,
       messageModifier: CONVERSATIONAL_PROMPT,
     });
     
-    // Get the last human message
     const lastMessage = messages[messages.length - 1];
     let messageContent: any;
     
@@ -66,12 +52,10 @@ export function createConversationalNode(storage: IStorage) {
         ? lastMessage.content 
         : JSON.stringify(lastMessage.content);
       
-      // Add provided context (RAG results) to the message
       const messageWithContext = providedContext 
         ? `${providedContext}\n\n---\n\nUser Question:\n${textContent}`
         : textContent;
       
-      // Handle image attachments for vision processing
       if (imageFilePaths && imageFilePaths.length > 0) {
         console.log(`[Conversational Node] Processing ${imageFilePaths.length} image(s)`);
         
@@ -113,7 +97,6 @@ export function createConversationalNode(storage: IStorage) {
       messageContent = "Hello";
     }
     
-    // Format chat history for the agent (last 10 messages)
     const formattedHistory = messages.slice(0, -1).slice(-10).map(msg => {
       if (msg instanceof HumanMessage) {
         return { role: 'human' as const, content: msg.content };
@@ -128,7 +111,6 @@ export function createConversationalNode(storage: IStorage) {
     try {
       console.log('[Conversational Node] Invoking agent...');
       
-      // Add timeout
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Agent timeout after 60 seconds')), 60000)
       );
@@ -140,7 +122,6 @@ export function createConversationalNode(storage: IStorage) {
       const result = await Promise.race([invokePromise, timeoutPromise]);
       console.log('[Conversational Node] Agent invocation successful');
       
-      // Extract the final AI message
       const aiMessages = result.messages.filter((msg: any) => 
         msg.role === 'ai' || msg._getType?.() === 'ai'
       );
@@ -157,7 +138,6 @@ export function createConversationalNode(storage: IStorage) {
     } catch (error: any) {
       console.error('[Conversational Node] Error:', error);
       
-      // Provide user-friendly error messages
       if (error?.message?.includes('API key') || error?.message?.includes('authentication') || error?.message?.includes('401')) {
         throw new Error('Google API key authentication failed. Please verify your API key.');
       } else if (error?.message?.includes('quota') || error?.message?.includes('429')) {
