@@ -8,8 +8,8 @@ import { serveStatic, log } from "./utils";
 import { initializeQdrantCollection } from "./vector-memory";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' })); // Increased for screenshot uploads
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Trust proxy for proper secure cookie and IP handling (Cloud Run, nginx, etc.)
 app.set('trust proxy', 1);
