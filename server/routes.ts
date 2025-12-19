@@ -22,6 +22,7 @@ import { parseDocument, parseDocumentBuffer, chunkText, storeDocumentChunks, upd
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
 import { uploadToGCS, deleteFromGCS } from "./gcs-storage";
+import { sendFeedbackToSlack } from "./slack-service";
 
 /**
  * Extract text from certificate files (PDF, DOCX) for AI verification
@@ -1977,6 +1978,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userName: feedbackData.userName || undefined,
         status: 'new', // Default status
       });
+
+      // Send notification to Slack (fire-and-forget, don't block response)
+      sendFeedbackToSlack({
+        message: feedbackData.message,
+        category: feedbackData.category,
+        userEmail: feedbackData.userEmail || undefined,
+        userName: feedbackData.userName || undefined,
+      }).catch((err) => console.error("[Slack] Failed to send notification:", err));
 
       res.json({
         id: feedback.id,
