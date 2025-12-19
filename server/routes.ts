@@ -1964,12 +1964,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userEmail: z.string().email().optional().or(z.literal("")),
         userName: z.string().optional().or(z.literal("")),
         category: z.enum(["bug", "feature", "general", "other"]).optional(),
+        screenshotBase64: z.string().optional(),
       });
 
       const feedbackData = feedbackSchema.parse(req.body);
       
       // Extract userId from session if available
       const userId = req.session?.userId || null;
+
+      // Upload screenshot to GCS if provided
+      let screenshotUrl: string | undefined;
+      if (feedbackData.screenshotBase64) {
+        try {
+          // Extract base64 data (remove data:image/...;base64, prefix)
+          const matches = feedbackData.screenshotBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (matches) {
+            const extension = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+            screenshotUrl = await uploadToGCS(buffer, `screenshot.${extension}`, 'feedback-screenshots', `image/${extension}`);
+            console.log(`[Feedback] Uploaded screenshot to GCS: ${screenshotUrl}`);
+          }
+        } catch (uploadError) {
+          console.error("[Feedback] Failed to upload screenshot:", uploadError);
+          // Continue without screenshot - don't fail the whole request
+        }
+      }
 
       const feedback = await storage.createFeedback({
         ...feedbackData,
@@ -1985,6 +2005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: feedbackData.category,
         userEmail: feedbackData.userEmail || undefined,
         userName: feedbackData.userName || undefined,
+        screenshotUrl,
       }).catch((err) => console.error("[Slack] Failed to send notification:", err));
 
       res.json({
