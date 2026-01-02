@@ -23,6 +23,7 @@ import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
 import { uploadToGCS, deleteFromGCS } from "./gcs-storage";
 import { getCachedAudio, setCachedAudio, getAudioETag } from "./utils/audio-cache";
+import { sendFeedbackToSlack, sendNewUserNotificationToSlack } from "./slack-service";
 async function extractCertificateText(storagePath: string, mimeType: string): Promise<string | null> {
   try {
     let fileType: string | null = null;
@@ -326,6 +327,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to create facilitator profile:', facilitatorError);
       }
       if (user.approvalStatus === 'pending') {
+        // Send Slack notification for new user awaiting approval (fire-and-forget)
+        sendNewUserNotificationToSlack({
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          region: region,
+          supervisorName: mentorSupervisor,
+        }).catch(err => console.error("[Slack] Failed to send new user notification:", err));
+        
         return res.json({
           message: "Account created successfully. Awaiting admin approval.",
           approvalStatus: "pending"
@@ -1457,6 +1467,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userName: feedbackData.userName || undefined,
         status: 'new',
       });
+
+      // Send notification to Slack (fire-and-forget, don't block response)
+      sendFeedbackToSlack({
+        message: feedbackData.message,
+        category: feedbackData.category,
+        userEmail: feedbackData.userEmail || undefined,
+        userName: feedbackData.userName || undefined,
+      }).catch((err) => console.error("[Slack] Failed to send feedback notification:", err));
+
       res.json({
         id: feedback.id,
         message: "Feedback submitted successfully",
