@@ -14,19 +14,17 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Assistant configuration for OBT Mentor
 export const ASSISTANTS = {
   obtMentor: {
     id: 'obtMentor',
     name: 'OBT Mentor Assistant',
     description: 'A friendly and supportive assistant guiding Oral Bible Translation (OBT) facilitators in their journey to become mentors.',
-    model: 'gemini-2.5-pro' // Google Gemini 2.5 Pro
+    model: 'gemini-2.5-pro'
   }
 } as const;
 
 export type AssistantId = keyof typeof ASSISTANTS;
 
-// OBT Core Competencies - New 11-competency framework
 export const CORE_COMPETENCIES = {
   interpersonal_skills: {
     name: 'Interpersonal Skills',
@@ -76,17 +74,14 @@ export const CORE_COMPETENCIES = {
 
 export type CompetencyId = keyof typeof CORE_COMPETENCIES;
 
-// Helper function to get competency display name
 export function getCompetencyName(id: CompetencyId): string {
   return CORE_COMPETENCIES[id].name;
 }
 
-// Helper function to get competency full description  
 export function getCompetencyDescription(id: CompetencyId): string {
   return CORE_COMPETENCIES[id].description;
 }
 
-// Growth status levels
 export const GROWTH_STATUSES = {
   not_started: 'Not Yet Started',
   emerging: 'Emerging',
@@ -97,7 +92,6 @@ export const GROWTH_STATUSES = {
 
 export type GrowthStatus = keyof typeof GROWTH_STATUSES;
 
-// Session storage table for express-session with connect-pg-simple
 export const sessions = pgTable(
   "sessions",
   {
@@ -108,7 +102,6 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique().notNull(),
@@ -118,14 +111,11 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
   isSupervisor: boolean("is_supervisor").notNull().default(false),
-  supervisorId: varchar("supervisor_id"), // ID of the supervisor (if this user has one)
-  // OpenAI thread for intertwined chats (shared across all user's chats)
+  supervisorId: varchar("supervisor_id"),
   userThreadId: varchar("user_thread_id"),
-  // Approval system fields
   approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"),
   approvedAt: timestamp("approved_at"),
-  approvedBy: varchar("approved_by"), // Admin or Supervisor user ID who approved this user
-  // Usage tracking fields
+  approvedBy: varchar("approved_by"),
   chatCount: integer("chat_count").notNull().default(0),
   messageCount: integer("message_count").notNull().default(0),
   apiUsageCount: integer("api_usage_count").notNull().default(0),
@@ -134,13 +124,12 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Chat chains for linking related conversations
 export const chatChains = pgTable("chat_chains", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title").notNull(),
-  summary: text("summary"), // Brief description of this chain's theme
-  activeChatId: varchar("active_chat_id"), // Current active chat in this chain
+  summary: text("summary"),
+  activeChatId: varchar("active_chat_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -150,9 +139,9 @@ export const chats = pgTable("chats", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   assistantId: varchar("assistant_id").notNull().default('obtMentor'),
   title: varchar("title").notNull(),
-  threadId: varchar("thread_id"), // OpenAI thread ID for conversation context
-  chainId: varchar("chain_id").references(() => chatChains.id, { onDelete: "set null" }), // Optional: part of a chain
-  sequenceIndex: integer("sequence_index"), // Position in chain (0-based, NULL if not in chain)
+  threadId: varchar("thread_id"),
+  chainId: varchar("chain_id").references(() => chatChains.id, { onDelete: "set null" }),
+  sequenceIndex: integer("sequence_index"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -168,13 +157,13 @@ export const messages = pgTable("messages", {
 export const messageAttachments = pgTable("message_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
-  filename: varchar("filename").notNull(), // Stored filename
-  originalName: varchar("original_name").notNull(), // User's original filename
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
   mimeType: varchar("mime_type").notNull(),
-  fileSize: integer("file_size").notNull(), // In bytes
+  fileSize: integer("file_size").notNull(),
   fileType: varchar("file_type", { enum: ["image", "audio"] }).notNull(),
-  storagePath: varchar("storage_path").notNull(), // Relative path to file
-  transcription: text("transcription"), // For audio files (from Whisper)
+  storagePath: varchar("storage_path").notNull(),
+  transcription: text("transcription"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -183,7 +172,7 @@ export const apiKeys = pgTable("api_keys", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name").notNull(),
   keyHash: varchar("key_hash").notNull().unique(),
-  prefix: varchar("prefix").notNull(), // First 8 chars for display
+  prefix: varchar("prefix").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   lastUsedAt: timestamp("last_used_at"),
@@ -210,166 +199,149 @@ export const feedback = pgTable("feedback", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Facilitator profiles (extends user with OBT-specific data)
 export const facilitators = pgTable("facilitators", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
-  region: varchar("region"), // Geographic region where facilitator works
-  mentorSupervisor: varchar("mentor_supervisor"), // Name of their supervisor
+  region: varchar("region"),
+  mentorSupervisor: varchar("mentor_supervisor"),
   totalLanguagesMentored: integer("total_languages_mentored").notNull().default(0),
   totalChaptersMentored: integer("total_chapters_mentored").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Facilitator competencies tracking
 export const facilitatorCompetencies = pgTable("facilitator_competencies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
-  competencyId: varchar("competency_id").notNull(), // References CORE_COMPETENCIES keys
+  competencyId: varchar("competency_id").notNull(),
   status: varchar("status", { 
     enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
   }).notNull().default("not_started"),
-  notes: text("notes"), // Comments on progress
-  // Auto-competency fields
-  autoScore: integer("auto_score").default(0), // Calculated score based on qualifications (0-10)
-  statusSource: varchar("status_source", { enum: ["auto", "manual", "evidence", "conversation"] }).notNull().default("auto"), // How status was set (auto=calculated from quals/activities, manual=supervisor override, evidence=conversation evidence, conversation=AI mentor suggested)
+  notes: text("notes"),
+  autoScore: integer("auto_score").default(0),
+  statusSource: varchar("status_source", { enum: ["auto", "manual", "evidence", "conversation"] }).notNull().default("auto"),
   suggestedStatus: varchar("suggested_status", { 
     enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
-  }), // System-suggested status (shown when manual)
+  }),
   lastUpdated: timestamp("last_updated").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  // Unique constraint: each facilitator can only have one record per competency
   facilitatorCompetencyUnique: unique().on(table.facilitatorId, table.competencyId),
 }));
 
-// Formal qualifications tracking
 export const facilitatorQualifications = pgTable("facilitator_qualifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
   courseTitle: varchar("course_title").notNull(),
   institution: varchar("institution").notNull(),
   completionDate: timestamp("completion_date"),
-  credential: varchar("credential"), // DEPRECATED: kept for backwards compatibility, use courseLevel instead
+  credential: varchar("credential"),
   courseLevel: varchar("course_level", { 
     enum: ["introduction", "certificate", "bachelor", "master", "doctoral"] 
-  }).default("certificate"), // Academic level of the course (TEMPORARILY NULLABLE - will be made NOT NULL after backfill)
-  description: text("description").notNull(), // Brief description of content (MANDATORY)
+  }).default("certificate"),
+  description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Qualification certificate attachments
 export const qualificationAttachments = pgTable("qualification_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   qualificationId: varchar("qualification_id").notNull().references(() => facilitatorQualifications.id, { onDelete: "cascade" }),
-  filename: varchar("filename").notNull(), // Stored filename
-  originalName: varchar("original_name").notNull(), // User's original filename
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
   mimeType: varchar("mime_type").notNull(),
-  fileSize: integer("file_size").notNull(), // In bytes
-  storagePath: varchar("storage_path").notNull(), // Relative path to file
+  fileSize: integer("file_size").notNull(),
+  storagePath: varchar("storage_path").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Mentorship activities tracking (includes both translation work and general experiences)
 export const mentorshipActivities = pgTable("mentorship_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
   activityType: varchar("activity_type", {
     enum: ["translation", "facilitation", "teaching", "biblical_teaching", "long_term_mentoring", "oral_facilitation", "quality_assurance_work", "community_engagement", "indigenous_work", "school_work", "general_experience"]
   }).notNull().default("translation"),
-  // Translation-specific fields (optional for other types)
   languageName: varchar("language_name"),
   chaptersCount: integer("chapters_count"),
-  // General experience fields
-  title: varchar("title"), // e.g., "Facilitador OBT", "Professor", etc.
-  description: text("description"), // Free-form description of the experience
-  yearsOfExperience: integer("years_of_experience"), // e.g., "10 years as facilitator"
-  organization: varchar("organization"), // Where the work was done
-  // Duration tracking (preferred over activityDate)
-  durationYears: integer("duration_years"), // Years of experience/duration
-  durationMonths: integer("duration_months"), // Additional months (0-11)
-  activityDate: timestamp("activity_date").defaultNow(), // DEPRECATED: kept for backwards compatibility
-  notes: text("notes"), // Additional context about the activity
+  title: varchar("title"),
+  description: text("description"),
+  yearsOfExperience: integer("years_of_experience"),
+  organization: varchar("organization"),
+  durationYears: integer("duration_years"),
+  durationMonths: integer("duration_months"),
+  activityDate: timestamp("activity_date").defaultNow(),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Quarterly reports
 export const quarterlyReports = pgTable("quarterly_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  reportData: jsonb("report_data").notNull(), // Full report JSON structure
-  filePath: varchar("file_path"), // Path to generated .docx file
+  reportData: jsonb("report_data").notNull(),
+  filePath: varchar("file_path"),
   generatedAt: timestamp("generated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Competency evidence tracking - observational data from conversations
 export const competencyEvidence = pgTable("competency_evidence", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
-  competencyId: varchar("competency_id").notNull(), // References CORE_COMPETENCIES keys
-  evidenceText: text("evidence_text").notNull(), // What was observed/mentioned
-  chatId: varchar("chat_id").references(() => chats.id, { onDelete: "set null" }), // Which chat this came from
-  messageId: varchar("message_id").references(() => messages.id, { onDelete: "set null" }), // Specific message
+  competencyId: varchar("competency_id").notNull(),
+  evidenceText: text("evidence_text").notNull(),
+  chatId: varchar("chat_id").references(() => chats.id, { onDelete: "set null" }),
+  messageId: varchar("message_id").references(() => messages.id, { onDelete: "set null" }),
   source: varchar("source", { 
     enum: ["conversation", "activity_log", "qualification_add", "supervisor_note"] 
   }).notNull().default("conversation"),
-  strengthScore: integer("strength_score").notNull().default(5), // 1-10, how strong is this evidence
-  isAppliedToLevel: boolean("is_applied_to_level").notNull().default(false), // Was this used in a level update?
+  strengthScore: integer("strength_score").notNull().default(5),
+  isAppliedToLevel: boolean("is_applied_to_level").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Competency change history - audit trail for manual status changes by supervisors
 export const competencyChangeHistory = pgTable("competency_change_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  competencyRecordId: varchar("competency_record_id").notNull().references(() => facilitatorCompetencies.id, { onDelete: "cascade" }), // The specific competency record
-  facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }), // For easier querying
-  competencyId: varchar("competency_id").notNull(), // Which competency type (e.g., "translation_theory")
+  competencyRecordId: varchar("competency_record_id").notNull().references(() => facilitatorCompetencies.id, { onDelete: "cascade" }),
+  facilitatorId: varchar("facilitator_id").notNull().references(() => facilitators.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull(),
   oldStatus: varchar("old_status", { 
     enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
   }).notNull(),
   newStatus: varchar("new_status", { 
     enum: ["not_started", "emerging", "growing", "proficient", "advanced"] 
   }).notNull(),
-  notes: text("notes").notNull(), // Why the change was made (required)
-  changedBy: varchar("changed_by").notNull(), // Supervisor/admin name
-  changedByUserId: varchar("changed_by_user_id").references(() => users.id, { onDelete: "set null" }), // Supervisor/admin user ID
+  notes: text("notes").notNull(),
+  changedBy: varchar("changed_by").notNull(),
+  changedByUserId: varchar("changed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   changedAt: timestamp("changed_at").defaultNow().notNull(),
 });
 
-// Documents for RAG context
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  documentId: varchar("document_id").notNull().unique(), // Unique identifier used in Qdrant
+  documentId: varchar("document_id").notNull().unique(),
   filename: varchar("filename").notNull(),
   uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
   isActive: boolean("is_active").notNull().default(true),
   fileType: varchar("file_type", { enum: ["pdf", "docx", "txt"] }).notNull(),
   chunkCount: integer("chunk_count").notNull().default(0),
-  // Metadata for better RAG retrieval
-  competencyTags: text("competency_tags").array(), // Which competencies this document covers
-  topicTags: text("topic_tags").array(), // Specific topics (e.g., "translation methods", "cultural sensitivity")
+  competencyTags: text("competency_tags").array(),
+  topicTags: text("topic_tags").array(),
   contentType: varchar("content_type", { 
     enum: ["best_practices", "methodology", "training_material", "case_study", "general"] 
-  }).default("general"), // Type of content for targeted retrieval
-  description: text("description"), // Brief summary of document content
+  }).default("general"),
+  description: text("description"),
 });
 
-// System settings
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: varchar("key").notNull().unique(),
   value: varchar("value").notNull(),
   description: text("description"),
   updatedAt: timestamp("updated_at").defaultNow(),
-  updatedBy: varchar("updated_by"), // Admin user ID who made the change
+  updatedBy: varchar("updated_by"),
 });
 
-// Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   chats: many(chats),
   apiKeys: many(apiKeys),
@@ -512,7 +484,6 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   }),
 }));
 
-// Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   approvalStatus: true,
@@ -616,7 +587,6 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
   uploadedAt: true,
 });
 
-// Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
