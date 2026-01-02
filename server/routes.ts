@@ -22,7 +22,7 @@ import { parseDocument, parseDocumentBuffer, chunkText, storeDocumentChunks, upd
 import { randomUUID } from "crypto";
 import { registerDbSyncRoutes } from "./routes-db-sync";
 import { uploadToGCS, deleteFromGCS } from "./gcs-storage";
-import { sendFeedbackToSlack } from "./slack-service";
+import { sendFeedbackToSlack, sendNewUserNotificationToSlack } from "./slack-service";
 
 /**
  * Extract text from certificate files (PDF, DOCX) for AI verification
@@ -480,6 +480,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If user needs approval, redirect to login with pending message
       if (user.approvalStatus === 'pending') {
+        // Send Slack notification for new user awaiting approval (fire-and-forget)
+        sendNewUserNotificationToSlack({
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          region: region,
+          supervisorName: mentorSupervisor,
+        }).catch(err => console.error("[Slack] Failed to send new user notification:", err));
+        
         return res.json({
           message: "Account created successfully. Awaiting admin approval.",
           approvalStatus: "pending"
