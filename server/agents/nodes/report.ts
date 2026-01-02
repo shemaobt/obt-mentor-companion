@@ -1,10 +1,3 @@
-/**
- * Report Node
- * 
- * Generates quarterly narrative reports for facilitators.
- * No tools - receives portfolio data and generates narrative using LLM.
- */
-
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AIMessage } from "@langchain/core/messages";
 import { AgentState } from "../state";
@@ -13,15 +6,11 @@ import type { IStorage } from "../../storage";
 import type { Message, FacilitatorCompetency, FacilitatorQualification, MentorshipActivity } from "@shared/schema";
 import { CORE_COMPETENCIES } from "@shared/schema";
 
-/**
- * Create report generation node function
- */
 export function createReportNode(storage: IStorage) {
   
   return async function reportNode(state: typeof AgentState.State): Promise<Partial<typeof AgentState.State>> {
     console.log('[Report Node] Report generation requested');
     
-    // For report generation, guide user to the dedicated report generation UI
     const response = "To generate a quarterly report, please use the 'Reports' section in your portfolio page and select the reporting period. This will create a comprehensive .docx report with an AI-generated narrative summary of your progress.";
     
     return {
@@ -32,11 +21,6 @@ export function createReportNode(storage: IStorage) {
   };
 }
 
-/**
- * Generate Report Narrative using Gemini
- * 
- * This function is called directly from the report generator, not through the graph.
- */
 export async function generateReportNarrative(params: {
   facilitatorName: string;
   region: string | null;
@@ -64,7 +48,6 @@ export async function generateReportNarrative(params: {
     maxRetries: 2,
   });
 
-  // Build comprehensive context for the report
   const competencyBreakdown = params.competencies.map(c => {
     const compDef = CORE_COMPETENCIES[c.competencyId];
     return `- ${compDef?.name || c.competencyId}: ${c.status}`;
@@ -85,7 +68,6 @@ export async function generateReportNarrative(params: {
   const userMessageCount = params.recentMessages.filter(m => m.role === 'user').length;
   const sessionCount = Math.floor(userMessageCount / 2);
 
-  // Analyze recent conversation topics
   const conversationSample = params.recentMessages
     .filter(m => m.role === 'user')
     .slice(-10)
@@ -131,10 +113,6 @@ Generate the quarterly narrative now:`;
   }
 }
 
-/**
- * Analyze conversations for competency evidence
- * Used for retrospective analysis of chat history
- */
 export async function analyzeConversationsForEvidence(
   storage: IStorage,
   facilitatorId: string,
@@ -145,7 +123,6 @@ export async function analyzeConversationsForEvidence(
     throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is required');
   }
 
-  // Filter to user messages only (facilitator's own words)
   const userMessages = messages
     .filter(m => m.role === 'user')
     .map(m => m.content)
@@ -199,7 +176,6 @@ Extract ALL competency evidence now (return JSON only):`;
     
     const responseText = response.content.toString().trim();
     
-    // Extract JSON from response
     let jsonText = responseText;
     if (responseText.includes('```json')) {
       const match = responseText.match(/```json\s*([\s\S]*?)\s*```/);
@@ -216,7 +192,6 @@ Extract ALL competency evidence now (return JSON only):`;
       return [];
     }
 
-    // Store each piece of evidence in the database
     const results: Array<{competencyId: string, evidenceText: string, strengthScore: number}> = [];
     
     for (const item of evidenceItems) {

@@ -80,13 +80,10 @@ export default function Sidebar({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Check if user is admin or supervisor
-  // Properly type the user object for admin/supervisor check
   const userWithRoles = user as any;
   const isAdmin = userWithRoles?.isAdmin === true;
   const isSupervisor = userWithRoles?.isSupervisor === true;
   
-  // Debug logging for role status (only in development)
   if (import.meta.env.DEV) {
     console.log(`[Sidebar] User: ${userWithRoles?.email}, isAdmin: ${isAdmin}, isSupervisor: ${isSupervisor}, raw user object:`, user);
   }
@@ -101,7 +98,6 @@ export default function Sidebar({
     retry: false,
   });
 
-  // Fetch unread feedback count for admin users
   const { data: unreadFeedbackCount = 0 } = useQuery<number>({
     queryKey: ["/api/admin/feedback/unread-count"],
     enabled: isAdmin,
@@ -109,7 +105,6 @@ export default function Sidebar({
     select: (data: any) => data?.count || 0,
   });
 
-  // Fetch pending users count for admin users
   const { data: pendingUsersCount = 0 } = useQuery<number>({
     queryKey: ["/api/admin/users/pending-count"],
     enabled: isAdmin,
@@ -117,15 +112,13 @@ export default function Sidebar({
     select: (data: any) => data?.count || 0,
   });
 
-  // Fetch pending users count for supervisor users
   const { data: supervisorPendingUsersCount = 0 } = useQuery<number>({
     queryKey: ["/api/supervisor/pending-users/count"],
-    enabled: isSupervisor && !isAdmin, // Only for non-admin supervisors
+    enabled: isSupervisor && !isAdmin,
     retry: false,
     select: (data: any) => data?.count || 0,
   });
 
-  // Show toast notification for pending users (admin)
   useEffect(() => {
     if (isAdmin && pendingUsersCount > 0) {
       toast({
@@ -136,7 +129,6 @@ export default function Sidebar({
     }
   }, [pendingUsersCount, isAdmin, toast]);
 
-  // Show toast notification for pending users (supervisor)
   useEffect(() => {
     if (isSupervisor && !isAdmin && supervisorPendingUsersCount > 0) {
       toast({
@@ -186,14 +178,12 @@ export default function Sidebar({
     },
     onSuccess: (_, deletedChatId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-      // Remove cached data for the deleted chat instead of trying to refetch it
       queryClient.removeQueries({ queryKey: ["/api/chats", deletedChatId] });
       queryClient.removeQueries({ queryKey: ["/api/chats", deletedChatId, "messages"] });
       toast({
         title: "Success",
         description: "Chat deleted successfully",
       });
-      // Only navigate away if we're currently viewing the deleted chat
       const currentPath = window.location.pathname;
       if (currentPath === `/chat/${deletedChatId}`) {
         setLocation('/');
@@ -301,20 +291,16 @@ export default function Sidebar({
 
   const continueChainMutation = useMutation({
     mutationFn: async (chainId: string) => {
-      // Get the chain to find the active chat
       const chain = chatChains.find(c => c.id === chainId);
       if (chain?.activeChatId) {
-        // Navigate to active chat
         return { chatId: chain.activeChatId };
       } else {
-        // Create a new chat in this chain
         const response = await apiRequest("POST", "/api/chats", {
           title: "New Chat",
           assistantId: 'obtMentor',
         });
         const newChat = await response.json();
         
-        // Link the chat to the chain
         await apiRequest("POST", `/api/chats/${newChat.id}/chain`, {
           chainId,
         });
@@ -350,7 +336,6 @@ export default function Sidebar({
 
   return (
     <div className={`w-full h-full ${isMobile ? 'max-w-xs phone-xs:max-w-full phone-sm:max-w-sm' : ''} bg-card ${!isMobile ? 'border-r border-border' : ''} flex flex-col overflow-hidden`}>
-      {/* Header */}
       <div className={`${isMobile ? 'p-3 phone-xs:p-2 phone-sm:p-3 pt-[max(1rem,env(safe-area-inset-top))]' : 'p-4'} border-b border-border`}>
         <div className="flex items-center justify-center h-10 relative">
           <div className="flex items-center space-x-3 phone-xs:space-x-2 phone-sm:space-x-3">
@@ -374,7 +359,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* New Chat Button */}
       <div className="p-3 phone-xs:p-2 phone-sm:p-4 md:p-4">
         <Button
           onClick={() => {
@@ -389,7 +373,6 @@ export default function Sidebar({
         </Button>
       </div>
 
-      {/* Chat Chains */}
       {chatChains.length > 0 && (
         <div className="p-3 md:p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
@@ -480,7 +463,6 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Chat History */}
       <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-1 md:space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Chats</h3>
         
@@ -554,7 +536,6 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* User Menu */}
       <div className="p-3 md:p-4 border-t border-border">
         <Button
           variant="ghost" 
@@ -590,10 +571,8 @@ export default function Sidebar({
           <ChevronUp className={`h-3 w-3 text-muted-foreground transition-transform ${userMenuOpen ? "" : "rotate-180"}`} />
         </Button>
         
-        {/* Dropdown Menu */}
         {userMenuOpen && (
           <div className="mt-2 bg-popover border border-border rounded-md shadow-lg py-2 max-h-96 overflow-y-auto">
-            {/* Admin-only options */}
             {isAdmin && (
               <>
                 <Link href="/admin/users" className="block">
@@ -661,7 +640,6 @@ export default function Sidebar({
                 <Separator className="my-1" />
               </>
             )}
-            {/* Supervisor-only options (visible to supervisors who are not admins) */}
             {isSupervisor && !isAdmin && (
               <>
                 <Link href="/supervisor/users" className="block">
@@ -687,7 +665,6 @@ export default function Sidebar({
                 <Separator className="my-1" />
               </>
             )}
-            {/* Portfolio option (visible to all users) */}
             <Link href="/portfolio" className="block">
               <Button
                 variant="ghost"
@@ -700,7 +677,6 @@ export default function Sidebar({
               </Button>
             </Link>
             
-            {/* Feedback option (visible to all users) */}
             <FeedbackForm
               trigger={
                 <Button
@@ -714,10 +690,8 @@ export default function Sidebar({
               }
             />
             
-            {/* Theme Switcher (visible to all users) */}
             <ThemeSwitcher />
             
-            {/* Settings option (visible to all users) */}
             <Link href="/settings" className="block">
               <Button
                 variant="ghost"
@@ -730,7 +704,6 @@ export default function Sidebar({
               </Button>
             </Link>
             
-            {/* QR Code option (visible to all users) */}
             <Link href="/qr-code" className="block">
               <Button
                 variant="ghost"
@@ -745,7 +718,6 @@ export default function Sidebar({
             
             <Separator className="my-1" />
             
-            {/* Logout option (visible to all users) */}
             <Button
               variant="ghost"
               className={`w-full justify-start text-sm px-4 ${isMobile ? 'h-12' : 'py-2 h-auto'}`}
@@ -762,7 +734,6 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Rename Chat Dialog */}
       <Dialog open={renamingChatId !== null} onOpenChange={(open) => {
         if (!open) {
           setRenamingChatId(null);
@@ -819,7 +790,6 @@ export default function Sidebar({
         </DialogContent>
       </Dialog>
 
-      {/* Change Password Dialog */}
       <ChangePasswordDialog 
         open={changePasswordOpen} 
         onOpenChange={setChangePasswordOpen}
