@@ -246,7 +246,7 @@ npm run db:push
 PRODUCTION_DATABASE_URL=<url> npx tsx scripts/pre-publish-check.ts
 
 # Post-publish verification
-PRODUCTION_DATABASE_URL=<url> npx tsx server/verify-production-users.ts
+PRODUCTION_DATABASE_URL=<url> npx tsx backend/verify-production-users.ts
 ```
 
 ---
@@ -264,7 +264,7 @@ PRODUCTION_DATABASE_URL=<url> npx tsx server/verify-production-users.ts
 
 Change theme: User Profile → Theme button
 
-Customize: Edit `client/src/lib/themes.ts`
+Customize: Edit `frontend/src/lib/themes.ts`
 
 ---
 
@@ -330,13 +330,13 @@ npm run build
 
 ```
 obt-mentor-companion/
-├── client/               # React frontend
+├── frontend/             # React frontend
 │   └── src/
 │       ├── components/   # UI components (57 files)
 │       ├── pages/        # Route pages (15 files)
 │       ├── hooks/        # Custom hooks (7 files)
 │       └── lib/          # Utilities (4 files)
-├── server/               # Express backend
+├── backend/              # Express backend
 │   ├── index.ts          # Server entry
 │   ├── routes.ts         # API routes
 │   ├── storage.ts        # Database queries

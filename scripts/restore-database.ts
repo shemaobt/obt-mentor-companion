@@ -13,12 +13,10 @@ async function restoreDatabase(backupFileName: string) {
 
     const backupFile = path.join(BACKUP_DIR, backupFileName);
 
-    // Check if backup file exists
     if (!fs.existsSync(backupFile)) {
       throw new Error(`Backup file not found: ${backupFile}`);
     }
 
-    // Get database URL from environment
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error('DATABASE_URL environment variable not set');
@@ -27,7 +25,6 @@ async function restoreDatabase(backupFileName: string) {
     console.log(`[Restore] Restoring from: ${backupFile}`);
     console.warn('[Restore] ⚠️  This will replace all current data!');
 
-    // Run psql to restore backup
     const { stdout, stderr } = await execAsync(
       `psql "${databaseUrl}" < "${backupFile}"`
     );
@@ -75,7 +72,6 @@ function listBackups() {
   return files;
 }
 
-// Run if executed directly (ES module check)
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
 if (isMainModule) {

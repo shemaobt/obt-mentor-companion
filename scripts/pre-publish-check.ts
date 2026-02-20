@@ -1,19 +1,3 @@
-/**
- * Pre-Publish Safety Check
- * 
- * This script verifies that publishing is safe by:
- * 1. Comparing production and development database schemas
- * 2. Detecting destructive changes (dropped tables/columns, type changes, etc.)
- * 3. Verifying new columns are safe (nullable or have defaults)
- * 4. Checking column metadata changes (data types, nullability, precision)
- * 5. Providing evidence-based go/no-go recommendation
- * 
- * IMPORTANT: This script does NOT create backups - ensure you have backups before publishing.
- * 
- * Usage:
- *   PRODUCTION_DATABASE_URL=<prod_url> tsx scripts/pre-publish-check.ts
- */
-
 import { neon } from "@neondatabase/serverless";
 
 interface CheckResult {
@@ -30,7 +14,6 @@ async function runPrePublishCheck() {
 
   console.log("🔍 Running Pre-Publish Safety Check...\n");
 
-  // Check 1: Environment variables
   if (!productionUrl) {
     results.push({
       passed: false,
@@ -58,7 +41,6 @@ async function runPrePublishCheck() {
   const devSql = neon(developmentUrl);
 
   try {
-    // Check 2: Production user count
     console.log("📊 Checking production data...");
     const prodUserCount = await prodSql`SELECT COUNT(*) as count FROM users`;
     const userCount = Number(prodUserCount[0]?.count || 0);
@@ -70,7 +52,6 @@ async function runPrePublishCheck() {
       severity: userCount >= 30 ? 'info' : 'warning'
     });
 
-    // Check 3: Compare table existence
     console.log("🏗️  Comparing schemas...");
     const prodTables = await prodSql`
       SELECT table_name 
@@ -89,7 +70,6 @@ async function runPrePublishCheck() {
     const prodTableNames = prodTables.map(t => t.table_name).sort();
     const devTableNames = devTables.map(t => t.table_name).sort();
 
-    // Tables in dev but not in prod (will be CREATED - safe)
     const newTables = devTableNames.filter(t => !prodTableNames.includes(t));
     if (newTables.length > 0) {
       results.push({
@@ -100,7 +80,6 @@ async function runPrePublishCheck() {
       });
     }
 
-    // Tables in prod but not in dev (will be DROPPED - DANGEROUS!)
     const droppedTables = prodTableNames.filter(t => !devTableNames.includes(t));
     if (droppedTables.length > 0) {
       results.push({
@@ -118,10 +97,8 @@ async function runPrePublishCheck() {
       });
     }
 
-    // Check 4: Comprehensive column comparison for ALL tables
     console.log("🔍 Checking column metadata for ALL tables...");
     
-    // Get all table names from development
     const allDevTables = await devSql`
       SELECT table_name 
       FROM information_schema.tables 
@@ -133,10 +110,9 @@ async function runPrePublishCheck() {
     const tablesToCheck = allDevTables.map(t => t.table_name);
     
     for (const tableName of tablesToCheck) {
-      // Skip if table doesn't exist in production yet (new table - will be created safely)
       const prodTableExists = prodTableNames.includes(tableName);
       if (!prodTableExists) {
-        continue; // Already handled in "new tables" check
+        continue;
       }
       const prodCols = await prodSql`
         SELECT column_name, data_type, is_nullable, column_default,
@@ -157,7 +133,6 @@ async function runPrePublishCheck() {
       const prodColNames = prodCols.map(c => c.column_name);
       const devColNames = devCols.map(c => c.column_name);
 
-      // New columns in dev (will be ADDED - safe if nullable or has default)
       const newCols = devColNames.filter(c => !prodColNames.includes(c));
       if (newCols.length > 0) {
         const newColDetails = devCols.filter(c => newCols.includes(c.column_name));
@@ -180,7 +155,6 @@ async function runPrePublishCheck() {
         }
       }
 
-      // Dropped columns (will be REMOVED - DANGEROUS!)
       const droppedCols = prodColNames.filter(c => !devColNames.includes(c));
       if (droppedCols.length > 0) {
         results.push({
@@ -191,7 +165,6 @@ async function runPrePublishCheck() {
         });
       }
 
-      // Check existing columns for destructive changes
       const commonCols = prodColNames.filter(c => devColNames.includes(c));
       for (const colName of commonCols) {
         const prodCol = prodCols.find(c => c.column_name === colName);
@@ -199,7 +172,6 @@ async function runPrePublishCheck() {
 
         if (!prodCol || !devCol) continue;
 
-        // Check data type changes (DANGEROUS!)
         if (prodCol.data_type !== devCol.data_type) {
           results.push({
             passed: false,
@@ -209,7 +181,6 @@ async function runPrePublishCheck() {
           });
         }
 
-        // Check nullability changes (nullable → NOT NULL is DANGEROUS!)
         if (prodCol.is_nullable === 'YES' && devCol.is_nullable === 'NO') {
           results.push({
             passed: false,
@@ -219,9 +190,7 @@ async function runPrePublishCheck() {
           });
         }
 
-        // Check for character length changes (including unlimited → limited)
         if (prodCol.character_maximum_length !== null && devCol.character_maximum_length !== null) {
-          // Both have limits - check if dev is reducing the limit
           if (prodCol.character_maximum_length > devCol.character_maximum_length) {
             results.push({
               passed: false,
@@ -231,7 +200,6 @@ async function runPrePublishCheck() {
             });
           }
         } else if (prodCol.character_maximum_length === null && devCol.character_maximum_length !== null) {
-          // Production is unlimited, development has limit - this is a reduction
           results.push({
             passed: false,
             category: "Schema Changes",
@@ -240,14 +208,12 @@ async function runPrePublishCheck() {
           });
         }
 
-        // Check for numeric precision/scale changes
         if (prodCol.data_type === 'numeric' || prodCol.data_type === 'decimal') {
           const prodPrecision = prodCol.numeric_precision;
           const devPrecision = devCol.numeric_precision;
           const prodScale = prodCol.numeric_scale;
           const devScale = devCol.numeric_scale;
 
-          // Check precision reduction or unlimited → limited (null → number is a reduction)
           if (prodPrecision !== null && devPrecision !== null && prodPrecision > devPrecision) {
             results.push({
               passed: false,
@@ -256,7 +222,6 @@ async function runPrePublishCheck() {
               severity: 'critical'
             });
           } else if (prodPrecision === null && devPrecision !== null) {
-            // Going from unlimited to limited precision is a reduction
             results.push({
               passed: false,
               category: "Schema Changes",
@@ -265,8 +230,6 @@ async function runPrePublishCheck() {
             });
           }
 
-          // Check scale reduction (including reduction to 0)
-          // Note: scale can be 0 (valid), so use !== null checks
           if (prodScale !== null && devScale !== null && prodScale > devScale) {
             results.push({
               passed: false,
@@ -275,7 +238,6 @@ async function runPrePublishCheck() {
               severity: 'critical'
             });
           } else if (prodScale === null && devScale !== null) {
-            // Going from unlimited to limited scale is a reduction
             results.push({
               passed: false,
               category: "Schema Changes",
@@ -287,7 +249,6 @@ async function runPrePublishCheck() {
       }
     }
     
-    // Log comprehensive check completion
     const totalChanges = results.filter(r => r.category === "Schema Changes");
     const dangerousChanges = totalChanges.filter(r => !r.passed);
     
@@ -307,7 +268,6 @@ async function runPrePublishCheck() {
       });
     }
 
-    // Check 5: Verify course_level column in both databases
     console.log("🔍 Checking course_level column...");
     const prodQualCols = await prodSql`
       SELECT column_name, is_nullable, column_default
@@ -332,11 +292,10 @@ async function runPrePublishCheck() {
       });
     }
 
-    // Check 6: Create backup recommendation
     results.push({
       passed: true,
       category: "Backup",
-      message: `Backup exists: users(1)_1761235733236.csv (${userCount} users)`,
+      message: `Production database has ${userCount} users - ensure backup exists before publishing`,
       severity: 'info'
     });
 
@@ -351,7 +310,6 @@ async function runPrePublishCheck() {
 
   printResults(results);
 
-  // Final recommendation
   const criticalIssues = results.filter(r => !r.passed && r.severity === 'critical');
   const warnings = results.filter(r => !r.passed && r.severity === 'warning');
 
@@ -385,7 +343,6 @@ function printResults(results: CheckResult[]) {
   }
 }
 
-// Run the check
 runPrePublishCheck().catch(error => {
   console.error("❌ Fatal error:", error);
   process.exit(1);

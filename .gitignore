@@ -83,34 +83,7 @@ temp/
 # Vite config backups
 vite.config.ts.*
 
-# Replit specific
-.replit
-replit.nix
-
-# Python testing
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.coverage
-htmlcov/
-.env.test
-
-# Test uploads and reports
+# Runtime directories (created by Docker/app)
 uploads/
-!uploads/.gitkeep
-!uploads/documents/.gitkeep
-!uploads/certificates/.gitkeep
-!uploads/profile-images/.gitkeep
-
 reports/
-!reports/.gitkeep
-
 backups/
-!backups/.gitkeep
-
-# User-uploaded chat attachments (should not be in repository)
-attached_assets/
-!attached_assets/.gitkeep
