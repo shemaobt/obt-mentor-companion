@@ -1,5 +1,6 @@
 import MessageComponent from "../message";
-import LogoWithBackground from "../LogoWithBackground";
+import { StreamingMessage } from "./StreamingMessage";
+import { TypingIndicator } from "./TypingIndicator";
 import type { ChatMessageListProps } from "./types";
 
 export function ChatMessageList({
@@ -22,47 +23,9 @@ export function ChatMessageList({
         />
       ))}
 
-      {streamingMessage && (
-        <div className="flex justify-start" data-testid="streaming-message">
-          <div className="max-w-2xl">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 mt-1">
-                <LogoWithBackground size="sm" />
-              </div>
-              <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
-                <div className="text-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-streaming-content">
-                  {streamingMessage.content}
-                  {!streamingMessage.isComplete && (
-                    <span className="animate-pulse">▋</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1 ml-11">
-              {streamingMessage.isComplete ? "Just now" : "Generating..."}
-            </p>
-          </div>
-        </div>
-      )}
+      {streamingMessage && <StreamingMessage streamingMessage={streamingMessage} />}
 
-      {isTyping && !streamingMessage && (
-        <div className="flex justify-start" data-testid="typing-indicator">
-          <div className="max-w-2xl">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 mt-1">
-                <LogoWithBackground size="sm" />
-              </div>
-              <div className="bg-card border border-border rounded-lg rounded-bl-sm p-4">
-                <div className="flex space-x-1">
-                  <div className="typing-indicator"></div>
-                  <div className="typing-indicator"></div>
-                  <div className="typing-indicator"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {isTyping && !streamingMessage && <TypingIndicator />}
 
       <div ref={messagesEndRef} />
     </div>
