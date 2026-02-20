@@ -30,7 +30,7 @@ services:
       - ./backups:/app/backups
       - ./reports:/app/reports
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       gcp-secrets:
         condition: service_completed_successfully
@@ -51,7 +51,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: http://localhost:5000
+        VITE_API_URL: http://localhost:5001
     container_name: obt-mentor-frontend
     environment:
       BACKEND_URL: http://backend:5000
