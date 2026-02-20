@@ -83,21 +83,6 @@ temp/
 # Vite config backups
 vite.config.ts.*
 
-# Replit specific
-.replit
-replit.nix
-
-# Python testing
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.coverage
-htmlcov/
-.env.test
-
 # Test uploads and reports
 uploads/
 !uploads/.gitkeep
@@ -111,6 +96,3 @@ reports/
 backups/
 !backups/.gitkeep
 
-# User-uploaded chat attachments (should not be in repository)
-attached_assets/
-!attached_assets/.gitkeep
