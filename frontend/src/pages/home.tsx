@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Sidebar from "@/components/sidebar";
 import ChatInterface from "@/components/chat-interface";
-import OnboardingModal from "@/components/onboarding-modal";
 import type { AssistantId } from "@shared/schema";
 
 export default function Home() {
@@ -15,16 +14,13 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [defaultAssistant, setDefaultAssistant] = useState<AssistantId>('obtMentor');
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Ensure sidebar is closed when switching to mobile
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [isMobile]);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -38,13 +34,6 @@ export default function Home() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
-
-  // Show onboarding modal only on first login (not every page load)
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && !localStorage.getItem('hasSeenOnboarding')) {
-      setShowOnboarding(true);
-    }
-  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
@@ -60,16 +49,6 @@ export default function Home() {
 
   return (
     <div className="h-screen bg-background flex relative overflow-hidden" data-testid="page-home">
-      {/* Onboarding Modal */}
-      <OnboardingModal 
-        open={showOnboarding} 
-        onClose={() => {
-          localStorage.setItem('hasSeenOnboarding', 'true');
-          setShowOnboarding(false);
-        }} 
-      />
-
-      {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 2xl:hidden"
