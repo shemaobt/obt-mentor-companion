@@ -7,12 +7,17 @@ services:
       SECRETS_PROJECT_ID: ${SECRETS_PROJECT_ID:-shemaobt-secrets}
     volumes:
       - gcp_secrets_env:/secrets
-      - ${HOME}/.config/gcloud:/root/.config/gcloud
-      - ../tf/scripts:/tf/scripts:ro
-    command: >
-      sh -c "/tf/scripts/gcp_secrets_to_env.sh > /secrets/.env &&
-             cp /root/.config/gcloud/application_default_credentials.json /secrets/gcloud_adc.json &&
-             chmod 644 /secrets/gcloud_adc.json"
+      - ${HOME}/.config/gcloud:/host-gcloud:ro
+      - ./scripts:/scripts:ro
+    command:
+      - sh
+      - -c
+      - |
+        cp -r /host-gcloud /tmp/gcloud
+        export CLOUDSDK_CONFIG=/tmp/gcloud
+        /scripts/gcp_secrets_to_env.sh > /secrets/.env
+        cp /tmp/gcloud/application_default_credentials.json /secrets/gcloud_adc.json
+        chmod 644 /secrets/gcloud_adc.json
     restart: "no"
 
   backend:
