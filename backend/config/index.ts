@@ -99,7 +99,7 @@ export const config = {
     minPasswordLength: 6,
   },
   email: {
-    resendApiKey: process.env.RESEND_API_KEY || '',
+    smtpPassword: process.env.SMTP_PASSWORD || '',
     fromAddress: 'support@shemaywam.com',
     fromName: 'OBT Mentor Companion',
   },
