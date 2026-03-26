@@ -98,6 +98,18 @@ export const config = {
     saltRounds: 12,
     minPasswordLength: 6,
   },
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    fromAddress: 'support@shemaywam.com',
+    fromName: 'OBT Mentor Companion',
+  },
+  passwordReset: {
+    tokenExpiryMs: 60 * 60 * 1000,
+    rateLimitMax: 5,
+  },
+  app: {
+    url: getEnv('APP_URL', 'https://obtmentor.shemaywam.com'),
+  },
   cache: {
     audio: {
       maxSize: 100,
