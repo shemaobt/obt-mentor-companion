@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { SessionRequest, SessionCallback } from "./types/express";
 import express from "express";
 import { createServer, type Server } from "http";
+import { config } from "./config";
 import { storage } from "./storage";
 import { generateChatTitle } from "./utils";
 import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage, translateWithGemini } from "./gemini-audio";
@@ -474,7 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
-      res.clearCookie('translation.sid');
+      res.clearCookie(config.session.cookieName);
       res.json({ message: "Logged out successfully" });
     });
   });

@@ -79,7 +79,7 @@ export const config = {
   rateLimits: {
     auth: {
       windowMs: 15 * 60 * 1000,
-      max: 5,
+      max: 15,
     },
     publicApi: {
       windowMs: 15 * 60 * 1000,
