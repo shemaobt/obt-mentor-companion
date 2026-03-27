@@ -104,7 +104,7 @@ jobs:
             --project "${PROJECT_ID}" \
             --timeout=300 \
             --min-instances=1 \
-            --update-env-vars="^||^DATABASE_URL=${DATABASE_URL}||GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}||QDRANT_URL=${{ secrets.QDRANT_URL }}||QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}||SESSION_SECRET=${{ secrets.SESSION_SECRET }}||GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}||SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}||APP_URL=https://obtmentor.shemaywam.com||NODE_ENV=production" \
+            --update-env-vars="^||^DATABASE_URL=${DATABASE_URL}||GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}||QDRANT_URL=${{ secrets.QDRANT_URL }}||QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}||SESSION_SECRET=${{ secrets.SESSION_SECRET }}||GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}||AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}||AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}||AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}||APP_URL=https://obtmentor.shemaywam.com||NODE_ENV=production" \
             --quiet \
             --format="value(status.url)" > backend_url.txt
           echo "backend_url=$(cat backend_url.txt)" >> $GITHUB_OUTPUT
