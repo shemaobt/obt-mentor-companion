@@ -17,6 +17,7 @@ import {
   competencyChangeHistory,
   systemSettings,
   documents,
+  passwordResetTokens,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -52,9 +53,10 @@ import {
   type InsertCompetencyChangeHistory,
   type Document,
   type InsertDocument,
+  type PasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray, isNull, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -75,7 +77,12 @@ export interface IStorage {
   updateUserLastLogin(userId: string): Promise<void>;
   updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
   updateUserProfileImage(userId: string, profileImageUrl: string): Promise<void>;
-  
+
+  // Password reset tokens
+  createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getValidPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(tokenId: string): Promise<void>;
+
   // Chat chain operations
   getUserChatChains(userId: string): Promise<ChatChain[]>;
   getChatChain(chainId: string, userId: string): Promise<ChatChain | undefined>;
@@ -324,11 +331,40 @@ export class DatabaseStorage implements IStorage {
   async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
     await db
       .update(users)
-      .set({ 
+      .set({
         password: hashedPassword,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
+  }
+
+  async createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const [token] = await db
+      .insert(passwordResetTokens)
+      .values({ userId, tokenHash, expiresAt })
+      .returning();
+    return token;
+  }
+
+  async getValidPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, new Date())
+        )
+      );
+    return token;
+  }
+
+  async markPasswordResetTokenUsed(tokenId: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, tokenId));
   }
 
   async updateUserProfileImage(userId: string, profileImageUrl: string): Promise<void> {
