@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const logoImage = "/logo.png";
+const logoImage = "/logo-white.png";
 
 interface AuthLayoutProps {
   children: ReactNode;
