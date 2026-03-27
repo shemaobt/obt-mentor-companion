@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const logoImage = "/logo.png";
+const logoImage = "/logo-white.png";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -10,14 +10,14 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex">
       {/* Left panel — brand gradient (desktop only) */}
-      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative overflow-hidden bg-gradient-to-br from-orange-950 via-orange-900 to-amber-900">
+      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative overflow-hidden bg-gradient-to-br from-stone-900 via-[hsl(62,20%,18%)] to-[hsl(62,28%,22%)]">
         <div
           className="absolute top-1/4 -left-32 w-[500px] h-[500px] rounded-full opacity-20 pointer-events-none"
-          style={{ background: "radial-gradient(circle, hsl(23 99% 37%), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, hsl(62 28% 42%), transparent 70%)" }}
         />
         <div
           className="absolute -bottom-20 right-1/4 w-[400px] h-[400px] rounded-full opacity-10 pointer-events-none"
-          style={{ background: "radial-gradient(circle, hsl(35 90% 60%), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, hsl(62 35% 65%), transparent 70%)" }}
         />
 
         <div className="relative mt-auto p-12 pb-14 w-full">
@@ -41,19 +41,19 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <div className="flex-1 flex flex-col bg-background relative overflow-hidden">
         <div
           className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.04] pointer-events-none"
-          style={{ background: "radial-gradient(circle, hsl(23 99% 37%), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, hsl(62 28% 42%), transparent 70%)" }}
         />
         <div
           className="absolute -bottom-48 -left-48 w-[400px] h-[400px] rounded-full opacity-[0.03] pointer-events-none"
-          style={{ background: "radial-gradient(circle, hsl(200 40% 50%), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, hsl(62 35% 65%), transparent 70%)" }}
         />
 
         {/* Mobile hero banner */}
         <div className="lg:hidden">
-          <div className="relative h-40 overflow-hidden bg-gradient-to-br from-orange-950 via-orange-900 to-amber-900">
+          <div className="relative h-40 overflow-hidden bg-gradient-to-br from-stone-900 via-[hsl(62,20%,18%)] to-[hsl(62,28%,22%)]">
             <div
               className="absolute top-0 -left-20 w-[300px] h-[300px] rounded-full opacity-20 pointer-events-none"
-              style={{ background: "radial-gradient(circle, hsl(23 99% 37%), transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, hsl(62 28% 42%), transparent 70%)" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
             <div className="absolute bottom-5 left-6 sm:left-8 flex items-center gap-3">
