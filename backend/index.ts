@@ -39,10 +39,14 @@ try {
 
     log("Using PostgreSQL session store");
 } catch (error) {
-  log(`Failed to initialize PostgreSQL session store: ${error instanceof Error ? error.message : "Unknown error"}`);
+  const msg = error instanceof Error ? error.message : "Unknown error";
+  if (config.isProduction) {
+    throw new Error(`Failed to initialize PostgreSQL session store in production: ${msg}`);
+  }
+  log(`Failed to initialize PostgreSQL session store: ${msg}`);
   const MemoryStore = session.MemoryStore;
   sessionStore = new MemoryStore();
-  log("Falling back to memory-based session store");
+  log("Falling back to memory-based session store (development only)");
 }
 
 try {
@@ -50,7 +54,7 @@ try {
     httpOnly: true,
     maxAge: config.session.maxAge,
     sameSite: "lax" as const,
-    secure: config.isProduction ? "auto" : false,
+    secure: config.isProduction,
   };
 
   app.use(

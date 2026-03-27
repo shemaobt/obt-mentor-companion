@@ -79,7 +79,7 @@ export const config = {
   rateLimits: {
     auth: {
       windowMs: 15 * 60 * 1000,
-      max: 5,
+      max: 15,
     },
     publicApi: {
       windowMs: 15 * 60 * 1000,
@@ -97,6 +97,18 @@ export const config = {
   auth: {
     saltRounds: 12,
     minPasswordLength: 6,
+  },
+  email: {
+    smtpPassword: process.env.SMTP_PASSWORD || '',
+    fromAddress: 'support@shemaywam.com',
+    fromName: 'OBT Mentor Companion',
+  },
+  passwordReset: {
+    tokenExpiryMs: 60 * 60 * 1000,
+    rateLimitMax: 5,
+  },
+  app: {
+    url: getEnv('APP_URL', 'https://obtmentor.shemaywam.com'),
   },
   cache: {
     audio: {

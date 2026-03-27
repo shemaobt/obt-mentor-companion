@@ -18,6 +18,8 @@ import AdminCompetencyRecalc from "@/pages/admin-competency-recalc";
 import SupervisorUsers from "@/pages/supervisor-users";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +38,8 @@ function Router() {
       {!isAuthenticated ? (
         <>
           <Route path="/signup" component={Signup} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/login" component={Login} />
           <Route path="/" component={Login} />
         </>

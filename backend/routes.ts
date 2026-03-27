@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { SessionRequest, SessionCallback } from "./types/express";
 import express from "express";
 import { createServer, type Server } from "http";
+import { config } from "./config";
 import { storage } from "./storage";
 import { generateChatTitle } from "./utils";
 import { transcribeAudioWithGemini, generateSpeechWithAutoLanguage, generateSpeechStreamWithAutoLanguage, translateWithGemini } from "./gemini-audio";
@@ -474,10 +475,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
-      res.clearCookie('translation.sid');
+      res.clearCookie(config.session.cookieName);
       res.json({ message: "Logged out successfully" });
     });
   });
+  // Password reset
+  const passwordResetLimiter = rateLimit({
+    windowMs: config.rateLimits.auth.windowMs,
+    max: config.passwordReset.rateLimitMax,
+    message: { message: "Too many password reset requests, please try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const forgotPasswordSchema = z.object({
+    email: z.string().email().toLowerCase(),
+  });
+
+  const resetPasswordSchema = z.object({
+    token: z.string().min(1, "Token is required"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+  });
+
+  app.post('/api/auth/forgot-password', passwordResetLimiter, async (req: Request, res: Response) => {
+    try {
+      const { email } = forgotPasswordSchema.parse(req.body);
+      const { requestPasswordReset } = await import('./services/passwordResetService');
+      await requestPasswordReset(email);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+    }
+    res.json({ message: "If an account with that email exists, we've sent a password reset link." });
+  });
+
+  app.post('/api/auth/reset-password', authLimiter, async (req: Request, res: Response) => {
+    try {
+      const { token, password } = resetPasswordSchema.parse(req.body);
+      const { resetPassword } = await import('./services/passwordResetService');
+      const result = await resetPassword(token, password);
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+      res.json({ message: result.message });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   app.post('/api/auth/change-password', requireAuth, passwordChangeLimiter, async (req: SessionRequest, res: Response) => {
     try {
       const { currentPassword, newPassword } = changePasswordValidationSchema.parse(req.body);
